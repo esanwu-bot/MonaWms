@@ -192,6 +192,12 @@ Route::group('api', function () {
             Route::post('recognize-barcode', 'SerialNumberController/recognizeBarcode'); // 识别条码图片
         });
         
+        // 条码识别管理
+        Route::group('barcode', function () {
+            Route::post('recognize', 'BarcodeController/recognize');     // 条码图片识别
+            Route::get('supported-types', 'BarcodeController/getSupportedTypes'); // 获取支持的条码类型
+        });
+        
     })->middleware(['auth']); // 需要认证的路由组
     
 })->middleware(['cors']); // API路由组，添加CORS中间件

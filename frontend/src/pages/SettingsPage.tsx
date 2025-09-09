@@ -489,14 +489,13 @@ const SettingsPage: React.FC = () => {
             <Row gutter={[24, 24]}>
               {/* 公司信息 */}
               <Col span={24}>
-                <Accordion defaultExpanded>
-                  <AccordionSummary expandIcon={<ExpandMore />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Business />
-                      <Typography variant="h6">公司信息</Typography>
-                    </Box>
-                  </AccordionSummary>
-                  <AccordionDetails>
+                <Collapse defaultActiveKey={['1']}>
+                  <Panel header={
+                    <Space>
+                      <BankOutlined />
+                      <span style={{ fontSize: '16px', fontWeight: 500 }}>公司信息</span>
+                    </Space>
+                  } key="1">
                     <Row gutter={[16, 16]}>
                       <Col xs={24} sm={12}>
                         <Controller
@@ -564,34 +563,30 @@ const SettingsPage: React.FC = () => {
                         />  
                       </Col>
                     </Row>
-                  </AccordionDetails>
-                </Accordion>
+                  </Panel>
+                </Collapse>
               </Col>
 
               {/* 系统配置 */}
               <Col span={24}>
-                <Accordion defaultExpanded>
-                  <AccordionSummary expandIcon={<ExpandMore />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Settings />
-                      <Typography variant="h6">系统配置</Typography>
-                    </Box>
-                  </AccordionSummary>
-                  <AccordionDetails>
+                <Collapse defaultActiveKey={['2']}>
+                  <Panel header={
+                    <Space>
+                      <SettingOutlined />
+                      <span style={{ fontSize: '16px', fontWeight: 500 }}>系统配置</span>
+                    </Space>
+                  } key="2">
                     <Row gutter={[16, 16]}>
                       <Col xs={24} sm={12}>
                         <Controller
                           name="timezone"
                           control={systemControl}
                           render={({ field }) => (
-                            <FormControl fullWidth>
-                              <InputLabel>时区</InputLabel>
-                              <Select {...field} label="时区">
-                                <MenuItem value="Asia/Shanghai">Asia/Shanghai (UTC+8)</MenuItem>
-                                <MenuItem value="America/New_York">America/New_York (UTC-5)</MenuItem>
-                                <MenuItem value="Europe/London">Europe/London (UTC+0)</MenuItem>
-                              </Select>
-                            </FormControl>
+                            <Select {...field} placeholder="请选择时区" style={{ width: '100%' }}>
+                              <Option value="Asia/Shanghai">Asia/Shanghai (UTC+8)</Option>
+                              <Option value="America/New_York">America/New_York (UTC-5)</Option>
+                              <Option value="Europe/London">Europe/London (UTC+0)</Option>
+                            </Select>
                           )}
                         />  
                       </Col>
@@ -600,14 +595,11 @@ const SettingsPage: React.FC = () => {
                           name="language"
                           control={systemControl}
                           render={({ field }) => (
-                            <FormControl fullWidth>
-                              <InputLabel>语言</InputLabel>
-                              <Select {...field} label="语言">
-                                <MenuItem value="zh-CN">简体中文</MenuItem>
-                                <MenuItem value="en-US">English</MenuItem>
-                                <MenuItem value="ja-JP">日本語</MenuItem>
-                              </Select>
-                            </FormControl>
+                            <Select {...field} placeholder="请选择语言" style={{ width: '100%' }}>
+                              <Option value="zh-CN">简体中文</Option>
+                              <Option value="en-US">English</Option>
+                              <Option value="ja-JP">日本語</Option>
+                            </Select>
                           )}
                         />  
                       </Col>
@@ -616,14 +608,11 @@ const SettingsPage: React.FC = () => {
                           name="currency"
                           control={systemControl}
                           render={({ field }) => (
-                            <FormControl fullWidth>
-                              <InputLabel>货币</InputLabel>
-                              <Select {...field} label="货币">
-                                <MenuItem value="CNY">人民币 (¥)</MenuItem>
-                                <MenuItem value="USD">美元 ($)</MenuItem>
-                                <MenuItem value="EUR">欧元 (€)</MenuItem>
-                              </Select>
-                            </FormControl>
+                            <Select {...field} placeholder="请选择货币" style={{ width: '100%' }}>
+                              <Option value="CNY">人民币 (¥)</Option>
+                              <Option value="USD">美元 ($)</Option>
+                              <Option value="EUR">欧元 (€)</Option>
+                            </Select>
                           )}
                         />  
                       </Col>
@@ -632,47 +621,41 @@ const SettingsPage: React.FC = () => {
                           name="dateFormat"
                           control={systemControl}
                           render={({ field }) => (
-                            <FormControl fullWidth>
-                              <InputLabel>日期格式</InputLabel>
-                              <Select {...field} label="日期格式">
-                                <MenuItem value="YYYY-MM-DD">YYYY-MM-DD</MenuItem>
-                                <MenuItem value="MM/DD/YYYY">MM/DD/YYYY</MenuItem>
-                                <MenuItem value="DD/MM/YYYY">DD/MM/YYYY</MenuItem>
-                              </Select>
-                            </FormControl>
+                            <Select {...field} placeholder="请选择日期格式" style={{ width: '100%' }}>
+                              <Option value="YYYY-MM-DD">YYYY-MM-DD</Option>
+                              <Option value="MM/DD/YYYY">MM/DD/YYYY</Option>
+                              <Option value="DD/MM/YYYY">DD/MM/YYYY</Option>
+                            </Select>
                           )}
                         />  
                       </Col>
                     </Row>
-                  </AccordionDetails>
-                </Accordion>
+                  </Panel>
+                </Collapse>
               </Col>
 
               {/* 备份设置 */}
               <Col span={24}>
-                <Accordion>
-                  <AccordionSummary expandIcon={<ExpandMore />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Backup />
-                      <Typography variant="h6">备份设置</Typography>
-                    </Box>
-                  </AccordionSummary>
-                  <AccordionDetails>
+                <Collapse>
+                  <Panel header={
+                    <Space>
+                      <DatabaseOutlined />
+                      <span style={{ fontSize: '16px', fontWeight: 500 }}>备份设置</span>
+                    </Space>
+                  } key="3">
                     <Row gutter={[16, 16]}>
                       <Col span={24}>
                         <Controller
                           name="autoBackup"
                           control={systemControl}
                           render={({ field }) => (
-                            <FormControlLabel
-                              control={
-                                <Switch
-                                  {...field}
-                                  checked={field.value}
-                                />
-                              }
-                              label="启用自动备份"
-                            />
+                            <Space>
+                              <Switch
+                                {...field}
+                                checked={field.value}
+                              />
+                              <span>启用自动备份</span>
+                            </Space>
                           )}
                         />  
                       </Col>
@@ -681,13 +664,11 @@ const SettingsPage: React.FC = () => {
                           name="backupInterval"
                           control={systemControl}
                           render={({ field }) => (
-                            <TextField
+                            <Input
                               {...field}
-                              fullWidth
-                              label="备份间隔（小时）"
+                              placeholder="备份间隔（小时）"
                               type="number"
-                              error={!!systemErrors.backupInterval}
-                              helperText={systemErrors.backupInterval?.message}
+                              status={systemErrors.backupInterval ? 'error' : ''}
                               onChange={(e) => field.onChange(Number(e.target.value))}
                             />
                           )}
@@ -698,37 +679,35 @@ const SettingsPage: React.FC = () => {
                           name="maxBackupFiles"
                           control={systemControl}
                           render={({ field }) => (
-                            <TextField
+                            <Input
                               {...field}
-                              fullWidth
-                              label="最大备份文件数"
+                              placeholder="最大备份文件数"
                               type="number"
-                              error={!!systemErrors.maxBackupFiles}
-                              helperText={systemErrors.maxBackupFiles?.message}
+                              status={systemErrors.maxBackupFiles ? 'error' : ''}
                               onChange={(e) => field.onChange(Number(e.target.value))}
                             />
                           )}
                         />  
                       </Col>
                     </Row>
-                  </AccordionDetails>
-                </Accordion>
+                  </Panel>
+                </Collapse>
               </Col>
 
               <Col span={24}>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                  <Button variant="outlined">
+                <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                  <Button>
                     重置
                   </Button>
                   <Button
-                    type="submit"
-                    variant="contained"
-                    disabled={saveLoading}
-                    startIcon={saveLoading ? <CircularProgress size={20} /> : <Save />}
+                    type="primary"
+                    htmlType="submit"
+                    loading={saveLoading}
+                    icon={<SaveOutlined />}
                   >
                     {saveLoading ? '保存中...' : '保存设置'}
                   </Button>
-                </Box>
+                </Space>
               </Col>
             </Row>
           </Box>
