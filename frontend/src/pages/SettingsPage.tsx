@@ -1,34 +1,47 @@
 import React, { useState, useEffect } from 'react';
-
 import {
   SettingOutlined,
-  SecurityScanOutlined,
   BellOutlined,
   DatabaseOutlined,
-  GlobalOutlined,
-  MailOutlined,
-  MessageOutlined,
-  CloudUploadOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  PlusOutlined,
   SaveOutlined,
-  ReloadOutlined,
-  DownOutlined,
-  UserOutlined,
-  TeamOutlined,
-  KeyOutlined,
   BankOutlined,
-  EnvironmentOutlined,
   PhoneOutlined,
-  GlobalOutlined as GlobeOutlined,
-  ClockCircleOutlined,
-  WarningOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
   InfoCircleOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
-import { Modal, Form, Input, Select as AntSelect, Button as AntButton } from 'antd';
+import {
+  Modal,
+  Form,
+  Input,
+  Card,
+  Row,
+  Col,
+  Button,
+  Switch,
+  Select,
+  Table,
+  Avatar,
+  Tooltip,
+  Collapse,
+  Typography,
+  Space,
+  Tabs,
+  Checkbox,
+  Tag,
+  Alert,
+  Spin,
+} from 'antd';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import type { ColumnsType } from 'antd/es/table';
+
+const { Panel } = Collapse;
+const { Option } = Select;
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -55,47 +68,6 @@ function TabPanel(props: TabPanelProps) {
     </div>
   );
 }
-
-function a11yProps(index: number) {
-  return {
-    id: `settings-tab-${index}`,
-    'aria-controls': `settings-tabpanel-${index}`,
-  };
-}
-
-import {
-  Card,
-  Row,
-  Col,
-  Button,
-  Switch,
-  Select,
-  Divider,
-  List,
-  Alert,
-  Spin,
-  Table,
-  Avatar,
-  Tooltip,
-  Collapse,
-  Slider,
-  Radio,
-  Checkbox,
-  Typography,
-  Space,
-  Tag,
-  Tabs,
-} from 'antd';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { api } from '../services/api';
-
-const { Title } = Typography;
-const { Panel } = Collapse;
-const { TabPane } = Tabs;
-const { Option } = Select;
 
 // 系统设置表单验证
 const systemSettingsSchema = z.object({
@@ -397,8 +369,8 @@ const SettingsPage: React.FC = () => {
     },
   });
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
+  const handleTabChange = (activeKey: string) => {
+    setTabValue(parseInt(activeKey));
   };
 
   const handleSystemSettingsSubmit = async (data: SystemSettingsFormData) => {
@@ -461,31 +433,115 @@ const SettingsPage: React.FC = () => {
     switch (role) {
       case 'admin': return 'error';
       case 'manager': return 'warning';
-      case 'operator': return 'info';
+      case 'operator': return 'processing';
       case 'viewer': return 'default';
       default: return 'default';
     }
   };
 
+  // 用户表格列定义
+  const userColumns: ColumnsType<User> = [
+    {
+      title: '用户',
+      key: 'user',
+      render: (_, user) => (
+        <Space>
+          <Avatar style={{ backgroundColor: '#1890ff' }}>
+            {user.fullName.charAt(0)}
+          </Avatar>
+          <div>
+            <div style={{ fontWeight: 500 }}>
+              {user.fullName}
+            </div>
+            <div style={{ fontSize: '12px', color: '#666' }}>
+              @{user.username}
+            </div>
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: '邮箱',
+      dataIndex: 'email',
+      key: 'email',
+    },
+    {
+      title: '角色',
+      key: 'role',
+      render: (_, user) => (
+        <Tag color={getRoleColor(user.role)}>
+          {getRoleText(user.role)}
+        </Tag>
+      ),
+    },
+    {
+      title: '部门',
+      dataIndex: 'department',
+      key: 'department',
+      render: (department) => department || '-',
+    },
+    {
+      title: '状态',
+      key: 'status',
+      render: (_, user) => (
+        <Tag color={user.isActive ? 'success' : 'error'}>
+          {user.isActive ? '启用' : '禁用'}
+        </Tag>
+      ),
+    },
+    {
+      title: '最后登录',
+      key: 'lastLogin',
+      render: (_, user) => (
+        <span style={{ color: '#666' }}>
+          {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '从未登录'}
+        </span>
+      ),
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      align: 'center',
+      render: (_, user) => (
+        <Space>
+          <Tooltip title="编辑">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              size="small"
+              onClick={() => handleEditUser(user)}
+            />
+          </Tooltip>
+          <Tooltip title="删除">
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              size="small"
+            />
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
+
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+    <div style={{ flexGrow: 1 }}>
+      <Typography.Title level={2} style={{ fontWeight: 600, marginBottom: 24 }}>
         系统设置
-      </Typography>
+      </Typography.Title>
 
       <Card>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="设置标签页">
-            <Tab label="基本设置" icon={<Settings />} {...a11yProps(0)} />
-            <Tab label="通知设置" icon={<Notifications />} {...a11yProps(1)} />
-            <Tab label="用户管理" icon={<Group />} {...a11yProps(2)} />
-            <Tab label="安全设置" icon={<Security />} {...a11yProps(3)} />
-          </Tabs>
-        </Box>
+        <Tabs activeKey={tabValue.toString()} onChange={handleTabChange}>
+          <Tabs.TabPane tab={<span><SettingOutlined />基本设置</span>} key="0" />
+          <Tabs.TabPane tab={<span><BellOutlined />通知设置</span>} key="1" />
+          <Tabs.TabPane tab={<span><PlusOutlined />用户管理</span>} key="2" />
+          <Tabs.TabPane tab={<span><DatabaseOutlined />安全设置</span>} key="3" />
+        </Tabs>
 
         {/* 基本设置 */}
         <TabPanel value={tabValue} index={0}>
-          <Box component="form" onSubmit={handleSystemSubmit(handleSystemSettingsSubmit)}>
+          <form onSubmit={handleSystemSubmit(handleSystemSettingsSubmit)}>
             <Row gutter={[24, 24]}>
               {/* 公司信息 */}
               <Col span={24}>
@@ -502,13 +558,10 @@ const SettingsPage: React.FC = () => {
                           name="companyName"
                           control={systemControl}
                           render={({ field }) => (
-                            <TextField
+                            <Input
                               {...field}
-                              fullWidth
-                              label="公司名称"
-                              required
-                              error={!!systemErrors.companyName}
-                              helperText={systemErrors.companyName?.message}
+                              placeholder="公司名称"
+                              status={systemErrors.companyName ? 'error' : ''}
                             />
                           )}
                         />  
@@ -518,13 +571,10 @@ const SettingsPage: React.FC = () => {
                           name="companyPhone"
                           control={systemControl}
                           render={({ field }) => (
-                            <TextField
+                            <Input
                               {...field}
-                              fullWidth
-                              label="公司电话"
-                              required
-                              error={!!systemErrors.companyPhone}
-                              helperText={systemErrors.companyPhone?.message}
+                              placeholder="公司电话"
+                              status={systemErrors.companyPhone ? 'error' : ''}
                             />
                           )}
                         />  
@@ -534,13 +584,10 @@ const SettingsPage: React.FC = () => {
                           name="companyAddress"
                           control={systemControl}
                           render={({ field }) => (
-                            <TextField
+                            <Input
                               {...field}
-                              fullWidth
-                              label="公司地址"
-                              required
-                              error={!!systemErrors.companyAddress}
-                              helperText={systemErrors.companyAddress?.message}
+                              placeholder="公司地址"
+                              status={systemErrors.companyAddress ? 'error' : ''}
                             />
                           )}
                         />  
@@ -550,14 +597,11 @@ const SettingsPage: React.FC = () => {
                           name="companyEmail"
                           control={systemControl}
                           render={({ field }) => (
-                            <TextField
+                            <Input
                               {...field}
-                              fullWidth
-                              label="公司邮箱"
+                              placeholder="公司邮箱"
                               type="email"
-                              required
-                              error={!!systemErrors.companyEmail}
-                              helperText={systemErrors.companyEmail?.message}
+                              status={systemErrors.companyEmail ? 'error' : ''}
                             />
                           )}
                         />  
@@ -710,257 +754,166 @@ const SettingsPage: React.FC = () => {
                 </Space>
               </Col>
             </Row>
-          </Box>
+          </form>
         </TabPanel>
 
         {/* 通知设置 */}
         <TabPanel value={tabValue} index={1}>
-          <Box component="form" onSubmit={handleNotificationSubmit(handleNotificationSettingsSubmit)}>
+          <form onSubmit={handleNotificationSubmit(handleNotificationSettingsSubmit)}>
             <Row gutter={[24, 24]}>
               {/* 通知开关 */}
               <Col span={24}>
-                <Accordion defaultExpanded>
-                  <AccordionSummary expandIcon={<ExpandMore />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Notifications />
-                      <Typography variant="h6">通知开关</Typography>
-                    </Box>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <FormGroup>
+                <Collapse defaultActiveKey={['1']}>
+                  <Panel header={
+                    <Space>
+                      <BellOutlined />
+                      <span style={{ fontSize: '16px', fontWeight: 500 }}>通知开关</span>
+                    </Space>
+                  } key="1">
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                       <Controller
                         name="emailNotifications"
                         control={notificationControl}
                         render={({ field }) => (
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                {...field}
-                                checked={field.value}
-                              />
-                            }
-                            label="邮件通知"
-                          />
+                          <Space>
+                            <Switch
+                              {...field}
+                              checked={field.value}
+                            />
+                            <span>邮件通知</span>
+                          </Space>
                         )}
                       />
                       <Controller
                         name="smsNotifications"
                         control={notificationControl}
                         render={({ field }) => (
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                {...field}
-                                checked={field.value}
-                              />
-                            }
-                            label="短信通知"
-                          />
+                          <Space>
+                            <Switch
+                              {...field}
+                              checked={field.value}
+                            />
+                            <span>短信通知</span>
+                          </Space>
                         )}
                       />
                       <Controller
                         name="pushNotifications"
                         control={notificationControl}
                         render={({ field }) => (
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                {...field}
-                                checked={field.value}
-                              />
-                            }
-                            label="推送通知"
-                          />
+                          <Space>
+                            <Switch
+                              {...field}
+                              checked={field.value}
+                            />
+                            <span>推送通知</span>
+                          </Space>
                         )}
                       />
-                    </FormGroup>
-                  </AccordionDetails>
-                </Accordion>
+                    </Space>
+                  </Panel>
+                </Collapse>
               </Col>
 
               {/* 通知类型 */}
               <Col span={24}>
-                <Accordion defaultExpanded>
-                  <AccordionSummary expandIcon={<ExpandMore />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Info />
-                      <Typography variant="h6">通知类型</Typography>
-                    </Box>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <FormGroup>
+                <Collapse defaultActiveKey={['2']}>
+                  <Panel header={
+                    <Space>
+                      <InfoCircleOutlined />
+                      <span style={{ fontSize: '16px', fontWeight: 500 }}>通知类型</span>
+                    </Space>
+                  } key="2">
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                       <Controller
                         name="lowStockAlert"
                         control={notificationControl}
                         render={({ field }) => (
-                          <FormControlLabel
-                            control={
-                              <Checkbox
-                                {...field}
-                                checked={field.value}
-                              />
-                            }
-                            label="库存不足警告"
-                          />
+                          <Checkbox
+                            {...field}
+                            checked={field.value}
+                          >
+                            库存不足警告
+                          </Checkbox>
                         )}
                       />
                       <Controller
                         name="orderStatusUpdate"
                         control={notificationControl}
                         render={({ field }) => (
-                          <FormControlLabel
-                            control={
-                              <Checkbox
-                                {...field}
-                                checked={field.value}
-                              />
-                            }
-                            label="订单状态更新"
-                          />
+                          <Checkbox
+                            {...field}
+                            checked={field.value}
+                          >
+                            订单状态更新
+                          </Checkbox>
                         )}
                       />
                       <Controller
                         name="systemMaintenance"
                         control={notificationControl}
                         render={({ field }) => (
-                          <FormControlLabel
-                            control={
-                              <Checkbox
-                                {...field}
-                                checked={field.value}
-                              />
-                            }
-                            label="系统维护通知"
-                          />
+                          <Checkbox
+                            {...field}
+                            checked={field.value}
+                          >
+                            系统维护通知
+                          </Checkbox>
                         )}
                       />
-                    </FormGroup>
-                  </AccordionDetails>
-                </Accordion>
+                    </Space>
+                  </Panel>
+                </Collapse>
               </Col>
 
               <Col span={24}>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                  <Button variant="outlined">
+                <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                  <Button>
                     重置
                   </Button>
                   <Button
-                    type="submit"
-                    variant="contained"
-                    disabled={saveLoading}
-                    startIcon={saveLoading ? <CircularProgress size={20} /> : <Save />}
+                    type="primary"
+                    htmlType="submit"
+                    loading={saveLoading}
+                    icon={saveLoading ? <Spin size="small" /> : <SaveOutlined />}
                   >
                     {saveLoading ? '保存中...' : '保存设置'}
                   </Button>
-                </Box>
+                </Space>
               </Col>
             </Row>
-          </Box>
+          </form>
         </TabPanel>
 
         {/* 用户管理 */}
         <TabPanel value={tabValue} index={2}>
-          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">用户列表</Typography>
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography.Title level={4} style={{ margin: 0 }}>用户列表</Typography.Title>
             <Button
-              variant="contained"
-              startIcon={<Add />}
+              type="primary"
+              icon={<PlusOutlined />}
               onClick={handleCreateUser}
             >
               新增用户
             </Button>
-          </Box>
+          </div>
 
           {usersLoading ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <CircularProgress />
-            </Box>
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <Spin size="large" />
+            </div>
           ) : (
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>用户</TableCell>
-                    <TableCell>邮箱</TableCell>
-                    <TableCell>角色</TableCell>
-                    <TableCell>部门</TableCell>
-                    <TableCell>状态</TableCell>
-                    <TableCell>最后登录</TableCell>
-                    <TableCell align="center">操作</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {usersData?.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Avatar sx={{ bgcolor: 'primary.main' }}>
-                            {user.fullName.charAt(0)}
-                          </Avatar>
-                          <Box>
-                            <Typography variant="body2" fontWeight="medium">
-                              {user.fullName}
-                            </Typography>
-                            <Typography variant="caption" color="textSecondary">
-                              @{user.username}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {user.email}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={getRoleText(user.role)}
-                          color={getRoleColor(user.role) as any}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {user.department || '-'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={user.isActive ? '启用' : '禁用'}
-                          color={user.isActive ? 'success' : 'error'}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="textSecondary">
-                          {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '从未登录'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <Tooltip title="编辑">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleEditUser(user)}
-                            >
-                              <Edit fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="删除">
-                            <IconButton
-                              size="small"
-                              color="error"
-                            >
-                              <Delete fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Table
+              columns={userColumns}
+              dataSource={usersData}
+              rowKey="id"
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条/共 ${total} 条`,
+              }}
+            />
           )}
         </TabPanel>
 
@@ -968,9 +921,11 @@ const SettingsPage: React.FC = () => {
         <TabPanel value={tabValue} index={3}>
           <Row gutter={[24, 24]}>
             <Col span={24}>
-              <Alert severity="info">
-                安全设置功能正在开发中，敬请期待。
-              </Alert>
+              <Alert
+                message="安全设置功能正在开发中，敬请期待。"
+                type="info"
+                showIcon
+              />
             </Col>
           </Row>
         </TabPanel>
@@ -987,7 +942,7 @@ const SettingsPage: React.FC = () => {
         onSubmit={handleUserSubmit}
         loading={saveLoading}
       />
-    </Box>
+    </div>
   );
 };
 

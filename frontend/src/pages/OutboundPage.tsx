@@ -3,37 +3,47 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { 
-  Row, 
-  Col, 
-  Modal, 
-  Button, 
-  Card, 
-  Input, 
-  Select, 
-  Form, 
-  Typography, 
-  Table, 
-  Tag, 
-  Spin, 
-  Progress, 
-  Alert, 
-  Space, 
-  Divider,
+import {
+  Card,
+  Button,
+  Input,
+  Table,
+  Tag,
+  Modal,
+  Form,
+  Select,
+  Space,
+  Typography,
+  Tooltip,
   message,
-  Pagination
+  Row,
+  Col,
+  Divider,
+  Steps,
+  Progress,
+  Alert,
+  Checkbox,
+  DatePicker,
+  Badge,
+  Avatar,
 } from 'antd';
 import {
   PlusOutlined,
-  DeleteOutlined,
   EditOutlined,
-  FilterOutlined,
+  DeleteOutlined,
+  SearchOutlined,
+  ExclamationCircleOutlined,
+  ReloadOutlined,
+  ShoppingOutlined,
   EnvironmentOutlined,
   UserOutlined,
   PhoneOutlined,
-  SearchOutlined,
-  ShoppingCartOutlined,
-  EyeOutlined
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  SyncOutlined,
+  CarOutlined,
+  CloseCircleOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
@@ -47,6 +57,11 @@ import type {
   UpdateOutboundOrderRequest,
   OutboundOrderQueryParams,
 } from '../types/api';
+
+const { Text, Title } = Typography;
+const { Option } = Select;
+const { Step } = Steps;
+const { confirm } = Modal;
 
 // 出库单项验证
 const outboundItemSchema = z.object({
@@ -214,362 +229,394 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <ShoppingCart />
+    <Modal
+      open={open}
+      title={
+        <Space>
+          <ShoppingOutlined />
           {order ? '编辑出库单' : '新增出库单'}
-        </Box>
-      </DialogTitle>
-      <DialogContent>
-        <Box component="form" sx={{ mt: 2 }}>
-          <Row gutter={[16, 16]}>
-            <Col span={12}>
+        </Space>
+      }
+      onCancel={onClose}
+      footer={null}
+      width={1000}
+      confirmLoading={loading}
+    >
+      <Form
+        layout="vertical"
+        onFinish={handleSubmit(handleFormSubmit)}
+        initialValues={{
+          orderNumber: order?.orderNumber || `OUT${Date.now()}`,
+          warehouseId: order?.warehouseId || '',
+          customerId: order?.customerId || '',
+          expectedDate: order?.expectedDate ? order.expectedDate.split('T')[0] : '',
+          shippingAddress: order?.shippingAddress || '',
+          contactPerson: order?.contactPerson || '',
+          contactPhone: order?.contactPhone || '',
+          remark: order?.remark || '',
+          items: order?.items || [{
+            productId: '',
+            requestedQuantity: 1,
+            pickedQuantity: 0,
+            unitPrice: 0,
+            remark: '',
+          }],
+        }}
+      >
+        <Row gutter={[16, 16]}>
+          <Col span={12}>
+            <Form.Item
+              label="出库单号"
+              required
+              validateStatus={errors.orderNumber ? 'error' : ''}
+              help={errors.orderNumber?.message}
+            >
               <Controller
                 name="orderNumber"
                 control={control}
                 render={({ field }) => (
-                  <TextField
+                  <Input
                     {...field}
-                    fullWidth
-                    label="出库单号"
-                    required
-                    error={!!errors.orderNumber}
-                    helperText={errors.orderNumber?.message}
+                    placeholder="请输入出库单号"
                     disabled={loading || !!order}
                   />
                 )}
               />
-            </Col>
-            <Col span={12}>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="预期发货日期"
+              required
+              validateStatus={errors.expectedDate ? 'error' : ''}
+              help={errors.expectedDate?.message}
+            >
               <Controller
                 name="expectedDate"
                 control={control}
                 render={({ field }) => (
-                  <TextField
+                  <DatePicker
                     {...field}
-                    fullWidth
-                    label="预期发货日期"
-                    type="date"
-                    required
-                    error={!!errors.expectedDate}
-                    helperText={errors.expectedDate?.message}
+                    style={{ width: '100%' }}
                     disabled={loading}
-                    InputLabelProps={{ shrink: true }}
                   />
                 )}
               />
-            </Col>
-            <Col span={12}>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="仓库"
+              required
+              validateStatus={errors.warehouseId ? 'error' : ''}
+              help={errors.warehouseId?.message}
+            >
               <Controller
                 name="warehouseId"
                 control={control}
                 render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.warehouseId}>
-                    <InputLabel>仓库</InputLabel>
-                    <Select
-                      {...field}
-                      label="仓库"
-                      disabled={loading}
-                    >
-                      {warehousesData?.map((warehouse) => (
-                        <MenuItem key={warehouse.id} value={warehouse.id}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography>{warehouse.name}</Typography>
-                            <Chip label={warehouse.code} size="small" variant="outlined" />
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {errors.warehouseId && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                        {errors.warehouseId.message}
-                      </Typography>
-                    )}
-                  </FormControl>
+                  <Select
+                    {...field}
+                    placeholder="请选择仓库"
+                    disabled={loading}
+                    showSearch
+                    optionFilterProp="children"
+                    filterOption={(input, option) =>
+                      (option?.children as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                    }
+                  >
+                    {warehousesData?.map((warehouse) => (
+                      <Option key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name} (编码: {warehouse.code})
+                      </Option>
+                    ))}
+                  </Select>
                 )}
               />
-            </Col>
-            <Col span={12}>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="客户"
+              required
+              validateStatus={errors.customerId ? 'error' : ''}
+              help={errors.customerId?.message}
+            >
               <Controller
                 name="customerId"
                 control={control}
                 render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.customerId}>
-                    <InputLabel>客户</InputLabel>
-                    <Select
-                      {...field}
-                      label="客户"
-                      disabled={loading}
-                    >
-                      {customersData?.map((customer) => (
-                        <MenuItem key={customer.id} value={customer.id}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Person fontSize="small" />
-                            <Typography>{customer.name}</Typography>
-                            <Chip label={customer.code} size="small" variant="outlined" />
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {errors.customerId && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                        {errors.customerId.message}
-                      </Typography>
-                    )}
-                  </FormControl>
+                  <Select
+                    {...field}
+                    placeholder="请选择客户"
+                    disabled={loading}
+                    showSearch
+                    optionFilterProp="children"
+                    filterOption={(input, option) =>
+                      (option?.children as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                    }
+                  >
+                    {customersData?.map((customer) => (
+                      <Option key={customer.id} value={customer.id}>
+                        {customer.name} (编码: {customer.code})
+                      </Option>
+                    ))}
+                  </Select>
                 )}
               />
-            </Col>
-            <Col span={24}>
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item
+              label="收货地址"
+              required
+              validateStatus={errors.shippingAddress ? 'error' : ''}
+              help={errors.shippingAddress?.message}
+            >
               <Controller
                 name="shippingAddress"
                 control={control}
                 render={({ field }) => (
-                  <TextField
+                  <Input
                     {...field}
-                    fullWidth
-                    label="收货地址"
-                    required
-                    error={!!errors.shippingAddress}
-                    helperText={errors.shippingAddress?.message}
+                    placeholder="请输入收货地址"
                     disabled={loading}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <LocationOn />
-                        </InputAdornment>
-                      ),
-                    }}
+                    prefix={<EnvironmentOutlined />}
                   />
                 )}
               />
-            </Col>
-            <Col span={12}>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="联系人"
+              required
+              validateStatus={errors.contactPerson ? 'error' : ''}
+              help={errors.contactPerson?.message}
+            >
               <Controller
                 name="contactPerson"
                 control={control}
                 render={({ field }) => (
-                  <TextField
+                  <Input
                     {...field}
-                    fullWidth
-                    label="联系人"
-                    required
-                    error={!!errors.contactPerson}
-                    helperText={errors.contactPerson?.message}
+                    placeholder="请输入联系人"
                     disabled={loading}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Person />
-                        </InputAdornment>
-                      ),
-                    }}
+                    prefix={<UserOutlined />}
                   />
                 )}
               />
-            </Col>
-            <Col span={12}>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="联系电话"
+              required
+              validateStatus={errors.contactPhone ? 'error' : ''}
+              help={errors.contactPhone?.message}
+            >
               <Controller
                 name="contactPhone"
                 control={control}
                 render={({ field }) => (
-                  <TextField
+                  <Input
                     {...field}
-                    fullWidth
-                    label="联系电话"
-                    required
-                    error={!!errors.contactPhone}
-                    helperText={errors.contactPhone?.message}
+                    placeholder="请输入联系电话"
                     disabled={loading}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Phone />
-                        </InputAdornment>
-                      ),
-                    }}
+                    prefix={<PhoneOutlined />}
                   />
                 )}
               />
-            </Col>
-            <Col span={24}>
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item
+              label="备注"
+              validateStatus={errors.remark ? 'error' : ''}
+              help={errors.remark?.message}
+            >
               <Controller
                 name="remark"
                 control={control}
                 render={({ field }) => (
-                  <TextField
+                  <Input.TextArea
                     {...field}
-                    fullWidth
-                    label="备注"
-                    multiline
+                    placeholder="请输入备注"
                     rows={2}
                     disabled={loading}
                   />
                 )}
               />
-            </Col>
-          </Row>
+            </Form.Item>
+          </Col>
+        </Row>
 
-          <Divider sx={{ my: 3 }} />
+        <Divider style={{ margin: '24px 0' }} />
 
-          {/* 产品列表 */}
-          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">产品明细</Typography>
-            <Button
-              variant="outlined"
-              startIcon={<Add />}
-              onClick={addItem}
-              disabled={loading}
-            >
-              添加产品
-            </Button>
-          </Box>
+        {/* 产品列表 */}
+        <Space style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Title level={5} style={{ margin: 0 }}>产品明细</Title>
+          <Button
+            type="dashed"
+            icon={<PlusOutlined />}
+            onClick={addItem}
+            disabled={loading}
+          >
+            添加产品
+          </Button>
+        </Space>
 
-          {fields.map((field, index) => (
-            <Card key={field.id} sx={{ mb: 2, p: 2 }}>
-              <Row gutter={[16, 16]} align="middle">
-                <Col span={6}>
+        {fields.map((field, index) => (
+          <Card key={field.id} style={{ marginBottom: 16, padding: 16 }}>
+            <Row gutter={[16, 16]} align="middle">
+              <Col span={6}>
+                <Form.Item
+                  label="产品"
+                  required
+                  validateStatus={errors.items?.[index]?.productId ? 'error' : ''}
+                  help={errors.items?.[index]?.productId?.message}
+                >
                   <Controller
                     name={`items.${index}.productId`}
                     control={control}
                     render={({ field }) => (
-                      <FormControl fullWidth error={!!errors.items?.[index]?.productId}>
-                        <InputLabel>产品</InputLabel>
-                        <Select
-                          {...field}
-                          label="产品"
-                          disabled={loading}
-                        >
-                          {productsData?.map((product) => (
-                            <MenuItem key={product.id} value={product.id}>
-                              <Box>
-                                <Typography variant="body2">{product.name}</Typography>
-                                <Typography variant="caption" color="textSecondary">
-                                  SKU: {product.sku}
-                                </Typography>
-                              </Box>
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {errors.items?.[index]?.productId && (
-                          <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                            {errors.items[index]?.productId?.message}
-                          </Typography>
-                        )}
-                      </FormControl>
+                      <Select
+                        {...field}
+                        placeholder="请选择产品"
+                        disabled={loading}
+                        showSearch
+                        optionFilterProp="children"
+                        filterOption={(input, option) =>
+                          (option?.children as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                        }
+                      >
+                        {productsData?.map((product) => (
+                          <Option key={product.id} value={product.id}>
+                            {product.name} (SKU: {product.sku})
+                          </Option>
+                        ))}
+                      </Select>
                     )}
                   />
-                </Col>
-                <Col span={4}>
+                </Form.Item>
+              </Col>
+              <Col span={4}>
+                <Form.Item
+                  label="请求数量"
+                  required
+                  validateStatus={errors.items?.[index]?.requestedQuantity ? 'error' : ''}
+                  help={errors.items?.[index]?.requestedQuantity?.message}
+                >
                   <Controller
                     name={`items.${index}.requestedQuantity`}
                     control={control}
                     render={({ field }) => (
-                      <TextField
+                      <Input
                         {...field}
-                        fullWidth
-                        label="请求数量"
                         type="number"
-                        required
-                        error={!!errors.items?.[index]?.requestedQuantity}
-                        helperText={errors.items?.[index]?.requestedQuantity?.message}
+                        placeholder="请输入请求数量"
                         disabled={loading}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
                     )}
                   />
-                </Col>
-                {order && (
-                  <Col span={4}>
+                </Form.Item>
+              </Col>
+              {order && (
+                <Col span={4}>
+                  <Form.Item
+                    label="拣货数量"
+                    validateStatus={errors.items?.[index]?.pickedQuantity ? 'error' : ''}
+                    help={errors.items?.[index]?.pickedQuantity?.message}
+                  >
                     <Controller
                       name={`items.${index}.pickedQuantity`}
                       control={control}
                       render={({ field }) => (
-                        <TextField
+                        <Input
                           {...field}
-                          fullWidth
-                          label="拣货数量"
                           type="number"
-                          error={!!errors.items?.[index]?.pickedQuantity}
-                          helperText={errors.items?.[index]?.pickedQuantity?.message}
+                          placeholder="请输入拣货数量"
                           disabled={loading}
                           onChange={(e) => field.onChange(Number(e.target.value))}
                         />
                       )}
                     />
-                  </Col>
-                )}
-                <Col span={4}>
+                  </Form.Item>
+                </Col>
+              )}
+              <Col span={4}>
+                <Form.Item
+                  label="单价"
+                  required
+                  validateStatus={errors.items?.[index]?.unitPrice ? 'error' : ''}
+                  help={errors.items?.[index]?.unitPrice?.message}
+                >
                   <Controller
                     name={`items.${index}.unitPrice`}
                     control={control}
                     render={({ field }) => (
-                      <TextField
+                      <Input
                         {...field}
-                        fullWidth
-                        label="单价"
                         type="number"
-                        required
-                        error={!!errors.items?.[index]?.unitPrice}
-                        helperText={errors.items?.[index]?.unitPrice?.message}
+                        placeholder="请输入单价"
                         disabled={loading}
                         onChange={(e) => field.onChange(Number(e.target.value))}
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">¥</InputAdornment>,
-                        }}
+                        prefix="¥"
                       />
                     )}
                   />
-                </Col>
-                <Col span={order ? 4 : 6}>
+                </Form.Item>
+              </Col>
+              <Col span={order ? 4 : 6}>
+                <Form.Item
+                  label="备注"
+                  validateStatus={errors.items?.[index]?.remark ? 'error' : ''}
+                  help={errors.items?.[index]?.remark?.message}
+                >
                   <Controller
                     name={`items.${index}.remark`}
                     control={control}
                     render={({ field }) => (
-                      <TextField
+                      <Input.TextArea
                         {...field}
-                        fullWidth
-                        label="备注"
+                        placeholder="请输入备注"
                         disabled={loading}
+                        rows={1}
                       />
                     )}
                   />
-                </Col>
-                <Col span={2}>
-                  <IconButton
-                    color="error"
-                    onClick={() => removeItem(index)}
-                    disabled={loading || fields.length === 1}
-                  >
-                    <Delete />
-                  </IconButton>
-                </Col>
-              </Row>
-            </Card>
-          ))}
+                </Form.Item>
+              </Col>
+              <Col span={2}>
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => removeItem(index)}
+                  disabled={loading || fields.length === 1}
+                />
+              </Col>
+            </Row>
+          </Card>
+        ))}
 
-          {errors.items && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {errors.items.message}
-            </Alert>
-          )}
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
-          取消
-        </Button>
-        <Button
-          onClick={handleSubmit(handleFormSubmit)}
-          variant="contained"
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={20} /> : undefined}
-        >
-          {loading ? '保存中...' : '保存'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        {errors.items && (
+          <Alert message={errors.items.message} type="error" showIcon style={{ marginTop: 16 }} />
+        )}
+
+        <Form.Item style={{ marginTop: 24 }}>
+          <Space>
+            <Button onClick={onClose} disabled={loading}>
+              取消
+            </Button>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              {loading ? '保存中...' : '保存'}
+            </Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 };
 
@@ -599,9 +646,9 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'warning';
-      case 'approved': return 'info';
-      case 'picking': return 'primary';
-      case 'picked': return 'secondary';
+      case 'approved': return 'processing';
+      case 'picking': return 'processing';
+      case 'picked': return 'processing';
       case 'shipped': return 'success';
       case 'rejected': return 'error';
       default: return 'default';
@@ -622,13 +669,13 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending': return <Pending />;
-      case 'approved': return <CheckCircle />;
-      case 'picking': return <Assignment />;
-      case 'picked': return <Inventory />;
-      case 'shipped': return <LocalShipping />;
-      case 'rejected': return <Cancel />;
-      default: return <Schedule />;
+      case 'pending': return <ClockCircleOutlined />;
+      case 'approved': return <CheckCircleOutlined />;
+      case 'picking': return <SyncOutlined spin />;
+      case 'picked': return <CheckCircleOutlined />;
+      case 'shipped': return <CarOutlined />;
+      case 'rejected': return <CloseCircleOutlined />;
+      default: return <InfoCircleOutlined />;
     }
   };
 
@@ -659,258 +706,233 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
   const pickingProgress = calculatePickingProgress();
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <ShoppingCart />
-            出库单详情
-          </Box>
-          <Chip
-            label={getStatusText(order.status)}
-            color={getStatusColor(order.status) as any}
-            icon={getStatusIcon(order.status)}
+    <Modal
+      open={open}
+      onCancel={onClose}
+      width={1000}
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ShoppingOutlined />
+          出库单详情
+        </div>
+      }
+      destroyOnClose
+      footer={
+        <Space>
+          <Button onClick={onClose}>
+            关闭
+          </Button>
+          {order.status === 'pending' && onApprove && onReject && (
+            <>
+              <Button
+                onClick={() => onReject(order.id)}
+                danger
+                disabled={loading}
+              >
+                拒绝
+              </Button>
+              <Button
+                onClick={() => onApprove(order.id)}
+                type="primary"
+                loading={loading}
+              >
+                {loading ? '审核中...' : '审核通过'}
+              </Button>
+            </>
+          )}
+          {order.status === 'approved' && onPick && (
+            <Button
+              onClick={() => onPick(order.id)}
+              type="primary"
+              loading={loading}
+            >
+              {loading ? '开始拣货...' : '开始拣货'}
+            </Button>
+          )}
+          {order.status === 'picked' && onShip && (
+            <Button
+              onClick={() => onShip(order.id)}
+              type="primary"
+              loading={loading}
+            >
+              {loading ? '发货中...' : '确认发货'}
+            </Button>
+          )}
+        </Space>
+      }
+    >
+      <div style={{ padding: '24px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <Badge
+            status={getStatusColor(order.status)}
+            text={
+              <Space>
+                {getStatusIcon(order.status)}
+                {getStatusText(order.status)}
+              </Space>
+            }
           />
-        </Box>
-      </DialogTitle>
-      <DialogContent>
+        </div>
+        
         {/* 基本信息 */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              基本信息
-            </Typography>
-            <Row gutter={[16, 16]}>
-              <Col span={12}>
-                <Typography variant="body2" color="textSecondary">
-                  出库单号
-                </Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {order.orderNumber}
-                </Typography>
-              </Col>
-              <Col span={12}>
-                <Typography variant="body2" color="textSecondary">
-                  仓库
-                </Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {order.warehouse?.name}
-                </Typography>
-              </Col>
-              <Col span={12}>
-                <Typography variant="body2" color="textSecondary">
-                  客户
-                </Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {order.customer?.name}
-                </Typography>
-              </Col>
-              <Col span={12}>
-                <Typography variant="body2" color="textSecondary">
-                  预期发货日期
-                </Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {new Date(order.expectedDate).toLocaleDateString()}
-                </Typography>
-              </Col>
+        <Card style={{ marginBottom: 24 }}>
+          <Title level={5}>
+            基本信息
+          </Title>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Text type="secondary">
+                出库单号
+              </Text>
+              <br />
+              <Text strong>
+                {order.orderNumber}
+              </Text>
+            </Col>
+            <Col span={12}>
+              <Text type="secondary">
+                仓库
+              </Text>
+              <br />
+              <Text strong>
+                {order.warehouse?.name}
+              </Text>
+            </Col>
+            <Col span={12}>
+              <Text type="secondary">
+                客户
+              </Text>
+              <br />
+              <Text strong>
+                {order.customer?.name}
+              </Text>
+            </Col>
+            <Col span={12}>
+              <Text type="secondary">
+                预期发货日期
+              </Text>
+              <br />
+              <Text strong>
+                {new Date(order.expectedDate).toLocaleDateString()}
+              </Text>
+            </Col>
+            <Col span={24}>
+              <Text type="secondary">
+                收货地址
+              </Text>
+              <br />
+              <Text strong>
+                {order.shippingAddress}
+              </Text>
+            </Col>
+            <Col span={12}>
+              <Text type="secondary">
+                联系人
+              </Text>
+              <br />
+              <Text strong>
+                {order.contactPerson}
+              </Text>
+            </Col>
+            <Col span={12}>
+              <Text type="secondary">
+                联系电话
+              </Text>
+              <br />
+              <Text strong>
+                {order.contactPhone}
+              </Text>
+            </Col>
+            {order.remark && (
               <Col span={24}>
-                <Typography variant="body2" color="textSecondary">
-                  收货地址
-                </Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {order.shippingAddress}
-                </Typography>
+                <Text type="secondary">
+                  备注
+                </Text>
+                <br />
+                <Text>
+                  {order.remark}
+                </Text>
               </Col>
-              <Col span={12}>
-                <Typography variant="body2" color="textSecondary">
-                  联系人
-                </Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {order.contactPerson}
-                </Typography>
-              </Col>
-              <Col span={12}>
-                <Typography variant="body2" color="textSecondary">
-                  联系电话
-                </Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {order.contactPhone}
-                </Typography>
-              </Col>
-              {order.remark && (
-                <Col span={24}>
-                  <Typography variant="body2" color="textSecondary">
-                    备注
-                  </Typography>
-                  <Typography variant="body1">
-                    {order.remark}
-                  </Typography>
-                </Col>
-              )}            </Row>
-          </CardContent>
+            )}
+          </Row>
         </Card>
 
         {/* 流程状态 */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              处理流程
-            </Typography>
-            <Stepper activeStep={activeStep} alternativeLabel>
-              {steps.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
-            {(order.status === 'picking' || order.status === 'picked') && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" color="textSecondary" gutterBottom>
-                  拣货进度: {pickingProgress.toFixed(0)}%
-                </Typography>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={pickingProgress} 
-                  sx={{ height: 8, borderRadius: 4 }}
-                />
-              </Box>
-            )}
-          </CardContent>
+        <Card style={{ marginBottom: 24 }}>
+          <Title level={5}>
+            处理流程
+          </Title>
+          <Steps current={activeStep} labelPlacement="vertical">
+            {steps.map((label) => (
+              <Step key={label} title={label} />
+            ))}
+          </Steps>
+          {(order.status === 'picking' || order.status === 'picked') && (
+            <div style={{ marginTop: 16 }}>
+              <Text type="secondary">
+                拣货进度: {pickingProgress.toFixed(0)}%
+              </Text>
+              <Progress percent={pickingProgress} size="small" />
+            </div>
+          )}
         </Card>
 
         {/* 产品明细 */}
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              产品明细
-            </Typography>
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>产品</TableCell>
-                    <TableCell align="right">请求数量</TableCell>
-                    <TableCell align="right">拣货数量</TableCell>
-                    <TableCell align="right">单价</TableCell>
-                    <TableCell align="right">金额</TableCell>
-                    <TableCell align="center">状态</TableCell>
-                    <TableCell>备注</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {order.items?.map((item, index) => {
-                    const pickedQuantity = item.pickedQuantity || 0;
-                    const isFullyPicked = pickedQuantity >= item.requestedQuantity;
-                    const pickingRate = (pickedQuantity / item.requestedQuantity) * 100;
-                    
-                    return (
-                      <TableRow key={index}>
-                        <TableCell>
-                          <Box>
-                            <Typography variant="body2" fontWeight="medium">
-                              {item.product?.name}
-                            </Typography>
-                            <Typography variant="caption" color="textSecondary">
-                              SKU: {item.product?.sku}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell align="right">
-                          {item.requestedQuantity} {item.product?.unit || '件'}
-                        </TableCell>
-                        <TableCell align="right">
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
-                            <Typography variant="body2">
-                              {pickedQuantity} {item.product?.unit || '件'}
-                            </Typography>
-                            {order.status === 'picking' && (
-                              <Chip
-                                label={`${pickingRate.toFixed(0)}%`}
-                                size="small"
-                                color={isFullyPicked ? 'success' : 'warning'}
-                              />
-                            )}
-                          </Box>
-                        </TableCell>
-                        <TableCell align="right">
-                          ¥{item.unitPrice.toFixed(2)}
-                        </TableCell>
-                        <TableCell align="right">
-                          ¥{(pickedQuantity * item.unitPrice).toFixed(2)}
-                        </TableCell>
-                        <TableCell align="center">
-                          {order.status === 'picking' || order.status === 'picked' ? (
-                            <Chip
-                              label={isFullyPicked ? '已拣货' : '待拣货'}
-                              color={isFullyPicked ? 'success' : 'warning'}
-                              size="small"
-                              icon={isFullyPicked ? <CheckCircle /> : <Pending />}
-                            />
-                          ) : (
-                            <Chip
-                              label="待处理"
-                              color="default"
-                              size="small"
-                            />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {item.remark || '-'}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
+        <Card style={{ marginBottom: 24 }}>
+          <Title level={5} style={{ padding: '16px 16px 0' }}>
+            产品明细
+          </Title>
+          <Table
+            dataSource={order.items}
+            rowKey={(record, index) => `item-${index}`}
+            pagination={false}
+            scroll={{ x: 'max-content' }}
+            columns={[
+              {
+                title: '产品名称',
+                dataIndex: 'product',
+                key: 'productName',
+                render: (product) => (
+                  <Space>
+                    <Avatar src={product?.imageUrl || '/default-product.png'} shape="square" size="large" />
+                    <Text strong>{product?.name}</Text>
+                  </Space>
+                ),
+              },
+              {
+                title: 'SKU',
+                dataIndex: ['product', 'sku'],
+                key: 'sku',
+              },
+              {
+                title: '请求数量',
+                dataIndex: 'requestedQuantity',
+                key: 'requestedQuantity',
+                align: 'right',
+              },
+              {
+                title: '拣货数量',
+                dataIndex: 'pickedQuantity',
+                key: 'pickedQuantity',
+                align: 'right',
+                render: (text) => text || 0,
+              },
+              {
+                title: '单位',
+                dataIndex: ['product', 'unit'],
+                key: 'unit',
+                align: 'right',
+              },
+              {
+                title: '备注',
+                dataIndex: 'remark',
+                key: 'remark',
+              },
+            ]}
+          />
         </Card>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>
-          关闭
-        </Button>
-        {order.status === 'pending' && onApprove && onReject && (
-          <>
-            <Button
-              onClick={() => onReject(order.id)}
-              color="error"
-              disabled={loading}
-            >
-              拒绝
-            </Button>
-            <Button
-              onClick={() => onApprove(order.id)}
-              variant="contained"
-              disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} /> : undefined}
-            >
-              {loading ? '审核中...' : '审核通过'}
-            </Button>
-          </>
-        )}
-        {order.status === 'approved' && onPick && (
-          <Button
-            onClick={() => onPick(order.id)}
-            variant="contained"
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} /> : undefined}
-          >
-            {loading ? '开始拣货...' : '开始拣货'}
-          </Button>
-        )}
-        {order.status === 'picked' && onShip && (
-          <Button
-            onClick={() => onShip(order.id)}
-            variant="contained"
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} /> : undefined}
-          >
-            {loading ? '发货中...' : '确认发货'}
-          </Button>
-        )}
-      </DialogActions>
-    </Dialog>
+      </div>
+    </Modal>
   );
 };
 
@@ -918,8 +940,8 @@ const OutboundPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [warehouseFilter, setWarehouseFilter] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OutboundOrder | undefined>();
@@ -928,8 +950,8 @@ const OutboundPage: React.FC = () => {
 
   // 构建查询参数
   const queryParams: OutboundOrderQueryParams = {
-    page: page + 1,
-    limit: rowsPerPage,
+    page,
+    limit: pageSize,
     search,
     status: statusFilter || undefined,
     warehouseId: warehouseFilter || undefined,
@@ -1051,6 +1073,23 @@ const OutboundPage: React.FC = () => {
     setDetailDialogOpen(true);
   };
 
+  const handleDelete = (order: OutboundOrder) => {
+    confirm({
+      title: '确认删除出库单?',
+      icon: <ExclamationCircleOutlined />,
+      content: `确定要删除出库单 ${order.orderNumber} 吗？此操作不可恢复。`,
+      okText: '确认',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk() {
+        return api.delete(`/outbound-orders/${order.id}`).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['outbound-orders'] });
+          message.success('出库单删除成功');
+        });
+      },
+    });
+  };
+
   const handleSubmit = (data: OutboundOrderFormData) => {
     if (selectedOrder) {
       updateMutation.mutate({ id: selectedOrder.id, data });
@@ -1059,21 +1098,17 @@ const OutboundPage: React.FC = () => {
     }
   };
 
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handlePageChange = (newPage: number, newPageSize: number) => {
     setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+    setPageSize(newPageSize);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'warning';
-      case 'approved': return 'info';
-      case 'picking': return 'primary';
-      case 'picked': return 'secondary';
+      case 'approved': return 'processing';
+      case 'picking': return 'processing';
+      case 'picked': return 'processing';
       case 'shipped': return 'success';
       case 'rejected': return 'error';
       default: return 'default';
@@ -1096,203 +1131,175 @@ const OutboundPage: React.FC = () => {
   const total = ordersData?.pagination?.total || 0;
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+    <div style={{ padding: 24 }}>
+      <Title level={3} style={{ marginBottom: 24 }}>
         出库管理
-      </Typography>
+      </Title>
 
       {/* 操作栏 */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Row gutter={[16, 16]} align="middle">
-            <Col xs={24} sm={12} md={6}>
-              <TextField
-                fullWidth
-                placeholder="搜索出库单..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Col>
-            <Col xs={24} sm={12} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>状态</InputLabel>
-                <Select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  label="状态"
-                >
-                  <MenuItem value="">
-                    <em>全部状态</em>
-                  </MenuItem>
-                  <MenuItem value="pending">待审核</MenuItem>
-                  <MenuItem value="approved">已审核</MenuItem>
-                  <MenuItem value="picking">拣货中</MenuItem>
-                  <MenuItem value="picked">已拣货</MenuItem>
-                  <MenuItem value="shipped">已发货</MenuItem>
-                  <MenuItem value="rejected">已拒绝</MenuItem>
-                </Select>
-              </FormControl>
-            </Col>
-            <Col xs={24} sm={12} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>仓库</InputLabel>
-                <Select
-                  value={warehouseFilter}
-                  onChange={(e) => setWarehouseFilter(e.target.value)}
-                  label="仓库"
-                >
-                  <MenuItem value="">
-                    <em>全部仓库</em>
-                  </MenuItem>
-                  {warehousesData?.map((warehouse) => (
-                    <MenuItem key={warehouse.id} value={warehouse.id}>
-                      {warehouse.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Col>
-            <Col xs={24} sm={12} md={4}>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<FilterList />}
-                onClick={() => {
-                  setSearch('');
-                  setStatusFilter('');
-                  setWarehouseFilter('');
-                }}
-              >
-                重置
-              </Button>
-            </Col>
-            <Col xs={24} sm={12} md={6}>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<Add />}
-                onClick={handleCreate}
-              >
-                新增出库单
-              </Button>
-            </Col>
-          </Row>
-        </CardContent>
+      <Card style={{ marginBottom: 24 }}>
+        <Row gutter={[16, 16]} align="middle">
+          <Col xs={24} sm={12} md={6}>
+            <Input
+              placeholder="搜索出库单..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              prefix={<SearchOutlined />}
+              style={{ width: '100%' }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={4}>
+            <Select
+              value={statusFilter}
+              onChange={(value) => setStatusFilter(value)}
+              placeholder="选择状态"
+              style={{ width: '100%' }}
+            >
+              <Option value="">全部状态</Option>
+              <Option value="pending">待审核</Option>
+              <Option value="approved">已审核</Option>
+              <Option value="picking">拣货中</Option>
+              <Option value="picked">已拣货</Option>
+              <Option value="shipped">已发货</Option>
+              <Option value="rejected">已拒绝</Option>
+            </Select>
+          </Col>
+          <Col xs={24} sm={12} md={4}>
+            <Select
+              value={warehouseFilter}
+              onChange={(value) => setWarehouseFilter(value)}
+              placeholder="选择仓库"
+              style={{ width: '100%' }}
+            >
+              <Option value="">全部仓库</Option>
+              {warehousesData?.map((warehouse) => (
+                <Option key={warehouse.id} value={warehouse.id}>
+                  {warehouse.name}
+                </Option>
+              ))}
+            </Select>
+          </Col>
+          <Col xs={24} sm={12} md={4}>
+            <Button
+              type="default"
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                setSearch('');
+                setStatusFilter('');
+                setWarehouseFilter('');
+              }}
+              style={{ width: '100%' }}
+            >
+              重置
+            </Button>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleCreate}
+              style={{ width: '100%' }}
+            >
+              新增出库单
+            </Button>
+          </Col>
+        </Row>
       </Card>
 
       {/* 出库单列表 */}
       <Card>
-        <CardContent>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>出库单号</TableCell>
-                  <TableCell>仓库</TableCell>
-                  <TableCell>客户</TableCell>
-                  <TableCell>预期发货日期</TableCell>
-                  <TableCell>状态</TableCell>
-                  <TableCell>创建时间</TableCell>
-                  <TableCell align="center">操作</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      <CircularProgress />
-                    </TableCell>
-                  </TableRow>
-                ) : orders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      <Typography color="textSecondary">暂无出库单数据</Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="medium">
-                          {order.orderNumber}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {order.warehouse?.name}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {order.customer?.name}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {new Date(order.expectedDate).toLocaleDateString()}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={getStatusText(order.status)}
-                          color={getStatusColor(order.status) as any}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="textSecondary">
-                          {new Date(order.createdAt).toLocaleDateString()}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <Tooltip title="查看详情">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleView(order)}
-                            >
-                              <Visibility fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          {order.status === 'pending' && (
-                            <Tooltip title="编辑">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleEdit(order)}
-                              >
-                                <Edit fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              component="div"
-              count={total}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              labelRowsPerPage="每页行数:"
-              labelDisplayedRows={({ from, to, count }) =>
-                `${from}-${to} 共 ${count !== -1 ? count : `超过 ${to}`} 条`
-              }
-            />
-          </TableContainer>
-        </CardContent>
+        <Table
+          columns={[
+            { 
+              title: '出库单号', 
+              dataIndex: 'orderNumber', 
+              key: 'orderNumber',
+              render: (text: string, record: OutboundOrder) => (
+                <Button type="link" onClick={() => handleView(record)}>
+                  {text}
+                </Button>
+              )
+            },
+            { 
+              title: '仓库', 
+              dataIndex: ['warehouse', 'name'], 
+              key: 'warehouse' 
+            },
+            { 
+              title: '客户', 
+              dataIndex: ['customer', 'name'], 
+              key: 'customer' 
+            },
+            { 
+              title: '预期发货日期', 
+              dataIndex: 'expectedDate', 
+              key: 'expectedDate',
+              render: (date: string) => new Date(date).toLocaleDateString()
+            },
+            { 
+              title: '状态', 
+              dataIndex: 'status', 
+              key: 'status',
+              render: (status: string) => (
+                <Tag color={getStatusColor(status)}>
+                  {getStatusText(status)}
+                </Tag>
+              )
+            },
+            { 
+              title: '创建时间', 
+              dataIndex: 'createdAt', 
+              key: 'createdAt',
+              render: (date: string) => new Date(date).toLocaleDateString()
+            },
+            { 
+              title: '操作', 
+              key: 'action',
+              render: (_: any, record: OutboundOrder) => (
+                <Space size="middle">
+                  <Tooltip title="查看详情">
+                    <Button
+                      type="text"
+                      icon={<InfoCircleOutlined />}
+                      onClick={() => handleView(record)}
+                    />
+                  </Tooltip>
+                  {record.status === 'pending' && (
+                    <Tooltip title="编辑">
+                      <Button
+                        type="text"
+                        icon={<EditOutlined />}
+                        onClick={() => handleEdit(record)}
+                      />
+                    </Tooltip>
+                  )}
+                  <Tooltip title="删除">
+                    <Button
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleDelete(record)}
+                    />
+                  </Tooltip>
+                </Space>
+              )
+            }
+          ]}
+          dataSource={orders}
+          rowKey="id"
+          loading={isLoading}
+          locale={{ emptyText: '暂无出库单数据' }}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total) => `共 ${total} 条`,
+            onChange: handlePageChange,
+            onShowSizeChange: handlePageChange,
+          }}
+        />
       </Card>
 
       {/* 新增/编辑对话框 */}
@@ -1326,16 +1333,7 @@ const OutboundPage: React.FC = () => {
           shipMutation.isPending
         }
       />
-
-      {/* 悬浮按钮 */}
-      <Fab
-        color="primary"
-        sx={{ position: 'fixed', bottom: 16, right: 16 }}
-        onClick={handleCreate}
-      >
-        <Add />
-      </Fab>
-    </Box>
+    </div>
   );
 };
 

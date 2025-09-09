@@ -11,9 +11,9 @@ import {
   Typography,
   Divider,
   Tooltip,
-  Pagination,
   Form,
   message,
+  Empty,
 } from 'antd';
 import {
   SearchOutlined,
@@ -21,13 +21,28 @@ import {
   DownloadOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
+import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
 const { Option } = Select;
 
+// 数据类型定义
+interface WirelessPartRecord {
+  key: string;
+  id: string;
+  partName: string;
+  model: string;
+  serialNumber: string;
+  type: string;
+  quantity: number;
+  operator: string;
+  date: string;
+  status: string;
+  project: string;
+}
+
 // 模拟数据
-const mockData = [
+const mockData: WirelessPartRecord[] = [
   {
     key: '1',
     id: 'ORD-2024-0001',
@@ -100,19 +115,16 @@ const WirelessSparePartsPage: React.FC = () => {
   const [tabValue, setTabValue] = useState('1');
   const [filterType, setFilterType] = useState('全部');
   const [searchText, setSearchText] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [loading, setLoading] = useState(false);
 
   // 处理标签页切换
   const handleTabChange = (key: string) => {
     setTabValue(key);
-    setPage(1); // 切换标签页时重置页码
   };
 
   // 处理类型筛选
   const handleFilterChange = (value: string) => {
     setFilterType(value);
-    setPage(1); // 重置页码
   };
 
   // 处理搜索
@@ -120,21 +132,30 @@ const WirelessSparePartsPage: React.FC = () => {
     setSearchText(e.target.value);
   };
 
-  // 处理分页变化
-  const handlePageChange = (newPage: number, newPageSize: number) => {
-    setPage(newPage);
-    setPageSize(newPageSize);
-  };
-
   // 重置筛选条件
   const handleReset = () => {
     setFilterType('全部');
     setSearchText('');
-    setPage(1);
+    message.success('筛选条件已重置');
+  };
+
+  // 导出数据
+  const handleExport = () => {
+    setLoading(true);
+    // 模拟导出过程
+    setTimeout(() => {
+      setLoading(false);
+      message.success('数据导出成功');
+    }, 1000);
+  };
+
+  // 查看详情
+  const handleViewDetail = (record: WirelessPartRecord) => {
+    message.info(`查看 ${record.partName} 的详细信息`);
   };
 
   // 筛选数据
-  const filteredData = (mockData || []).filter(item => {
+  const filteredData = mockData.filter(item => {
     // 类型筛选
     if (filterType !== '全部' && item.type !== filterType) {
       return false;
@@ -159,59 +180,80 @@ const WirelessSparePartsPage: React.FC = () => {
     return true;
   });
 
-  // 分页数据
-  const paginatedData = (filteredData || []).slice((page - 1) * pageSize, page * pageSize);
-
   // 表格列定义
-  const columns = [
+  const columns: ColumnsType<WirelessPartRecord> = [
     {
       title: '单据编号',
       dataIndex: 'id',
       key: 'id',
+      width: 140,
+      fixed: 'left',
     },
     {
       title: '备件名称',
       dataIndex: 'partName',
       key: 'partName',
+      width: 160,
+      ellipsis: {
+        showTitle: false,
+      },
+      render: (text: string) => (
+        <Tooltip placement="topLeft" title={text}>
+          {text}
+        </Tooltip>
+      ),
     },
     {
       title: '型号',
       dataIndex: 'model',
       key: 'model',
+      width: 120,
     },
     {
       title: '序列号',
       dataIndex: 'serialNumber',
       key: 'serialNumber',
+      width: 140,
     },
     {
       title: '类型',
       dataIndex: 'type',
       key: 'type',
+      width: 80,
+      align: 'center',
       render: (type: string) => (
-        <Tag color={type === '5G' ? 'success' : 'blue'}>{type}</Tag>
+        <Tag color={type === '5G' ? 'success' : 'processing'}>{type}</Tag>
       ),
     },
     {
       title: '数量',
       dataIndex: 'quantity',
       key: 'quantity',
-      align: 'right' as const,
+      width: 80,
+      align: 'right',
+      render: (quantity: number) => (
+        <Text strong>{quantity}</Text>
+      ),
     },
     {
       title: '操作人',
       dataIndex: 'operator',
       key: 'operator',
+      width: 100,
     },
     {
       title: '日期',
       dataIndex: 'date',
       key: 'date',
+      width: 110,
+      sorter: (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
+      width: 80,
+      align: 'center',
       render: (status: string) => (
         <Tag color={status === '入库' ? 'blue' : 'orange'}>{status}</Tag>
       ),
@@ -220,88 +262,146 @@ const WirelessSparePartsPage: React.FC = () => {
       title: '关联项目',
       dataIndex: 'project',
       key: 'project',
+      width: 160,
+      ellipsis: {
+        showTitle: false,
+      },
+      render: (text: string) => (
+        <Tooltip placement="topLeft" title={text}>
+          {text}
+        </Tooltip>
+      ),
     },
     {
       title: '操作',
       key: 'action',
-      align: 'center' as const,
-      render: (_: any, record: any) => (
+      width: 80,
+      align: 'center',
+      fixed: 'right',
+      render: (_, record) => (
         <Tooltip title="查看详情">
-          <Button type="text" icon={<EyeOutlined />} />
+          <Button 
+            type="text" 
+            icon={<EyeOutlined />} 
+            onClick={() => handleViewDetail(record)}
+          />
         </Tooltip>
       ),
     },
   ];
 
+  const tabItems = [
+    {
+      key: '1',
+      label: '全部记录',
+    },
+    {
+      key: '2',
+      label: '入库记录',
+    },
+    {
+      key: '3',
+      label: '出库记录',
+    },
+  ];
+
   return (
     <div style={{ padding: 24 }}>
-      <Title level={3}>无线备件出入库登记表</Title>
+      <Title level={3} style={{ marginBottom: 24 }}>
+        无线备件出入库登记表
+      </Title>
 
       <Card>
         {/* 标签页 */}
-        <Tabs activeKey={tabValue} onChange={handleTabChange}>
-          <TabPane tab="全部记录" key="1" />
-          <TabPane tab="入库记录" key="2" />
-          <TabPane tab="出库记录" key="3" />
-        </Tabs>
+        <Tabs 
+          activeKey={tabValue} 
+          onChange={handleTabChange}
+          items={tabItems}
+        />
+
+        <Divider style={{ margin: '16px 0' }} />
 
         {/* 筛选工具栏 */}
-        <div style={{ margin: '16px 0', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <Select
-            value={filterType}
-            onChange={handleFilterChange}
-            style={{ width: 120 }}
-          >
-            <Option value="全部">全部</Option>
-            <Option value="5G">5G</Option>
-            <Option value="4G">4G</Option>
-          </Select>
+        <Space wrap style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
+          <Space wrap>
+            <Select
+              value={filterType}
+              onChange={handleFilterChange}
+              style={{ width: 120 }}
+              placeholder="选择类型"
+            >
+              <Option value="全部">全部类型</Option>
+              <Option value="5G">5G设备</Option>
+              <Option value="4G">4G设备</Option>
+            </Select>
 
-          <Input
-            placeholder="搜索"
-            value={searchText}
-            onChange={handleSearchChange}
-            prefix={<SearchOutlined />}
-            style={{ width: 200 }}
-          />
+            <Input
+              placeholder="搜索单据号、备件名称、型号等"
+              value={searchText}
+              onChange={handleSearchChange}
+              prefix={<SearchOutlined />}
+              style={{ width: 280 }}
+              allowClear
+            />
 
-          <Button
-            icon={<SyncOutlined />}
-            onClick={handleReset}
-          >
-            重置
-          </Button>
-
-          <div style={{ flex: 1 }} />
+            <Button
+              icon={<SyncOutlined />}
+              onClick={handleReset}
+            >
+              重置
+            </Button>
+          </Space>
 
           <Button
             type="primary"
             icon={<DownloadOutlined />}
+            loading={loading}
+            onClick={handleExport}
           >
             导出数据
           </Button>
-        </div>
+        </Space>
+
+        {/* 统计信息 */}
+        <Space style={{ marginBottom: 16 }}>
+          <Text type="secondary">
+            共找到 <Text strong>{filteredData.length}</Text> 条记录
+          </Text>
+          {tabValue === '2' && (
+            <Text type="secondary">
+              | 入库总数: <Text strong>{filteredData.reduce((sum, item) => sum + item.quantity, 0)}</Text> 件
+            </Text>
+          )}
+          {tabValue === '3' && (
+            <Text type="secondary">
+              | 出库总数: <Text strong>{filteredData.reduce((sum, item) => sum + item.quantity, 0)}</Text> 件
+            </Text>
+          )}
+        </Space>
 
         {/* 表格内容 */}
         <Table
           columns={columns}
-          dataSource={paginatedData}
+          dataSource={filteredData}
           rowKey="key"
+          scroll={{ x: 1200 }}
           pagination={{
-            current: page,
-            pageSize,
-            total: (filteredData || []).length,
-            onChange: handlePageChange,
             showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 条`,
+            showQuickJumper: true,
+            showTotal: (total, range) => 
+              `第 ${range[0]}-${range[1]} 条/共 ${total} 条`,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            defaultPageSize: 10,
           }}
           locale={{
             emptyText: (
-              <div style={{ textAlign: 'center', padding: 40 }}>
-                <Text type="secondary">暂无数据</Text>
-              </div>
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="暂无数据"
+              />
             ),
           }}
+          size="middle"
         />
       </Card>
     </div>
