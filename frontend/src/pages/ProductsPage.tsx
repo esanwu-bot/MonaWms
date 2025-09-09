@@ -565,7 +565,7 @@ const ProductsPage: React.FC = () => {
       dataIndex: 'unitPrice',
       key: 'unitPrice',
       width: 100,
-      render: (price: number) => `¥${price.toFixed(2)}`,
+      render: (price: number) => `¥${(price || 0).toFixed(2)}`,
     },
     {
       title: '库存范围',

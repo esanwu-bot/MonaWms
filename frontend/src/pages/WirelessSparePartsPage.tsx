@@ -33,6 +33,7 @@ const mockData = [
     id: 'ORD-2024-0001',
     partName: '5G基站射频模块',
     model: 'AAU5613',
+    serialNumber: 'SN202401150001',
     type: '5G',
     quantity: 2,
     operator: '张三',
@@ -45,6 +46,7 @@ const mockData = [
     id: 'ORD-2024-0002',
     partName: '4G光模块',
     model: 'SFP-1G',
+    serialNumber: 'SN202401140002',
     type: '4G',
     quantity: 5,
     operator: '李四',
@@ -57,6 +59,7 @@ const mockData = [
     id: 'ORD-2024-0003',
     partName: '5G天线',
     model: 'ANT4518R6v06',
+    serialNumber: 'SN202401130003',
     type: '5G',
     quantity: 3,
     operator: '王五',
@@ -69,6 +72,7 @@ const mockData = [
     id: 'ORD-2024-0004',
     partName: '4G基站主控板',
     model: 'BBU3900',
+    serialNumber: 'SN202401120004',
     type: '4G',
     quantity: 1,
     operator: '赵六',
@@ -81,6 +85,7 @@ const mockData = [
     id: 'ORD-2024-0005',
     partName: '5G核心网模块',
     model: 'UGW9811',
+    serialNumber: 'SN202401110005',
     type: '5G',
     quantity: 2,
     operator: '张三',
@@ -129,7 +134,7 @@ const WirelessSparePartsPage: React.FC = () => {
   };
 
   // 筛选数据
-  const filteredData = mockData.filter(item => {
+  const filteredData = (mockData || []).filter(item => {
     // 类型筛选
     if (filterType !== '全部' && item.type !== filterType) {
       return false;
@@ -139,6 +144,7 @@ const WirelessSparePartsPage: React.FC = () => {
       item.id.toLowerCase().includes(searchText.toLowerCase()) ||
       item.partName.toLowerCase().includes(searchText.toLowerCase()) ||
       item.model.toLowerCase().includes(searchText.toLowerCase()) ||
+      item.serialNumber.toLowerCase().includes(searchText.toLowerCase()) ||
       item.project.toLowerCase().includes(searchText.toLowerCase())
     )) {
       return false;
@@ -154,7 +160,7 @@ const WirelessSparePartsPage: React.FC = () => {
   });
 
   // 分页数据
-  const paginatedData = filteredData.slice((page - 1) * pageSize, page * pageSize);
+  const paginatedData = (filteredData || []).slice((page - 1) * pageSize, page * pageSize);
 
   // 表格列定义
   const columns = [
@@ -172,6 +178,11 @@ const WirelessSparePartsPage: React.FC = () => {
       title: '型号',
       dataIndex: 'model',
       key: 'model',
+    },
+    {
+      title: '序列号',
+      dataIndex: 'serialNumber',
+      key: 'serialNumber',
     },
     {
       title: '类型',
@@ -279,7 +290,7 @@ const WirelessSparePartsPage: React.FC = () => {
           pagination={{
             current: page,
             pageSize,
-            total: filteredData.length,
+            total: (filteredData || []).length,
             onChange: handlePageChange,
             showSizeChanger: true,
             showTotal: (total) => `共 ${total} 条`,

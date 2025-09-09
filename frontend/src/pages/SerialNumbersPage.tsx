@@ -378,11 +378,11 @@ const SerialNumbersPage: React.FC = () => {
                 style={{ width: '100%' }}
                 onChange={(value) => handleSearch(value || '', 'product_id')}
               >
-                {productsData?.data?.map((product) => (
+                {productsData?.data?.list?.map((product) => (
                   <Option key={product.id} value={product.id}>
                     {product.name} ({product.sku})
                   </Option>
-                ))}
+                )) || []}
               </Select>
             </Col>
             <Col xs={24} sm={12} md={8} lg={6}>
@@ -448,14 +448,14 @@ const SerialNumbersPage: React.FC = () => {
 
         <Table
           columns={columns}
-          dataSource={serialNumbersData?.data || []}
+          dataSource={serialNumbersData?.data?.list || []}
           rowKey="id"
           loading={isLoading}
           scroll={{ x: 1200 }}
           pagination={{
             current: searchParams.page,
             pageSize: searchParams.limit,
-            total: serialNumbersData?.pagination?.total || 0,
+            total: serialNumbersData?.data?.pagination?.total || 0,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total, range) =>
@@ -509,11 +509,11 @@ const SerialNumbersPage: React.FC = () => {
                   showSearch
                   optionFilterProp="children"
                 >
-                  {productsData?.data?.map((product) => (
-                    <Option key={product.id} value={product.id}>
-                      {product.name} ({product.sku})
-                    </Option>
-                  ))}
+                  {productsData?.data?.list?.map((product) => (
+                  <Option key={product.id} value={product.id}>
+                    {product.name} ({product.sku})
+                  </Option>
+                )) || []}
                 </Select>
               </Form.Item>
             </Col>

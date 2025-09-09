@@ -59,7 +59,7 @@ class ProductController extends BaseController
                 $item = $product->toArray();
                 $item['status_text'] = $product->status_text;
                 $item['category_name'] = $product->category->name ?? '';
-                $item['volume'] = $product->getVolume();
+                $item['volume'] = $product->volume;
                 $item['total_stock'] = $product->getTotalStock();
                 $item['available_stock'] = $product->getAvailableStock();
                 $item['stock_status'] = $product->getStockStatus();
