@@ -34,6 +34,10 @@ class CategoryController extends BaseController
                 $query->where('parent_id', $params['parent_id']);
             }
             
+            if (!empty($params['status'])) {
+                $query->where('status', $params['status']);
+            }
+            
             // 分页查询
             $result = $query->order('id', 'asc')
                           ->paginate([
@@ -44,6 +48,7 @@ class CategoryController extends BaseController
             $list = [];
             foreach ($result->items() as $category) {
                 $item = $category->toArray();
+                $item['status_text'] = $category->status_text;
                 $list[] = $item;
             }
             
@@ -115,6 +120,7 @@ class CategoryController extends BaseController
                 'parent_id' => 'integer',
                 'sort_order' => 'integer',
                 'description' => 'max:200',
+                'status' => 'in:active,inactive'
             ]);
             
             if (!$validate->check($data)) {
@@ -142,7 +148,10 @@ class CategoryController extends BaseController
                 return Response::error('分类不存在', 404);
             }
             
-            return Response::success($category, '获取分类详情成功');
+            $data = $category->toArray();
+            $data['status_text'] = $category->status_text;
+            
+            return Response::success($data, '获取分类详情成功');
             
         } catch (\Exception $e) {
             return Response::error('获取分类详情失败: ' . $e->getMessage());
@@ -169,6 +178,7 @@ class CategoryController extends BaseController
                 'parent_id' => 'integer',
                 'sort_order' => 'integer',
                 'description' => 'max:200',
+                'status' => 'in:active,inactive'
             ]);
             
             if (!$validate->check($data)) {

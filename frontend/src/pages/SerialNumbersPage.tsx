@@ -1,0 +1,591 @@
+import React, { useState } from 'react';
+import {
+  Card,
+  Table,
+  Button,
+  Space,
+  Input,
+  Select,
+  Modal,
+  Form,
+  DatePicker,
+  InputNumber,
+  message,
+  Popconfirm,
+  Tag,
+  Tooltip,
+  Row,
+  Col,
+} from 'antd';
+import {
+  PlusOutlined,
+  SearchOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  ReloadOutlined,
+  ExportOutlined,
+  ImportOutlined,
+} from '@ant-design/icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import dayjs from 'dayjs';
+import type { ColumnsType } from 'antd/es/table';
+import type { SerialNumber, CreateSerialNumberRequest, UpdateSerialNumberRequest } from '../types/api';
+import {
+  getSerialNumbers,
+  createSerialNumber,
+  updateSerialNumber,
+  deleteSerialNumber,
+  queryByBarcode,
+} from '../services/serialNumberService';
+import { productService } from '../services/productService';
+
+const { Search } = Input;
+const { Option } = Select;
+
+interface SerialNumberFormData {
+  serialNumber: string;
+  productId: string;
+  manufactureDate?: dayjs.Dayjs;
+  warrantyPeriod?: number;
+  status?: 'in_stock' | 'sold' | 'scrapped';
+  location?: string;
+  notes?: string;
+}
+
+const SerialNumbersPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useState({
+    page: 1,
+    limit: 10,
+    serial_number: '',
+    product_id: '',
+    status: '',
+  });
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<SerialNumber | null>(null);
+  const [form] = Form.useForm<SerialNumberFormData>();
+  const queryClient = useQueryClient();
+
+  // 获取序列号列表
+  const { data: serialNumbersData, isLoading } = useQuery({
+    queryKey: ['serialNumbers', searchParams],
+    queryFn: () => getSerialNumbers(searchParams),
+  });
+
+  // 获取产品列表
+  const { data: productsData } = useQuery({
+    queryKey: ['products', { page: 1, limit: 1000 }],
+    queryFn: () => productService.getProducts({ page: 1, limit: 1000 }),
+  });
+
+  // 创建序列号
+  const createMutation = useMutation({
+    mutationFn: createSerialNumber,
+    onSuccess: () => {
+      message.success('序列号创建成功');
+      setIsModalVisible(false);
+      form.resetFields();
+      queryClient.invalidateQueries({ queryKey: ['serialNumbers'] });
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || '创建失败');
+    },
+  });
+
+  // 更新序列号
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateSerialNumberRequest }) =>
+      updateSerialNumber(id, data),
+    onSuccess: () => {
+      message.success('序列号更新成功');
+      setIsModalVisible(false);
+      setEditingRecord(null);
+      form.resetFields();
+      queryClient.invalidateQueries({ queryKey: ['serialNumbers'] });
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || '更新失败');
+    },
+  });
+
+  // 删除序列号
+  const deleteMutation = useMutation({
+    mutationFn: deleteSerialNumber,
+    onSuccess: () => {
+      message.success('序列号删除成功');
+      queryClient.invalidateQueries({ queryKey: ['serialNumbers'] });
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || '删除失败');
+    },
+  });
+
+  // 条码查询
+  const [barcodeSearchValue, setBarcodeSearchValue] = useState('');
+  const barcodeQueryMutation = useMutation({
+    mutationFn: queryByBarcode,
+    onSuccess: (data) => {
+      if (data.type === 'serial_number') {
+        message.success('找到序列号信息');
+        // 可以在这里处理查询结果，比如高亮显示或跳转到对应记录
+      } else {
+        message.info('找到产品信息，但无对应序列号');
+      }
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || '查询失败');
+    },
+  });
+
+  const handleSearch = (value: string, field: string) => {
+    setSearchParams(prev => ({
+      ...prev,
+      [field]: value,
+      page: 1,
+    }));
+  };
+
+  const handleTableChange = (pagination: any) => {
+    setSearchParams(prev => ({
+      ...prev,
+      page: pagination.current,
+      limit: pagination.pageSize,
+    }));
+  };
+
+  const handleAdd = () => {
+    setEditingRecord(null);
+    form.resetFields();
+    setIsModalVisible(true);
+  };
+
+  const handleEdit = (record: SerialNumber) => {
+    setEditingRecord(record);
+    form.setFieldsValue({
+      serialNumber: record.serialNumber,
+      productId: record.productId,
+      manufactureDate: record.manufactureDate ? dayjs(record.manufactureDate) : undefined,
+      warrantyPeriod: record.warrantyPeriod,
+      status: record.status,
+      location: record.location,
+      notes: record.notes,
+    });
+    setIsModalVisible(true);
+  };
+
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate(id);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      const submitData: CreateSerialNumberRequest | UpdateSerialNumberRequest = {
+        serialNumber: values.serialNumber,
+        productId: values.productId,
+        manufactureDate: values.manufactureDate?.format('YYYY-MM-DD'),
+        warrantyPeriod: values.warrantyPeriod,
+        status: values.status,
+        location: values.location,
+        notes: values.notes,
+      };
+
+      if (editingRecord) {
+        updateMutation.mutate({ id: editingRecord.id, data: submitData });
+      } else {
+        createMutation.mutate(submitData);
+      }
+    } catch (error) {
+      console.error('表单验证失败:', error);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'in_stock':
+        return 'green';
+      case 'sold':
+        return 'blue';
+      case 'scrapped':
+        return 'red';
+      default:
+        return 'default';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'in_stock':
+        return '库存中';
+      case 'sold':
+        return '已售出';
+      case 'scrapped':
+        return '已报废';
+      default:
+        return status;
+    }
+  };
+
+  const columns: ColumnsType<SerialNumber> = [
+    {
+      title: '序列号',
+      dataIndex: 'serialNumber',
+      key: 'serialNumber',
+      width: 200,
+      ellipsis: {
+        showTitle: false,
+      },
+      render: (text) => (
+        <Tooltip placement="topLeft" title={text}>
+          <span style={{ fontFamily: 'monospace' }}>{text}</span>
+        </Tooltip>
+      ),
+    },
+    {
+      title: '产品信息',
+      key: 'product',
+      width: 250,
+      render: (_, record) => (
+        <div>
+          <div style={{ fontWeight: 500 }}>{record.product?.name || record.productName}</div>
+          <div style={{ fontSize: '12px', color: '#666' }}>
+            SKU: {record.product?.sku || record.productSku}
+          </div>
+          {(record.product?.modelNumber || record.productModel) && (
+            <div style={{ fontSize: '12px', color: '#666' }}>
+              型号: {record.product?.modelNumber || record.productModel}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: (status) => (
+        <Tag color={getStatusColor(status)}>
+          {getStatusText(status)}
+        </Tag>
+      ),
+    },
+    {
+      title: '生产日期',
+      dataIndex: 'manufactureDate',
+      key: 'manufactureDate',
+      width: 120,
+      render: (date) => date ? dayjs(date).format('YYYY-MM-DD') : '-',
+    },
+    {
+      title: '保修期(月)',
+      dataIndex: 'warrantyPeriod',
+      key: 'warrantyPeriod',
+      width: 100,
+      render: (period) => period ? `${period}个月` : '-',
+    },
+    {
+      title: '保修到期',
+      dataIndex: 'warrantyEndDate',
+      key: 'warrantyEndDate',
+      width: 120,
+      render: (date) => {
+        if (!date) return '-';
+        const endDate = dayjs(date);
+        const isExpired = endDate.isBefore(dayjs());
+        return (
+          <span style={{ color: isExpired ? '#ff4d4f' : undefined }}>
+            {endDate.format('YYYY-MM-DD')}
+            {isExpired && ' (已过期)'}
+          </span>
+        );
+      },
+    },
+    {
+      title: '位置',
+      dataIndex: 'location',
+      key: 'location',
+      width: 120,
+      ellipsis: {
+        showTitle: false,
+      },
+      render: (text) => (
+        <Tooltip placement="topLeft" title={text}>
+          {text || '-'}
+        </Tooltip>
+      ),
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 120,
+      render: (date) => dayjs(date).format('YYYY-MM-DD'),
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 120,
+      fixed: 'right',
+      render: (_, record) => (
+        <Space size="small">
+          <Tooltip title="编辑">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
+            />
+          </Tooltip>
+          <Popconfirm
+            title="确定要删除这个序列号吗？"
+            onConfirm={() => handleDelete(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Tooltip title="删除">
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+              />
+            </Tooltip>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div style={{ padding: '24px' }}>
+      <Card>
+        <div style={{ marginBottom: '16px' }}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Search
+                placeholder="搜索序列号"
+                allowClear
+                onSearch={(value) => handleSearch(value, 'serial_number')}
+                style={{ width: '100%' }}
+              />
+            </Col>
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Select
+                placeholder="选择产品"
+                allowClear
+                showSearch
+                optionFilterProp="children"
+                style={{ width: '100%' }}
+                onChange={(value) => handleSearch(value || '', 'product_id')}
+              >
+                {productsData?.data?.map((product) => (
+                  <Option key={product.id} value={product.id}>
+                    {product.name} ({product.sku})
+                  </Option>
+                ))}
+              </Select>
+            </Col>
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Select
+                placeholder="选择状态"
+                allowClear
+                style={{ width: '100%' }}
+                onChange={(value) => handleSearch(value || '', 'status')}
+              >
+                <Option value="in_stock">库存中</Option>
+                <Option value="sold">已售出</Option>
+                <Option value="scrapped">已报废</Option>
+              </Select>
+            </Col>
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Space>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={handleAdd}
+                >
+                  新增序列号
+                </Button>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ['serialNumbers'] })}
+                >
+                  刷新
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={12}>
+              <Search
+                placeholder="扫描或输入条码查询设备信息"
+                value={barcodeSearchValue}
+                onChange={(e) => setBarcodeSearchValue(e.target.value)}
+                onSearch={(value) => {
+                  if (value.trim()) {
+                    barcodeQueryMutation.mutate(value.trim());
+                  }
+                }}
+                enterButton="条码查询"
+                loading={barcodeQueryMutation.isPending}
+              />
+            </Col>
+            <Col xs={24} md={12}>
+              <Space>
+                <Button icon={<ImportOutlined />}>
+                  批量导入
+                </Button>
+                <Button icon={<ExportOutlined />}>
+                  导出数据
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </div>
+
+        <Table
+          columns={columns}
+          dataSource={serialNumbersData?.data || []}
+          rowKey="id"
+          loading={isLoading}
+          scroll={{ x: 1200 }}
+          pagination={{
+            current: searchParams.page,
+            pageSize: searchParams.limit,
+            total: serialNumbersData?.pagination?.total || 0,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) =>
+              `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
+            pageSizeOptions: ['10', '20', '50', '100'],
+          }}
+          onChange={handleTableChange}
+        />
+      </Card>
+
+      <Modal
+        title={editingRecord ? '编辑序列号' : '新增序列号'}
+        open={isModalVisible}
+        onOk={handleSubmit}
+        onCancel={() => {
+          setIsModalVisible(false);
+          setEditingRecord(null);
+          form.resetFields();
+        }}
+        confirmLoading={createMutation.isPending || updateMutation.isPending}
+        width={600}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{
+            status: 'in_stock',
+          }}
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="serialNumber"
+                label="序列号"
+                rules={[
+                  { required: true, message: '请输入序列号' },
+                  { min: 1, max: 100, message: '序列号长度应在1-100字符之间' },
+                ]}
+              >
+                <Input placeholder="请输入序列号" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="productId"
+                label="关联产品"
+                rules={[{ required: true, message: '请选择关联产品' }]}
+              >
+                <Select
+                  placeholder="请选择产品"
+                  showSearch
+                  optionFilterProp="children"
+                >
+                  {productsData?.data?.map((product) => (
+                    <Option key={product.id} value={product.id}>
+                      {product.name} ({product.sku})
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="manufactureDate"
+                label="生产日期"
+              >
+                <DatePicker
+                  style={{ width: '100%' }}
+                  placeholder="选择生产日期"
+                  format="YYYY-MM-DD"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="warrantyPeriod"
+                label="保修期(月)"
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  placeholder="请输入保修期"
+                  min={0}
+                  max={120}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="status"
+                label="状态"
+                rules={[{ required: true, message: '请选择状态' }]}
+              >
+                <Select placeholder="请选择状态">
+                  <Option value="in_stock">库存中</Option>
+                  <Option value="sold">已售出</Option>
+                  <Option value="scrapped">已报废</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="location"
+                label="存放位置"
+              >
+                <Input placeholder="请输入存放位置" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            name="notes"
+            label="备注"
+          >
+            <Input.TextArea
+              placeholder="请输入备注信息"
+              rows={3}
+              maxLength={500}
+              showCount
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+};
+
+export default SerialNumbersPage;

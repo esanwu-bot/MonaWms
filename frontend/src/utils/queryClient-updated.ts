@@ -1,5 +1,4 @@
 import { QueryClient } from '@tanstack/react-query';
-import type { ErrorResponse } from '../types/api';
 
 // 创建QueryClient实例
 export const queryClient = new QueryClient({
@@ -27,7 +26,7 @@ export const queryClient = new QueryClient({
     },
     mutations: {
       // 错误处理
-      onError: (error: ErrorResponse) => {
+      onError: (error: Error) => {
         console.error('Mutation error:', error);
         // 这里可以添加全局错误处理逻辑
         // 比如显示错误通知

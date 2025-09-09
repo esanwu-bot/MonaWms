@@ -1,54 +1,42 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  Typography,
-  Button,
   Card,
-  CardContent,
-  IconButton,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Grid,
-  Alert,
-  CircularProgress,
-  Tooltip,
-  InputAdornment,
-  FormControl,
-  InputLabel,
+  Button,
+  Input,
+  Tree,
+  Modal,
+  Form,
   Select,
-  MenuItem,
-  Collapse,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
+  message,
+  Typography,
+  Tag,
   Divider,
-} from '@mui/material';
+  List,
+  Popconfirm,
+  Spin,
+  Alert,
+  Space,
+  Tooltip
+} from 'antd';
 import {
-  Add,
-  Edit,
-  Delete,
-  Search,
-  Category,
-  ExpandMore,
-  ChevronRight,
-  Folder,
-  FolderOpen,
-  Description,
-} from '@mui/icons-material';
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SearchOutlined,
+  FolderOutlined,
+  FolderOpenOutlined,
+  ExclamationCircleOutlined
+} from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
-import { TreeItem } from '@mui/x-tree-view/TreeItem';
-import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
 import type { Category as CategoryType, CreateCategoryRequest, UpdateCategoryRequest } from '../types/api';
+
+const { Title, Text } = Typography;
+const { Option } = Select;
+const { TextArea } = Input;
 
 // 表单验证模式
 const categorySchema = z.object({
@@ -77,6 +65,7 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
   onSubmit,
   loading = false,
 }) => {
+  const [form] = Form.useForm();
   const {
     control,
     handleSubmit,
@@ -94,10 +83,10 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
 
   // 获取分类列表（用于选择父分类）
   const { data: categoriesData } = useQuery({
-    queryKey: queryKeys.categories.all,
+    queryKey: ['categories'],
     queryFn: async () => {
       const response = await api.get<CategoryType[]>('/categories');
-      return response.data.data.list;
+      return response.data.data;
     },
   });
 
@@ -109,8 +98,14 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
         description: category?.description || '',
         parentId: category?.parentId || parentCategory?.id || '',
       });
+      form.setFieldsValue({
+        code: category?.code || '',
+        name: category?.name || '',
+        description: category?.description || '',
+        parentId: category?.parentId || parentCategory?.id || '',
+      });
     }
-  }, [open, category, parentCategory, reset]);
+  }, [open, category, parentCategory, reset, form]);
 
   const handleFormSubmit = (data: CategoryFormData) => {
     onSubmit(data);
@@ -133,120 +128,91 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
   const availableParentCategories = getAvailableParentCategories(categoriesData || [], category?.id);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Category />
+    <Modal
+      title={
+        <Space>
+          <FolderOutlined />
           {category ? '编辑分类' : '新增分类'}
           {parentCategory && (
-            <Chip
-              label={`父分类: ${parentCategory.name}`}
-              size="small"
-              variant="outlined"
-            />
+            <Tag color="blue">{`父分类: ${parentCategory.name}`}</Tag>
           )}
-        </Box>
-      </DialogTitle>
-      <DialogContent>
-        <Box component="form" sx={{ mt: 2 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="code"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="分类编码"
-                    required
-                    error={!!errors.code}
-                    helperText={errors.code?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="name"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="分类名称"
-                    required
-                    error={!!errors.name}
-                    helperText={errors.name?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Controller
-                name="description"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="描述"
-                    multiline
-                    rows={3}
-                    error={!!errors.description}
-                    helperText={errors.description?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Controller
-                name="parentId"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth>
-                    <InputLabel>父分类</InputLabel>
-                    <Select
-                      {...field}
-                      label="父分类"
-                      disabled={loading}
-                    >
-                      <MenuItem value="">
-                        <em>无（顶级分类）</em>
-                      </MenuItem>
-                      {availableParentCategories.map((cat) => (
-                        <MenuItem key={cat.id} value={cat.id}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Category fontSize="small" />
-                            {'  '.repeat(cat.level)}{cat.name}
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-            </Grid>
-          </Grid>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+        </Space>
+      }
+      open={open}
+      onCancel={onClose}
+      width={800}
+      footer={[
+        <Button key="back" onClick={onClose}>
           取消
-        </Button>
-        <Button
-          onClick={handleSubmit(handleFormSubmit)}
-          variant="contained"
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={20} /> : undefined}
+        </Button>,
+        <Button 
+          key="submit" 
+          type="primary" 
+          loading={loading}
+          onClick={() => {
+            form.validateFields().then(values => {
+              onSubmit(values);
+            });
+          }}
         >
-          {loading ? '保存中...' : '保存'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+          保存
+        </Button>,
+      ]}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit(handleFormSubmit)}
+      >
+        <Form.Item
+          label="分类编码"
+          name="code"
+          rules={[
+            { required: true, message: '请输入分类编码' },
+            { max: 50, message: '编码不能超过50个字符' }
+          ]}
+        >
+          <Input placeholder="请输入分类编码" disabled={loading} />
+        </Form.Item>
+
+        <Form.Item
+          label="分类名称"
+          name="name"
+          rules={[
+            { required: true, message: '请输入分类名称' },
+            { max: 100, message: '名称不能超过100个字符' }
+          ]}
+        >
+          <Input placeholder="请输入分类名称" disabled={loading} />
+        </Form.Item>
+
+        <Form.Item
+          label="描述"
+          name="description"
+        >
+          <TextArea rows={3} placeholder="请输入描述" disabled={loading} />
+        </Form.Item>
+
+        <Form.Item
+          label="父分类"
+          name="parentId"
+        >
+          <Select placeholder="请选择父分类" disabled={loading}>
+            <Option value="">
+              <em>无（顶级分类）</em>
+            </Option>
+            {availableParentCategories.map((cat) => (
+              <Option key={cat.id} value={cat.id}>
+                <Space>
+                  <FolderOutlined />
+                  {'  '.repeat(cat.level)}{cat.name}
+                </Space>
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 };
 
@@ -266,59 +232,53 @@ const CategoryTreeItem: React.FC<CategoryTreeItemProps> = ({
   const hasChildren = category.children && category.children.length > 0;
 
   return (
-    <TreeItem
-      itemId={category.id}
-      label={
-        <Box sx={{ display: 'flex', alignItems: 'center', py: 0.5, pr: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
-            {hasChildren ? <FolderOpen fontSize="small" /> : <Folder fontSize="small" />}
-            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-              {category.name}
-            </Typography>
-            <Chip label={category.code} size="small" variant="outlined" />
-            <Chip
-              label={category.isActive ? '启用' : '禁用'}
-              color={category.isActive ? 'success' : 'default'}
-              size="small"
-            />
-          </Box>
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
+    <Tree.TreeNode
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Space>
+            {hasChildren ? <FolderOpenOutlined /> : <FolderOutlined />}
+            <Text strong>{category.name}</Text>
+            <Tag color="default">{category.code}</Tag>
+            <Tag color={category.isActive ? 'success' : 'default'}>
+              {category.isActive ? '启用' : '禁用'}
+            </Tag>
+          </Space>
+          <Space>
             <Tooltip title="添加子分类">
-              <IconButton
+              <Button
+                type="text"
                 size="small"
+                icon={<PlusOutlined />}
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddChild(category);
                 }}
-              >
-                <Add fontSize="small" />
-              </IconButton>
+              />
             </Tooltip>
             <Tooltip title="编辑">
-              <IconButton
+              <Button
+                type="text"
                 size="small"
+                icon={<EditOutlined />}
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit(category);
                 }}
-              >
-                <Edit fontSize="small" />
-              </IconButton>
+              />
             </Tooltip>
             <Tooltip title="删除">
-              <IconButton
+              <Button
+                type="text"
                 size="small"
-                color="error"
+                icon={<DeleteOutlined />}
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(category);
                 }}
-              >
-                <Delete fontSize="small" />
-              </IconButton>
+              />
             </Tooltip>
-          </Box>
-        </Box>
+          </Space>
+        </div>
       }
     >
       {category.children?.map((child) => (
@@ -330,7 +290,7 @@ const CategoryTreeItem: React.FC<CategoryTreeItemProps> = ({
           onAddChild={onAddChild}
         />
       ))}
-    </TreeItem>
+    </Tree.TreeNode>
   );
 };
 
@@ -341,13 +301,13 @@ const CategoriesPage: React.FC = () => {
   const [parentCategory, setParentCategory] = useState<CategoryType | undefined>();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<CategoryType | undefined>();
-  const [expanded, setExpanded] = useState<string[]>([]);
+  const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
 
   const queryClient = useQueryClient();
 
   // 获取分类列表
   const { data: categoriesData, isLoading } = useQuery({
-    queryKey: queryKeys.categories.all,
+    queryKey: ['categories'],
     queryFn: async () => {
       const response = await api.get<CategoryType[]>('/categories');
       return response.data.data;
@@ -361,11 +321,15 @@ const CategoriesPage: React.FC = () => {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
       setDialogOpen(false);
       setSelectedCategory(undefined);
       setParentCategory(undefined);
+      message.success('分类创建成功');
     },
+    onError: () => {
+      message.error('分类创建失败');
+    }
   });
 
   // 更新分类
@@ -375,11 +339,15 @@ const CategoriesPage: React.FC = () => {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
       setDialogOpen(false);
       setSelectedCategory(undefined);
       setParentCategory(undefined);
+      message.success('分类更新成功');
     },
+    onError: () => {
+      message.error('分类更新失败');
+    }
   });
 
   // 删除分类
@@ -388,10 +356,14 @@ const CategoriesPage: React.FC = () => {
       await api.delete(`/categories/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
       setDeleteConfirmOpen(false);
       setCategoryToDelete(undefined);
+      message.success('分类删除成功');
     },
+    onError: () => {
+      message.error('分类删除失败');
+    }
   });
 
   const handleCreate = () => {
@@ -430,8 +402,6 @@ const CategoriesPage: React.FC = () => {
       deleteMutation.mutate(categoryToDelete.id);
     }
   };
-
-
 
   // 构建树形结构
   const buildCategoryTree = (categories: CategoryType[]): CategoryType[] => {
@@ -497,72 +467,61 @@ const CategoriesPage: React.FC = () => {
   const filteredTree = filterCategories(categoryTree, search);
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+    <div style={{ padding: 24 }}>
+      <Title level={3} style={{ marginBottom: 24 }}>
         分类管理
-      </Typography>
+      </Title>
 
       {/* 操作栏 */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-            <TextField
-              placeholder="搜索分类..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ minWidth: 300 }}
-            />
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={handleCreate}
-            >
-              新增分类
-            </Button>
-          </Box>
-        </CardContent>
+      <Card style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <Input
+            placeholder="搜索分类..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            prefix={<SearchOutlined />}
+            style={{ width: 300 }}
+          />
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleCreate}
+          >
+            新增分类
+          </Button>
+        </div>
       </Card>
 
       {/* 分类树 */}
       <Card>
-        <CardContent>
-          {isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : filteredTree.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography color="textSecondary">
-                {search ? '未找到匹配的分类' : '暂无分类数据'}
-              </Typography>
-            </Box>
-          ) : (
-            <SimpleTreeView
-              defaultCollapseIcon={<ExpandMore />}
-              defaultExpandIcon={<ChevronRight />}
-              expandedItems={expanded}
-              onExpandedItemsChange={(event, itemIds) => setExpanded(itemIds)}
-              sx={{ flexGrow: 1, maxWidth: '100%', overflowY: 'auto' }}
-            >
-              {filteredTree.map((category) => (
-                <CategoryTreeItem
-                  key={category.id}
-                  category={category}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onAddChild={handleAddChild}
-                />
-              ))}
-            </SimpleTreeView>
-          )}
-        </CardContent>
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <Spin size="large" />
+          </div>
+        ) : filteredTree.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <Text type="secondary">
+              {search ? '未找到匹配的分类' : '暂无分类数据'}
+            </Text>
+          </div>
+        ) : (
+          <Tree
+            showLine
+            expandedKeys={expandedKeys}
+            onExpand={(keys) => setExpandedKeys(keys as string[])}
+            blockNode
+          >
+            {filteredTree.map((category) => (
+              <CategoryTreeItem
+                key={category.id}
+                category={category}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onAddChild={handleAddChild}
+              />
+            ))}
+          </Tree>
+        )}
       </Card>
 
       {/* 新增/编辑对话框 */}
@@ -580,35 +539,53 @@ const CategoriesPage: React.FC = () => {
       />
 
       {/* 删除确认对话框 */}
-      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
-        <DialogTitle>确认删除</DialogTitle>
-        <DialogContent>
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            删除操作不可恢复，请谨慎操作！
-          </Alert>
-          <Typography>
-            确定要删除分类 "{categoryToDelete?.name}" 吗？
-          </Typography>
-          {categoryToDelete?.children && categoryToDelete.children.length > 0 && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              该分类下还有子分类，请先删除子分类！
-            </Alert>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteConfirmOpen(false)}>取消</Button>
-          <Button
-            onClick={handleConfirmDelete}
-            color="error"
-            variant="contained"
-            disabled={deleteMutation.isPending || (categoryToDelete?.children && categoryToDelete.children.length > 0)}
-            startIcon={deleteMutation.isPending ? <CircularProgress size={20} /> : undefined}
+      <Modal
+        title="确认删除"
+        open={deleteConfirmOpen}
+        onCancel={() => setDeleteConfirmOpen(false)}
+        footer={[
+          <Button key="back" onClick={() => setDeleteConfirmOpen(false)}>
+            取消
+          </Button>,
+          <Popconfirm
+            key="delete"
+            title="确定要删除吗？此操作不可恢复！"
+            onConfirm={handleConfirmDelete}
+            disabled={!!(categoryToDelete?.children && categoryToDelete.children.length > 0)}
           >
-            {deleteMutation.isPending ? '删除中...' : '确认删除'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+            <Button
+              type="primary"
+              danger
+              loading={deleteMutation.isPending}
+              disabled={!!(categoryToDelete?.children && categoryToDelete.children.length > 0)}
+            >
+              确认删除
+            </Button>
+          </Popconfirm>
+        ]}
+      >
+        <Alert
+          message="警告"
+          description={
+            <div>
+              <p>删除操作不可恢复，请谨慎操作！</p>
+              <p>确定要删除分类 "{categoryToDelete?.name}" 吗？</p>
+            </div>
+          }
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        {categoryToDelete?.children && categoryToDelete.children.length > 0 && (
+          <Alert
+            message="错误"
+            description="该分类下还有子分类，请先删除子分类！"
+            type="error"
+            showIcon
+          />
+        )}
+      </Modal>
+    </div>
   );
 };
 

@@ -23,7 +23,7 @@ class WarehouseService
      */
     public function getList(array $params = []): array
     {
-        $query = Warehouse::with(['locations']);
+        $query = Warehouse::with(['zones']);
 
         // 搜索条件
         if (!empty($params['keyword'])) {
@@ -73,7 +73,7 @@ class WarehouseService
     public function getDetail(int $id): Warehouse
     {
         try {
-            $warehouse = Warehouse::with(['locations'])->find($id);
+            $warehouse = Warehouse::with(['zones'])->find($id);
             if (!$warehouse) {
                 throw new ValidateException('仓库不存在');
             }

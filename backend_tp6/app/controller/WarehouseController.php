@@ -217,21 +217,15 @@ class WarehouseController extends BaseController
     public function delete(Request $request, $id)
     {
         try {
-            $warehouse = Warehouse::find($id);
-            
-            if (!$warehouse) {
-                return Response::notFound('仓库不存在');
-            }
-            
-            // 检查是否可以删除
-            if (!$warehouse->canDelete()) {
-                return Response::error('仓库下存在库区或订单，无法删除');
-            }
-            
-            $warehouse->delete();
+            $warehouseService = new \app\service\WarehouseService();
+            $warehouseService->delete($id);
             
             return Response::success([], '仓库删除成功');
             
+        } catch (\think\exception\ValidateException $e) {
+            return Response::error($e->getMessage());
+        } catch (\think\exception\NotFoundException $e) {
+            return Response::notFound($e->getMessage());
         } catch (\Exception $e) {
             return Response::serverError('删除仓库失败：' . $e->getMessage());
         }

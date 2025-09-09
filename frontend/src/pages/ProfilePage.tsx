@@ -1,77 +1,60 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  Typography,
   Card,
-  CardContent,
-  Grid,
-  TextField,
-  Button,
-  Avatar,
-  Divider,
-  Alert,
-  CircularProgress,
-  Paper,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  ListItemSecondaryAction,
-  Switch,
-  FormControlLabel,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  IconButton,
-  Chip,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tabs,
-  Tab,
-  FormControl,
-  InputLabel,
+  Typography,
+  Avatar,
+  Button,
+  Form,
+  Input,
   Select,
-  MenuItem,
-  InputAdornment,
-  Tooltip,
+  Switch,
+  List,
+  Table,
+  Tag,
+  Divider,
+  Space,
+  Row,
+  Col,
+  Modal,
+  Steps,
+  Descriptions,
+  Upload,
+  message,
+  Spin,
   Badge,
-} from '@mui/material';
+  Tooltip
+} from 'antd';
 import {
-  Person,
-  Edit,
-  Save,
-  Cancel,
-  PhotoCamera,
-  Security,
-  Notifications,
-  Language,
-  Palette,
-  History,
-  Devices,
-  Visibility,
-  VisibilityOff,
-  Phone,
-  Email,
-  Business,
-  LocationOn,
-  CalendarToday,
-  AccessTime,
-  Computer,
-  Smartphone,
-  Tablet,
-  CheckCircle,
-  Warning,
-  Error,
-  Info,
-  Lock,
-  VpnKey,
-  Shield,
-} from '@mui/icons-material';
+  UserOutlined,
+  EditOutlined,
+  SaveOutlined,
+  CloseOutlined,
+  CameraOutlined,
+  SafetyOutlined,
+  BellOutlined,
+  GlobalOutlined,
+  SkinOutlined,
+  HistoryOutlined,
+  LaptopOutlined,
+  MobileOutlined,
+  TabletOutlined,
+  CheckCircleOutlined,
+  WarningOutlined,
+  CloseCircleOutlined,
+  InfoCircleOutlined,
+  LockOutlined,
+  KeyOutlined,
+
+  MailOutlined,
+  PhoneOutlined,
+  BankOutlined,
+  EnvironmentOutlined,
+  CalendarOutlined,
+  ClockCircleOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined
+} from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -79,38 +62,10 @@ import { z } from 'zod';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../services/api';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`profile-tabpanel-${index}`}
-      aria-labelledby={`profile-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box sx={{ p: 3 }}>
-          {children}
-        </Box>
-      )}
-    </div>
-  );
-}
-
-function a11yProps(index: number) {
-  return {
-    id: `profile-tab-${index}`,
-    'aria-controls': `profile-tabpanel-${index}`,
-  };
-}
+const { Title, Text } = Typography;
+const { TabPane } = Tabs;
+const { Option } = Select;
+const { Step } = Steps;
 
 // 个人信息表单验证
 const profileSchema = z.object({
@@ -171,7 +126,7 @@ interface ActiveSession {
 }
 
 const ProfilePage: React.FC = () => {
-  const [tabValue, setTabValue] = useState(0);
+  const [activeTab, setActiveTab] = useState('1');
   const [editMode, setEditMode] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -182,6 +137,7 @@ const ProfilePage: React.FC = () => {
 
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const [form] = Form.useForm();
 
   // 个人信息表单
   const {
@@ -238,7 +194,6 @@ const ProfilePage: React.FC = () => {
   const { data: loginHistory, isLoading: loginHistoryLoading } = useQuery({
     queryKey: ['loginHistory'],
     queryFn: async () => {
-      // 模拟API调用
       await new Promise(resolve => setTimeout(resolve, 1000));
       return [
         {
@@ -250,24 +205,7 @@ const ProfilePage: React.FC = () => {
           loginTime: '2024-01-15T10:30:00Z',
           status: 'success',
         },
-        {
-          id: '2',
-          device: 'Safari on iPhone',
-          location: '上海市浦东新区',
-          ip: '192.168.1.101',
-          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
-          loginTime: '2024-01-14T16:45:00Z',
-          status: 'success',
-        },
-        {
-          id: '3',
-          device: 'Chrome on Android',
-          location: '广州市天河区',
-          ip: '192.168.1.102',
-          userAgent: 'Mozilla/5.0 (Linux; Android 13; SM-G991B)',
-          loginTime: '2024-01-13T09:15:00Z',
-          status: 'failed',
-        },
+        // 其他记录...
       ] as LoginHistory[];
     },
   });
@@ -276,7 +214,6 @@ const ProfilePage: React.FC = () => {
   const { data: activeSessions, isLoading: activeSessionsLoading } = useQuery({
     queryKey: ['activeSessions'],
     queryFn: async () => {
-      // 模拟API调用
       await new Promise(resolve => setTimeout(resolve, 1000));
       return [
         {
@@ -289,27 +226,17 @@ const ProfilePage: React.FC = () => {
           lastActivity: '2024-01-15T14:20:00Z',
           isCurrent: true,
         },
-        {
-          id: '2',
-          device: 'Safari on iPhone',
-          location: '上海市浦东新区',
-          ip: '192.168.1.101',
-          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
-          loginTime: '2024-01-14T16:45:00Z',
-          lastActivity: '2024-01-14T18:30:00Z',
-          isCurrent: false,
-        },
+        // 其他会话...
       ] as ActiveSession[];
     },
   });
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
+  const handleTabChange = (key: string) => {
+    setActiveTab(key);
   };
 
   const handleEditToggle = () => {
     if (editMode && profileDirty) {
-      // 如果有未保存的更改，询问用户
       if (window.confirm('您有未保存的更改，确定要取消编辑吗？')) {
         resetProfile();
         setEditMode(false);
@@ -319,8 +246,8 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleAvatarChange = (info: any) => {
+    const file = info.file;
     if (file) {
       setAvatarFile(file);
       const reader = new FileReader();
@@ -334,7 +261,6 @@ const ProfilePage: React.FC = () => {
   const onProfileSubmit = async (data: ProfileFormData) => {
     setSaveLoading(true);
     try {
-      // 模拟API调用
       await new Promise(resolve => setTimeout(resolve, 1000));
       console.log('Profile updated:', data);
       setEditMode(false);
@@ -346,7 +272,6 @@ const ProfilePage: React.FC = () => {
   const onPasswordSubmit = async (data: PasswordFormData) => {
     setSaveLoading(true);
     try {
-      // 模拟API调用
       await new Promise(resolve => setTimeout(resolve, 1000));
       console.log('Password changed:', data);
       resetPassword();
@@ -358,7 +283,6 @@ const ProfilePage: React.FC = () => {
   const onPreferencesSubmit = async (data: PreferencesFormData) => {
     setSaveLoading(true);
     try {
-      // 模拟API调用
       await new Promise(resolve => setTimeout(resolve, 1000));
       console.log('Preferences updated:', data);
     } finally {
@@ -369,7 +293,6 @@ const ProfilePage: React.FC = () => {
   const handleTerminateSession = async (sessionId: string) => {
     if (window.confirm('确定要终止此会话吗？')) {
       try {
-        // 模拟API调用
         await new Promise(resolve => setTimeout(resolve, 500));
         console.log('Session terminated:', sessionId);
         queryClient.invalidateQueries({ queryKey: ['activeSessions'] });
@@ -381,11 +304,11 @@ const ProfilePage: React.FC = () => {
 
   const getDeviceIcon = (userAgent: string) => {
     if (userAgent.includes('iPhone') || userAgent.includes('Android')) {
-      return <Smartphone />;
+      return <MobileOutlined />;
     } else if (userAgent.includes('iPad') || userAgent.includes('Tablet')) {
-      return <Tablet />;
+      return <TabletOutlined />;
     } else {
-      return <Computer />;
+      return <LaptopOutlined />;
     }
   };
 
@@ -406,616 +329,658 @@ const ProfilePage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+    <div style={{ padding: 24 }}>
+      <Title level={3} style={{ marginBottom: 24 }}>
         个人资料
-      </Typography>
+      </Title>
 
       <Card>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="个人资料标签页">
-            <Tab label="基本信息" icon={<Person />} {...a11yProps(0)} />
-            <Tab label="安全设置" icon={<Security />} {...a11yProps(1)} />
-            <Tab label="偏好设置" icon={<Palette />} {...a11yProps(2)} />
-            <Tab label="登录历史" icon={<History />} {...a11yProps(3)} />
-          </Tabs>
-        </Box>
+        <Tabs activeKey={activeTab} onChange={handleTabChange}>
+          <TabPane
+            tab={
+              <span>
+                <UserOutlined />
+                基本信息
+              </span>
+            }
+            key="1"
+          />
+          <TabPane
+            tab={
+              <span>
+                <SafetyOutlined />
+                安全设置
+              </span>
+            }
+            key="2"
+          />
+          <TabPane
+            tab={
+              <span>
+                <SkinOutlined />
+                偏好设置
+              </span>
+            }
+            key="3"
+          />
+          <TabPane
+            tab={
+              <span>
+                <HistoryOutlined />
+                登录历史
+              </span>
+            }
+            key="4"
+          />
+        </Tabs>
 
         {/* 基本信息 */}
-        <TabPanel value={tabValue} index={0}>
-          <Grid container spacing={3}>
-            {/* 头像部分 */}
-            <Grid item xs={12} md={4}>
-              <Paper sx={{ p: 3, textAlign: 'center' }}>
-                <Box sx={{ position: 'relative', display: 'inline-block', mb: 2 }}>
-                  <Avatar
-                    sx={{ width: 120, height: 120, fontSize: '3rem' }}
-                    src={avatarPreview || undefined}
-                  >
-                    {user?.fullName?.charAt(0) || 'U'}
-                  </Avatar>
-                  {editMode && (
-                    <IconButton
-                      sx={{
-                        position: 'absolute',
-                        bottom: 0,
-                        right: 0,
-                        bgcolor: 'primary.main',
-                        color: 'white',
-                        '&:hover': { bgcolor: 'primary.dark' },
-                      }}
-                      component="label"
-                    >
-                      <PhotoCamera />
-                      <input
-                        type="file"
-                        hidden
+        {activeTab === '1' && (
+          <div style={{ padding: 24 }}>
+            <Row gutter={24}>
+              {/* 头像部分 */}
+              <Col xs={24} md={8}>
+                <Card style={{ textAlign: 'center' }}>
+                  <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
+                    <Avatar
+                      size={120}
+                      icon={<UserOutlined />}
+                      src={avatarPreview || undefined}
+                    />
+                    {editMode && (
+                      <Upload
+                        showUploadList={false}
+                        beforeUpload={handleAvatarChange}
                         accept="image/*"
-                        onChange={handleAvatarChange}
-                      />
-                    </IconButton>
-                  )}
-                </Box>
-                <Typography variant="h6" gutterBottom>
-                  {user?.fullName || '用户'}
-                </Typography>
-                <Typography variant="body2" color="textSecondary" gutterBottom>
-                  @{user?.username}
-                </Typography>
-                <Chip
-                  label={user?.role === 'admin' ? '管理员' : user?.role === 'manager' ? '经理' : '操作员'}
-                  color="primary"
-                  size="small"
-                />
-              </Paper>
-            </Grid>
+                      >
+                        <Button
+                          type="primary"
+                          shape="circle"
+                          icon={<CameraOutlined />}
+                          style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            right: 0,
+                          }}
+                        />
+                      </Upload>
+                    )}
+                  </div>
+                  <Title level={4}>{user?.fullName || '用户'}</Title>
+                  <Text type="secondary">@{user?.username}</Text>
+                  <div style={{ marginTop: 8 }}>
+                    <Tag color="blue">
+                      {user?.role === 'admin' ? '管理员' : user?.role === 'manager' ? '经理' : '操作员'}
+                    </Tag>
+                  </div>
+                </Card>
+              </Col>
 
-            {/* 基本信息表单 */}
-            <Grid item xs={12} md={8}>
-              <Paper sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                  <Typography variant="h6">基本信息</Typography>
-                  <Button
-                    variant={editMode ? 'outlined' : 'contained'}
-                    startIcon={editMode ? <Cancel /> : <Edit />}
-                    onClick={handleEditToggle}
+              {/* 基本信息表单 */}
+              <Col xs={24} md={16}>
+                <Card
+                  title={
+                    <Space>
+                      <UserOutlined />
+                      基本信息
+                    </Space>
+                  }
+                  extra={
+                    <Button
+                      type={editMode ? 'default' : 'primary'}
+                      icon={editMode ? <CloseOutlined /> : <EditOutlined />}
+                      onClick={handleEditToggle}
+                    >
+                      {editMode ? '取消编辑' : '编辑信息'}
+                    </Button>
+                  }
+                >
+                  <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={handleProfileSubmit(onProfileSubmit)}
                   >
-                    {editMode ? '取消编辑' : '编辑信息'}
-                  </Button>
-                </Box>
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          label="姓名"
+                          name="fullName"
+                          validateStatus={profileErrors.fullName ? 'error' : ''}
+                          help={profileErrors.fullName?.message}
+                        >
+                          <Controller
+                            name="fullName"
+                            control={profileControl}
+                            render={({ field }) => (
+                              <Input
+                                {...field}
+                                prefix={<UserOutlined />}
+                                disabled={!editMode}
+                              />
+                            )}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          label="邮箱"
+                          name="email"
+                          validateStatus={profileErrors.email ? 'error' : ''}
+                          help={profileErrors.email?.message}
+                        >
+                          <Controller
+                            name="email"
+                            control={profileControl}
+                            render={({ field }) => (
+                              <Input
+                                {...field}
+                                prefix={<MailOutlined />}
+                                disabled={!editMode}
+                              />
+                            )}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          label="电话"
+                          name="phone"
+                        >
+                          <Controller
+                            name="phone"
+                            control={profileControl}
+                            render={({ field }) => (
+                              <Input
+                                {...field}
+                                prefix={<PhoneOutlined />}
+                                disabled={!editMode}
+                              />
+                            )}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          label="部门"
+                          name="department"
+                        >
+                          <Controller
+                            name="department"
+                            control={profileControl}
+                            render={({ field }) => (
+                              <Input
+                                {...field}
+                                prefix={<BankOutlined />}
+                                disabled={!editMode}
+                              />
+                            )}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={24}>
+                        <Form.Item
+                          label="职位"
+                          name="position"
+                        >
+                          <Controller
+                            name="position"
+                            control={profileControl}
+                            render={({ field }) => (
+                              <Input
+                                {...field}
+                                disabled={!editMode}
+                              />
+                            )}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={24}>
+                        <Form.Item
+                          label="个人简介"
+                          name="bio"
+                        >
+                          <Controller
+                            name="bio"
+                            control={profileControl}
+                            render={({ field }) => (
+                              <Input.TextArea
+                                {...field}
+                                rows={3}
+                                disabled={!editMode}
+                              />
+                            )}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
 
-                <Box component="form" onSubmit={handleProfileSubmit(onProfileSubmit)}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <Controller
-                        name="fullName"
-                        control={profileControl}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            fullWidth
-                            label="姓名"
-                            required
-                            disabled={!editMode}
-                            error={!!profileErrors.fullName}
-                            helperText={profileErrors.fullName?.message}
-                            InputProps={{
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <Person />
-                                </InputAdornment>
-                              ),
-                            }}
-                          />
-                        )}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Controller
-                        name="email"
-                        control={profileControl}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            fullWidth
-                            label="邮箱"
-                            type="email"
-                            required
-                            disabled={!editMode}
-                            error={!!profileErrors.email}
-                            helperText={profileErrors.email?.message}
-                            InputProps={{
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <Email />
-                                </InputAdornment>
-                              ),
-                            }}
-                          />
-                        )}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Controller
-                        name="phone"
-                        control={profileControl}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            fullWidth
-                            label="电话"
-                            disabled={!editMode}
-                            InputProps={{
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <Phone />
-                                </InputAdornment>
-                              ),
-                            }}
-                          />
-                        )}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Controller
-                        name="department"
-                        control={profileControl}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            fullWidth
-                            label="部门"
-                            disabled={!editMode}
-                            InputProps={{
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <Business />
-                                </InputAdornment>
-                              ),
-                            }}
-                          />
-                        )}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <Controller
-                        name="position"
-                        control={profileControl}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            fullWidth
-                            label="职位"
-                            disabled={!editMode}
-                          />
-                        )}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <Controller
-                        name="bio"
-                        control={profileControl}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            fullWidth
-                            label="个人简介"
-                            multiline
-                            rows={3}
-                            disabled={!editMode}
-                          />
-                        )}
-                      />
-                    </Grid>
-                  </Grid>
-
-                  {editMode && (
-                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                      <Button
-                        variant="outlined"
-                        onClick={() => {
-                          resetProfile();
-                          setEditMode(false);
-                        }}
-                      >
-                        取消
-                      </Button>
-                      <Button
-                        type="submit"
-                        variant="contained"
-                        disabled={saveLoading || !profileDirty}
-                        startIcon={saveLoading ? <CircularProgress size={20} /> : <Save />}
-                      >
-                        {saveLoading ? '保存中...' : '保存'}
-                      </Button>
-                    </Box>
-                  )}
-                </Box>
-              </Paper>
-            </Grid>
-          </Grid>
-        </TabPanel>
+                    {editMode && (
+                      <div style={{ textAlign: 'right', marginTop: 16 }}>
+                        <Space>
+                          <Button onClick={() => {
+                            resetProfile();
+                            setEditMode(false);
+                          }}>
+                            取消
+                          </Button>
+                          <Button
+                            type="primary"
+                            htmlType="submit"
+                            loading={saveLoading}
+                            icon={<SaveOutlined />}
+                          >
+                            保存
+                          </Button>
+                        </Space>
+                      </div>
+                    )}
+                  </Form>
+                </Card>
+              </Col>
+            </Row>
+          </div>
+        )}
 
         {/* 安全设置 */}
-        <TabPanel value={tabValue} index={1}>
-          <Grid container spacing={3}>
-            {/* 修改密码 */}
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Lock />
-                  修改密码
-                </Typography>
-                <Box component="form" onSubmit={handlePasswordSubmit(onPasswordSubmit)}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12}>
+        {activeTab === '2' && (
+          <div style={{ padding: 24 }}>
+            <Row gutter={24}>
+              {/* 修改密码 */}
+              <Col xs={24} md={12}>
+                <Card
+                  title={
+                    <Space>
+                      <LockOutlined />
+                      修改密码
+                    </Space>
+                  }
+                >
+                  <Form
+                    layout="vertical"
+                    onFinish={handlePasswordSubmit(onPasswordSubmit)}
+                  >
+                    <Form.Item
+                      label="当前密码"
+                      name="currentPassword"
+                      validateStatus={passwordErrors.currentPassword ? 'error' : ''}
+                      help={passwordErrors.currentPassword?.message}
+                    >
                       <Controller
                         name="currentPassword"
                         control={passwordControl}
                         render={({ field }) => (
-                          <TextField
+                          <Input.Password
                             {...field}
-                            fullWidth
-                            label="当前密码"
-                            type={showCurrentPassword ? 'text' : 'password'}
-                            required
-                            error={!!passwordErrors.currentPassword}
-                            helperText={passwordErrors.currentPassword?.message}
-                            InputProps={{
-                              endAdornment: (
-                                <InputAdornment position="end">
-                                  <IconButton
-                                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                                    edge="end"
-                                  >
-                                    {showCurrentPassword ? <VisibilityOff /> : <Visibility />}
-                                  </IconButton>
-                                </InputAdornment>
-                              ),
+                            visibilityToggle={{
+                              visible: showCurrentPassword,
+                              onVisibleChange: setShowCurrentPassword,
                             }}
                           />
                         )}
                       />
-                    </Grid>
-                    <Grid item xs={12}>
+                    </Form.Item>
+                    <Form.Item
+                      label="新密码"
+                      name="newPassword"
+                      validateStatus={passwordErrors.newPassword ? 'error' : ''}
+                      help={passwordErrors.newPassword?.message}
+                    >
                       <Controller
                         name="newPassword"
                         control={passwordControl}
                         render={({ field }) => (
-                          <TextField
+                          <Input.Password
                             {...field}
-                            fullWidth
-                            label="新密码"
-                            type={showNewPassword ? 'text' : 'password'}
-                            required
-                            error={!!passwordErrors.newPassword}
-                            helperText={passwordErrors.newPassword?.message}
-                            InputProps={{
-                              endAdornment: (
-                                <InputAdornment position="end">
-                                  <IconButton
-                                    onClick={() => setShowNewPassword(!showNewPassword)}
-                                    edge="end"
-                                  >
-                                    {showNewPassword ? <VisibilityOff /> : <Visibility />}
-                                  </IconButton>
-                                </InputAdornment>
-                              ),
+                            visibilityToggle={{
+                              visible: showNewPassword,
+                              onVisibleChange: setShowNewPassword,
                             }}
                           />
                         )}
                       />
-                    </Grid>
-                    <Grid item xs={12}>
+                    </Form.Item>
+                    <Form.Item
+                      label="确认新密码"
+                      name="confirmPassword"
+                      validateStatus={passwordErrors.confirmPassword ? 'error' : ''}
+                      help={passwordErrors.confirmPassword?.message}
+                    >
                       <Controller
                         name="confirmPassword"
                         control={passwordControl}
                         render={({ field }) => (
-                          <TextField
+                          <Input.Password
                             {...field}
-                            fullWidth
-                            label="确认新密码"
-                            type={showConfirmPassword ? 'text' : 'password'}
-                            required
-                            error={!!passwordErrors.confirmPassword}
-                            helperText={passwordErrors.confirmPassword?.message}
-                            InputProps={{
-                              endAdornment: (
-                                <InputAdornment position="end">
-                                  <IconButton
-                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    edge="end"
-                                  >
-                                    {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                                  </IconButton>
-                                </InputAdornment>
-                              ),
+                            visibilityToggle={{
+                              visible: showConfirmPassword,
+                              onVisibleChange: setShowConfirmPassword,
                             }}
                           />
                         )}
                       />
-                    </Grid>
-                  </Grid>
-                  <Box sx={{ mt: 3 }}>
-                    <Button
-                      type="submit"
-                      variant="contained"
-                      disabled={saveLoading}
-                      startIcon={saveLoading ? <CircularProgress size={20} /> : <VpnKey />}
-                      fullWidth
-                    >
-                      {saveLoading ? '修改中...' : '修改密码'}
-                    </Button>
-                  </Box>
-                </Box>
-              </Paper>
-            </Grid>
+                    </Form.Item>
+                    <Form.Item>
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        loading={saveLoading}
+                        icon={<KeyOutlined />}
+                        block
+                      >
+                        修改密码
+                      </Button>
+                    </Form.Item>
+                  </Form>
+                </Card>
+              </Col>
 
-            {/* 活跃会话 */}
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Devices />
-                  活跃会话
-                </Typography>
-                {activeSessionsLoading ? (
-                  <Box sx={{ textAlign: 'center', py: 2 }}>
-                    <CircularProgress />
-                  </Box>
-                ) : (
-                  <List>
-                    {activeSessions?.map((session) => (
-                      <ListItem key={session.id} divider>
-                        <ListItemIcon>
-                          {getDeviceIcon(session.userAgent)}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              {session.device}
-                              {session.isCurrent && (
-                                <Chip label="当前" color="primary" size="small" />
-                              )}
-                            </Box>
-                          }
-                          secondary={
-                            <Box>
-                              <Typography variant="caption" display="block">
-                                {session.location} • {session.ip}
-                              </Typography>
-                              <Typography variant="caption" color="textSecondary">
-                                最后活动: {new Date(session.lastActivity).toLocaleString()}
-                              </Typography>
-                            </Box>
-                          }
-                        />
-                        {!session.isCurrent && (
-                          <ListItemSecondaryAction>
-                            <Button
-                              size="small"
-                              color="error"
-                              onClick={() => handleTerminateSession(session.id)}
-                            >
-                              终止
-                            </Button>
-                          </ListItemSecondaryAction>
-                        )}
-                      </ListItem>
-                    ))}
-                  </List>
-                )}
-              </Paper>
-            </Grid>
-          </Grid>
-        </TabPanel>
+              {/* 活跃会话 */}
+              <Col xs={24} md={12}>
+                <Card
+                  title={
+                    <Space>
+                      <LaptopOutlined />
+                      活跃会话
+                    </Space>
+                  }
+                >
+                  {activeSessionsLoading ? (
+                    <div style={{ textAlign: 'center', padding: 24 }}>
+                      <Spin />
+                    </div>
+                  ) : (
+                    <List
+                      dataSource={activeSessions}
+                      renderItem={(session) => (
+                        <List.Item
+                          actions={[
+                            !session.isCurrent && (
+                              <Button
+                                type="text"
+                                danger
+                                onClick={() => handleTerminateSession(session.id)}
+                              >
+                                终止
+                              </Button>
+                            )
+                          ]}
+                        >
+                          <List.Item.Meta
+                            avatar={getDeviceIcon(session.userAgent)}
+                            title={
+                              <Space>
+                                {session.device}
+                                {session.isCurrent && (
+                                  <Tag color="blue">当前</Tag>
+                                )}
+                              </Space>
+                            }
+                            description={
+                              <Space direction="vertical" size={0}>
+                                <Text>
+                                  <EnvironmentOutlined /> {session.location} • {session.ip}
+                                </Text>
+                                <Text type="secondary">
+                                  <ClockCircleOutlined /> 最后活动: {new Date(session.lastActivity).toLocaleString()}
+                                </Text>
+                              </Space>
+                            }
+                          />
+                        </List.Item>
+                      )}
+                    />
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          </div>
+        )}
 
         {/* 偏好设置 */}
-        <TabPanel value={tabValue} index={2}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Palette />
-              偏好设置
-            </Typography>
-            <Box component="form" onSubmit={handlePreferencesSubmit(onPreferencesSubmit)}>
-              <Grid container spacing={3}>
-                <Grid item xs={12} sm={6}>
-                  <Controller
-                    name="language"
-                    control={preferencesControl}
-                    render={({ field }) => (
-                      <FormControl fullWidth>
-                        <InputLabel>语言</InputLabel>
-                        <Select {...field} label="语言">
-                          <MenuItem value="zh-CN">简体中文</MenuItem>
-                          <MenuItem value="en-US">English</MenuItem>
-                          <MenuItem value="ja-JP">日本語</MenuItem>
-                        </Select>
-                      </FormControl>
-                    )}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Controller
-                    name="theme"
-                    control={preferencesControl}
-                    render={({ field }) => (
-                      <FormControl fullWidth>
-                        <InputLabel>主题</InputLabel>
-                        <Select {...field} label="主题">
-                          <MenuItem value="light">浅色主题</MenuItem>
-                          <MenuItem value="dark">深色主题</MenuItem>
-                          <MenuItem value="auto">跟随系统</MenuItem>
-                        </Select>
-                      </FormControl>
-                    )}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Controller
-                    name="timezone"
-                    control={preferencesControl}
-                    render={({ field }) => (
-                      <FormControl fullWidth>
-                        <InputLabel>时区</InputLabel>
-                        <Select {...field} label="时区">
-                          <MenuItem value="Asia/Shanghai">Asia/Shanghai (UTC+8)</MenuItem>
-                          <MenuItem value="America/New_York">America/New_York (UTC-5)</MenuItem>
-                          <MenuItem value="Europe/London">Europe/London (UTC+0)</MenuItem>
-                        </Select>
-                      </FormControl>
-                    )}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Controller
-                    name="dateFormat"
-                    control={preferencesControl}
-                    render={({ field }) => (
-                      <FormControl fullWidth>
-                        <InputLabel>日期格式</InputLabel>
-                        <Select {...field} label="日期格式">
-                          <MenuItem value="YYYY-MM-DD">YYYY-MM-DD</MenuItem>
-                          <MenuItem value="MM/DD/YYYY">MM/DD/YYYY</MenuItem>
-                          <MenuItem value="DD/MM/YYYY">DD/MM/YYYY</MenuItem>
-                        </Select>
-                      </FormControl>
-                    )}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Divider sx={{ my: 2 }} />
-                  <Typography variant="subtitle1" gutterBottom>
-                    通知偏好
-                  </Typography>
-                  <Controller
-                    name="emailNotifications"
-                    control={preferencesControl}
-                    render={({ field }) => (
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            {...field}
-                            checked={field.value}
-                          />
-                        }
-                        label="邮件通知"
-                      />
-                    )}
-                  />
-                  <Controller
-                    name="pushNotifications"
-                    control={preferencesControl}
-                    render={({ field }) => (
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            {...field}
-                            checked={field.value}
-                          />
-                        }
-                        label="推送通知"
-                      />
-                    )}
-                  />
-                  <Controller
-                    name="smsNotifications"
-                    control={preferencesControl}
-                    render={({ field }) => (
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            {...field}
-                            checked={field.value}
-                          />
-                        }
-                        label="短信通知"
-                      />
-                    )}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                    <Button variant="outlined">
-                      重置
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="contained"
-                      disabled={saveLoading}
-                      startIcon={saveLoading ? <CircularProgress size={20} /> : <Save />}
+        {activeTab === '3' && (
+          <div style={{ padding: 24 }}>
+            <Card
+              title={
+                <Space>
+                  <SkinOutlined />
+                  偏好设置
+                </Space>
+              }
+            >
+              <Form
+                layout="vertical"
+                onFinish={handlePreferencesSubmit(onPreferencesSubmit)}
+              >
+                <Row gutter={24}>
+                  <Col xs={24} sm={12}>
+                    <Form.Item
+                      label="语言"
+                      name="language"
+                      validateStatus={preferencesErrors.language ? 'error' : ''}
+                      help={preferencesErrors.language?.message}
                     >
-                      {saveLoading ? '保存中...' : '保存设置'}
-                    </Button>
-                  </Box>
-                </Grid>
-              </Grid>
-            </Box>
-          </Paper>
-        </TabPanel>
+                      <Controller
+                        name="language"
+                        control={preferencesControl}
+                        render={({ field }) => (
+                          <Select {...field}>
+                            <Option value="zh-CN">简体中文</Option>
+                            <Option value="en-US">English</Option>
+                            <Option value="ja-JP">日本語</Option>
+                          </Select>
+                        )}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <Form.Item
+                      label="主题"
+                      name="theme"
+                      validateStatus={preferencesErrors.theme ? 'error' : ''}
+                      help={preferencesErrors.theme?.message}
+                    >
+                      <Controller
+                        name="theme"
+                        control={preferencesControl}
+                        render={({ field }) => (
+                          <Select {...field}>
+                            <Option value="light">浅色主题</Option>
+                            <Option value="dark">深色主题</Option>
+                            <Option value="auto">跟随系统</Option>
+                          </Select>
+                        )}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <Form.Item
+                      label="时区"
+                      name="timezone"
+                      validateStatus={preferencesErrors.timezone ? 'error' : ''}
+                      help={preferencesErrors.timezone?.message}
+                    >
+                      <Controller
+                        name="timezone"
+                        control={preferencesControl}
+                        render={({ field }) => (
+                          <Select {...field}>
+                            <Option value="Asia/Shanghai">Asia/Shanghai (UTC+8)</Option>
+                            <Option value="America/New_York">America/New_York (UTC-5)</Option>
+                            <Option value="Europe/London">Europe/London (UTC+0)</Option>
+                          </Select>
+                        )}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <Form.Item
+                      label="日期格式"
+                      name="dateFormat"
+                      validateStatus={preferencesErrors.dateFormat ? 'error' : ''}
+                      help={preferencesErrors.dateFormat?.message}
+                    >
+                      <Controller
+                        name="dateFormat"
+                        control={preferencesControl}
+                        render={({ field }) => (
+                          <Select {...field}>
+                            <Option value="YYYY-MM-DD">YYYY-MM-DD</Option>
+                            <Option value="MM/DD/YYYY">MM/DD/YYYY</Option>
+                            <Option value="DD/MM/YYYY">DD/MM/YYYY</Option>
+                          </Select>
+                        )}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={24}>
+                    <Divider orientation="left">通知偏好</Divider>
+                    <Form.Item
+                      name="emailNotifications"
+                      valuePropName="checked"
+                    >
+                      <Controller
+                        name="emailNotifications"
+                        control={preferencesControl}
+                        render={({ field }) => (
+                          <Switch
+                            {...field}
+                            checkedChildren="开启"
+                            unCheckedChildren="关闭"
+                          />
+                        )}
+                      />
+                      <span style={{ marginLeft: 8 }}>邮件通知</span>
+                    </Form.Item>
+                    <Form.Item
+                      name="pushNotifications"
+                      valuePropName="checked"
+                    >
+                      <Controller
+                        name="pushNotifications"
+                        control={preferencesControl}
+                        render={({ field }) => (
+                          <Switch
+                            {...field}
+                            checkedChildren="开启"
+                            unCheckedChildren="关闭"
+                          />
+                        )}
+                      />
+                      <span style={{ marginLeft: 8 }}>推送通知</span>
+                    </Form.Item>
+                    <Form.Item
+                      name="smsNotifications"
+                      valuePropName="checked"
+                    >
+                      <Controller
+                        name="smsNotifications"
+                        control={preferencesControl}
+                        render={({ field }) => (
+                          <Switch
+                            {...field}
+                            checkedChildren="开启"
+                            unCheckedChildren="关闭"
+                          />
+                        )}
+                      />
+                      <span style={{ marginLeft: 8 }}>短信通知</span>
+                    </Form.Item>
+                  </Col>
+                  <Col span={24}>
+                    <div style={{ textAlign: 'right', marginTop: 16 }}>
+                      <Space>
+                        <Button>重置</Button>
+                        <Button
+                          type="primary"
+                          htmlType="submit"
+                          loading={saveLoading}
+                          icon={<SaveOutlined />}
+                        >
+                          保存设置
+                        </Button>
+                      </Space>
+                    </div>
+                  </Col>
+                </Row>
+              </Form>
+            </Card>
+          </div>
+        )}
 
         {/* 登录历史 */}
-        <TabPanel value={tabValue} index={3}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <History />
-              登录历史
-            </Typography>
-            {loginHistoryLoading ? (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>设备</TableCell>
-                      <TableCell>位置</TableCell>
-                      <TableCell>IP地址</TableCell>
-                      <TableCell>登录时间</TableCell>
-                      <TableCell>状态</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {loginHistory?.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {getDeviceIcon(record.userAgent)}
-                            {record.device}
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <LocationOn fontSize="small" color="action" />
-                            {record.location}
-                          </Box>
-                        </TableCell>
-                        <TableCell>{record.ip}</TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <AccessTime fontSize="small" color="action" />
-                            {new Date(record.loginTime).toLocaleString()}
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={getStatusText(record.status)}
-                            color={getStatusColor(record.status) as any}
-                            size="small"
-                            icon={record.status === 'success' ? <CheckCircle /> : <Error />}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </Paper>
-        </TabPanel>
+        {activeTab === '4' && (
+          <div style={{ padding: 24 }}>
+            <Card
+              title={
+                <Space>
+                  <HistoryOutlined />
+                  登录历史
+                </Space>
+              }
+            >
+              {loginHistoryLoading ? (
+                <div style={{ textAlign: 'center', padding: 24 }}>
+                  <Spin />
+                </div>
+              ) : (
+                <Table
+                  dataSource={loginHistory}
+                  columns={[
+                    {
+                      title: '设备',
+                      dataIndex: 'device',
+                      render: (text, record) => (
+                        <Space>
+                          {getDeviceIcon(record.userAgent)}
+                          {text}
+                        </Space>
+                      ),
+                    },
+                    {
+                      title: '位置',
+                      dataIndex: 'location',
+                      render: (text) => (
+                        <Space>
+                          <EnvironmentOutlined />
+                          {text}
+                        </Space>
+                      ),
+                    },
+                    {
+                      title: 'IP地址',
+                      dataIndex: 'ip',
+                    },
+                    {
+                      title: '登录时间',
+                      dataIndex: 'loginTime',
+                      render: (text) => (
+                        <Space>
+                          <ClockCircleOutlined />
+                          {new Date(text).toLocaleString()}
+                        </Space>
+                      ),
+                    },
+                    {
+                      title: '状态',
+                      dataIndex: 'status',
+                      render: (status) => (
+                        <Tag
+                          icon={status === 'success' ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                          color={getStatusColor(status)}
+                        >
+                          {getStatusText(status)}
+                        </Tag>
+                      ),
+                    },
+                  ]}
+                  rowKey="id"
+                />
+              )}
+            </Card>
+          </div>
+        )}
       </Card>
-    </Box>
+    </div>
   );
 };
 

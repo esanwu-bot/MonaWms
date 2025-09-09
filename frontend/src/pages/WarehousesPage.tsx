@@ -1,48 +1,51 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  Typography,
-  Button,
   Card,
-  CardContent,
+  Button,
+  Input,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Grid,
+  Tag,
+  Modal,
+  Form,
+  Select,
+  Space,
+  Typography,
+  Divider,
   Alert,
-  CircularProgress,
+  Spin,
   Tooltip,
-  TablePagination,
-  InputAdornment,
-} from '@mui/material';
+  Pagination,
+  Row,
+  Col,
+  message,
+} from 'antd';
 import {
-  Add,
-  Edit,
-  Delete,
-  Search,
-  Warehouse as WarehouseIcon,
-  LocationOn,
-  Phone,
-  Person,
-} from '@mui/icons-material';
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SearchOutlined,
+  HomeOutlined,
+  PhoneOutlined,
+  UserOutlined,
+  ExclamationCircleOutlined,
+} from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
-import type { Warehouse, CreateWarehouseRequest, UpdateWarehouseRequest, PaginatedResponse } from '../types/api';
+import type {
+  Warehouse,
+  CreateWarehouseRequest,
+  UpdateWarehouseRequest,
+  PaginatedResponse,
+  ApiResponse,
+} from '../types/api';
+
+const { Title, Text } = Typography;
+const { Option } = Select;
+const { confirm } = Modal;
 
 // 表单验证模式
 const warehouseSchema = z.object({
@@ -71,6 +74,7 @@ const WarehouseDialog: React.FC<WarehouseDialogProps> = ({
   onSubmit,
   loading = false,
 }) => {
+  const [form] = Form.useForm();
   const {
     control,
     handleSubmit,
@@ -98,182 +102,193 @@ const WarehouseDialog: React.FC<WarehouseDialogProps> = ({
         contactPerson: warehouse?.contactPerson || '',
         contactPhone: warehouse?.contactPhone || '',
       });
+      form.setFieldsValue({
+        code: warehouse?.code || '',
+        name: warehouse?.name || '',
+        description: warehouse?.description || '',
+        address: warehouse?.address || '',
+        contactPerson: warehouse?.contactPerson || '',
+        contactPhone: warehouse?.contactPhone || '',
+      });
     }
-  }, [open, warehouse, reset]);
+  }, [open, warehouse, reset, form]);
 
   const handleFormSubmit = (data: WarehouseFormData) => {
     onSubmit(data);
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <WarehouseIcon />
+    <Modal
+      title={
+        <Space>
+          <HomeOutlined />
           {warehouse ? '编辑仓库' : '新增仓库'}
-        </Box>
-      </DialogTitle>
-      <DialogContent>
-        <Box component="form" sx={{ mt: 2 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+        </Space>
+      }
+      open={open}
+      onCancel={onClose}
+      width={800}
+      footer={[
+        <Button key="back" onClick={onClose}>
+          取消
+        </Button>,
+        <Button
+          key="submit"
+          type="primary"
+          loading={loading}
+          onClick={() => {
+            form.validateFields().then(values => {
+              handleSubmit(onSubmit)(values);
+            });
+          }}
+        >
+          {loading ? '保存中...' : '保存'}
+        </Button>,
+      ]}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit(handleFormSubmit)}
+      >
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              label="仓库编码"
+              name="code"
+              validateStatus={errors.code ? 'error' : ''}
+              help={errors.code?.message}
+            >
               <Controller
                 name="code"
                 control={control}
                 render={({ field }) => (
-                  <TextField
+                  <Input
                     {...field}
-                    fullWidth
-                    label="仓库编码"
-                    required
-                    error={!!errors.code}
-                    helperText={errors.code?.message}
+                    placeholder="请输入仓库编码"
                     disabled={loading}
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="仓库名称"
+              name="name"
+              validateStatus={errors.name ? 'error' : ''}
+              help={errors.name?.message}
+            >
               <Controller
                 name="name"
                 control={control}
                 render={({ field }) => (
-                  <TextField
+                  <Input
                     {...field}
-                    fullWidth
-                    label="仓库名称"
-                    required
-                    error={!!errors.name}
-                    helperText={errors.name?.message}
+                    placeholder="请输入仓库名称"
                     disabled={loading}
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12}>
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item
+              label="描述"
+              name="description"
+            >
               <Controller
                 name="description"
                 control={control}
                 render={({ field }) => (
-                  <TextField
+                  <Input.TextArea
                     {...field}
-                    fullWidth
-                    label="描述"
-                    multiline
                     rows={3}
-                    error={!!errors.description}
-                    helperText={errors.description?.message}
+                    placeholder="请输入描述"
                     disabled={loading}
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12}>
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item
+              label="地址"
+              name="address"
+            >
               <Controller
                 name="address"
                 control={control}
                 render={({ field }) => (
-                  <TextField
+                  <Input
                     {...field}
-                    fullWidth
-                    label="地址"
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <LocationOn />
-                        </InputAdornment>
-                      ),
-                    }}
-                    error={!!errors.address}
-                    helperText={errors.address?.message}
+                    prefix={<HomeOutlined />}
+                    placeholder="请输入地址"
                     disabled={loading}
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="联系人"
+              name="contactPerson"
+            >
               <Controller
                 name="contactPerson"
                 control={control}
                 render={({ field }) => (
-                  <TextField
+                  <Input
                     {...field}
-                    fullWidth
-                    label="联系人"
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Person />
-                        </InputAdornment>
-                      ),
-                    }}
-                    error={!!errors.contactPerson}
-                    helperText={errors.contactPerson?.message}
+                    prefix={<UserOutlined />}
+                    placeholder="请输入联系人"
                     disabled={loading}
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="联系电话"
+              name="contactPhone"
+            >
               <Controller
                 name="contactPhone"
                 control={control}
                 render={({ field }) => (
-                  <TextField
+                  <Input
                     {...field}
-                    fullWidth
-                    label="联系电话"
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Phone />
-                        </InputAdornment>
-                      ),
-                    }}
-                    error={!!errors.contactPhone}
-                    helperText={errors.contactPhone?.message}
+                    prefix={<PhoneOutlined />}
+                    placeholder="请输入联系电话"
                     disabled={loading}
                   />
                 )}
               />
-            </Grid>
-          </Grid>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
-          取消
-        </Button>
-        <Button
-          onClick={handleSubmit(handleFormSubmit)}
-          variant="contained"
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={20} /> : undefined}
-        >
-          {loading ? '保存中...' : '保存'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+            </Form.Item>
+          </Col>
+        </Row>
+      </Form>
+    </Modal>
   );
 };
 
 const WarehousesPage: React.FC = () => {
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | undefined>();
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [warehouseToDelete, setWarehouseToDelete] = useState<Warehouse | undefined>();
 
   const queryClient = useQueryClient();
 
   // 获取仓库列表
   const { data: warehousesData, isLoading } = useQuery({
-    queryKey: queryKeys.warehouses.list({ page: page + 1, pageSize, search }),
+    queryKey: ['warehouses', { page, pageSize, search }],
     queryFn: async () => {
-      const response = await api.get<PaginatedResponse<Warehouse[]>>('/warehouses', {
-        params: { page: page + 1, pageSize, search },
+      const response = await api.get<ApiResponse<PaginatedResponse<Warehouse[]>>>('/warehouses', {
+        params: { page, pageSize, search },
       });
       return response.data;
     },
@@ -289,6 +304,10 @@ const WarehousesPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.warehouses.all });
       setDialogOpen(false);
       setSelectedWarehouse(undefined);
+      message.success('仓库创建成功');
+    },
+    onError: () => {
+      message.error('仓库创建失败');
     },
   });
 
@@ -302,6 +321,10 @@ const WarehousesPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.warehouses.all });
       setDialogOpen(false);
       setSelectedWarehouse(undefined);
+      message.success('仓库更新成功');
+    },
+    onError: () => {
+      message.error('仓库更新失败');
     },
   });
 
@@ -312,8 +335,10 @@ const WarehousesPage: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.warehouses.all });
-      setDeleteConfirmOpen(false);
-      setWarehouseToDelete(undefined);
+      message.success('仓库删除成功');
+    },
+    onError: () => {
+      message.error('仓库删除失败');
     },
   });
 
@@ -328,8 +353,28 @@ const WarehousesPage: React.FC = () => {
   };
 
   const handleDelete = (warehouse: Warehouse) => {
-    setWarehouseToDelete(warehouse);
-    setDeleteConfirmOpen(true);
+    confirm({
+      title: '确认删除',
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <>
+          <Alert
+            message="警告"
+            description="删除操作不可恢复，请谨慎操作！"
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+          <Text>确定要删除仓库 "{warehouse.name}" 吗？</Text>
+        </>
+      ),
+      okText: '确认删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk() {
+        return deleteMutation.mutateAsync(warehouse.id);
+      },
+    });
   };
 
   const handleSubmit = (data: WarehouseFormData) => {
@@ -340,149 +385,139 @@ const WarehousesPage: React.FC = () => {
     }
   };
 
-  const handleConfirmDelete = () => {
-    if (warehouseToDelete) {
-      deleteMutation.mutate(warehouseToDelete.id);
-    }
-  };
-
-  const handlePageChange = (_: unknown, newPage: number) => {
+  const handlePageChange = (newPage: number, newPageSize: number) => {
     setPage(newPage);
+    setPageSize(newPageSize);
   };
 
-  const handlePageSizeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setPageSize(parseInt(event.target.value, 10));
-    setPage(0);
-  };
+  const warehouses = warehousesData?.data?.data || [];
+  const total = warehousesData?.data?.pagination?.total || 0;
 
-  const warehouses = warehousesData?.data?.list || [];
-  const pagination = warehousesData?.data?.pagination;
+  const columns = [
+    {
+      title: '仓库编码',
+      dataIndex: 'code',
+      key: 'code',
+    },
+    {
+      title: '仓库名称',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text: string) => (
+        <Space>
+          <HomeOutlined />
+          {text}
+        </Space>
+      ),
+    },
+    {
+      title: '地址',
+      dataIndex: 'address',
+      key: 'address',
+      render: (text: string) => text || '-',
+    },
+    {
+      title: '联系人',
+      dataIndex: 'contactPerson',
+      key: 'contactPerson',
+      render: (text: string) => text || '-',
+    },
+    {
+      title: '联系电话',
+      dataIndex: 'contactPhone',
+      key: 'contactPhone',
+      render: (text: string) => text || '-',
+    },
+    {
+      title: '状态',
+      dataIndex: 'isActive',
+      key: 'isActive',
+      render: (isActive: boolean) => (
+        <Tag color={isActive ? 'success' : 'default'}>
+          {isActive ? '启用' : '禁用'}
+        </Tag>
+      ),
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      render: (date: string) => new Date(date).toLocaleDateString(),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      render: (_: any, record: Warehouse) => (
+        <Space size="middle">
+          <Tooltip title="编辑">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
+            />
+          </Tooltip>
+          <Tooltip title="删除">
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
+            />
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+    <div style={{ padding: 24 }}>
+      <Title level={3} style={{ marginBottom: 24 }}>
         仓库管理
-      </Typography>
+      </Title>
 
       {/* 操作栏 */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-            <TextField
-              placeholder="搜索仓库..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ minWidth: 300 }}
-            />
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={handleCreate}
-            >
-              新增仓库
-            </Button>
-          </Box>
-        </CardContent>
+      <Card style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <Input
+            placeholder="搜索仓库..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            prefix={<SearchOutlined />}
+            style={{ width: 300 }}
+          />
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleCreate}
+          >
+            新增仓库
+          </Button>
+        </div>
       </Card>
 
       {/* 仓库列表 */}
       <Card>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>仓库编码</TableCell>
-                <TableCell>仓库名称</TableCell>
-                <TableCell>地址</TableCell>
-                <TableCell>联系人</TableCell>
-                <TableCell>联系电话</TableCell>
-                <TableCell>状态</TableCell>
-                <TableCell>创建时间</TableCell>
-                <TableCell align="center">操作</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={8} align="center">
-                    <CircularProgress />
-                  </TableCell>
-                </TableRow>
-              ) : warehouses.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} align="center">
-                    <Typography color="textSecondary">暂无数据</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                warehouses.map((warehouse) => (
-                  <TableRow key={warehouse.id} hover>
-                    <TableCell>{warehouse.code}</TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <WarehouseIcon fontSize="small" color="primary" />
-                        {warehouse.name}
-                      </Box>
-                    </TableCell>
-                    <TableCell>{warehouse.address || '-'}</TableCell>
-                    <TableCell>{warehouse.contactPerson || '-'}</TableCell>
-                    <TableCell>{warehouse.contactPhone || '-'}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={warehouse.isActive ? '启用' : '禁用'}
-                        color={warehouse.isActive ? 'success' : 'default'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {new Date(warehouse.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell align="center">
-                      <Tooltip title="编辑">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEdit(warehouse)}
-                        >
-                          <Edit />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="删除">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDelete(warehouse)}
-                        >
-                          <Delete />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        
-        {pagination && (
-          <TablePagination
-            component="div"
-            count={pagination.total}
-            page={page}
-            onPageChange={handlePageChange}
-            rowsPerPage={pageSize}
-            onRowsPerPageChange={handlePageSizeChange}
-            rowsPerPageOptions={[5, 10, 25, 50]}
-            labelRowsPerPage="每页显示："
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} 共 ${count} 条`}
-          />
-        )}
+        <Table
+          columns={columns}
+          dataSource={warehouses}
+          rowKey="id"
+          loading={isLoading}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            onChange: handlePageChange,
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 条`,
+          }}
+          locale={{
+            emptyText: (
+              <div style={{ textAlign: 'center', padding: 40 }}>
+                <Text type="secondary">暂无仓库数据</Text>
+              </div>
+            ),
+          }}
+        />
       </Card>
 
       {/* 新增/编辑对话框 */}
@@ -496,32 +531,7 @@ const WarehousesPage: React.FC = () => {
         onSubmit={handleSubmit}
         loading={createMutation.isPending || updateMutation.isPending}
       />
-
-      {/* 删除确认对话框 */}
-      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
-        <DialogTitle>确认删除</DialogTitle>
-        <DialogContent>
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            删除操作不可恢复，请谨慎操作！
-          </Alert>
-          <Typography>
-            确定要删除仓库 "{warehouseToDelete?.name}" 吗？
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteConfirmOpen(false)}>取消</Button>
-          <Button
-            onClick={handleConfirmDelete}
-            color="error"
-            variant="contained"
-            disabled={deleteMutation.isPending}
-            startIcon={deleteMutation.isPending ? <CircularProgress size={20} /> : undefined}
-          >
-            {deleteMutation.isPending ? '删除中...' : '确认删除'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+    </div>
   );
 };
 

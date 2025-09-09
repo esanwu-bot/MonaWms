@@ -1,16 +1,15 @@
 import { api } from './api';
-import {
+import type {
   Warehouse,
   CreateWarehouseRequest,
   UpdateWarehouseRequest,
   QueryParams,
-  PaginatedResponse,
 } from '../types/api';
 
 // 仓库服务
 export const warehouseService = {
   // 获取仓库列表
-  getWarehouses: async (params?: QueryParams): Promise<PaginatedResponse<Warehouse[]>> => {
+  getWarehouses: async (params?: QueryParams): Promise<any> => {
     const response = await api.get<Warehouse[]>('/warehouses', { params });
     return response.data;
   },

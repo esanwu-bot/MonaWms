@@ -41,10 +41,30 @@ class Category extends Model
         'code',
         'parent_id',
         'description',
+        'status',
         'sort_order',
         'created_at',
         'updated_at'
     ];
+    
+    /**
+     * 状态枚举
+     */
+    const STATUS_ACTIVE = 'active';
+    const STATUS_INACTIVE = 'inactive';
+    
+    /**
+     * 获取状态中文名
+     */
+    public function getStatusTextAttr($value, $data)
+    {
+        $statuses = [
+            self::STATUS_ACTIVE => '启用',
+            self::STATUS_INACTIVE => '禁用'
+        ];
+        
+        return $statuses[$data['status']] ?? '未知';
+    }
     
     /**
      * 关联父分类
@@ -96,6 +116,14 @@ class Category extends Model
         } else {
             $query->where('parent_id', $value);
         }
+    }
+    
+    /**
+     * 搜索器：状态
+     */
+    public function searchStatusAttr($query, $value)
+    {
+        $query->where('status', $value);
     }
     
     /**

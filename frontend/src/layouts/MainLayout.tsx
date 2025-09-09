@@ -1,135 +1,98 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Drawer,
-  AppBar,
-  Toolbar,
-  List,
-  Typography,
-  Divider,
-  IconButton,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Avatar,
-  Menu,
-  MenuItem,
-  Chip,
-  useTheme,
-  useMediaQuery,
-} from '@mui/material';
-import {
-  Menu as MenuIcon,
-  Dashboard,
-  Warehouse,
-  Inventory,
-  Category,
-  ShoppingCart,
-  LocalShipping,
-  Assessment,
-  Settings,
-  AccountCircle,
-  Logout,
-  Person,
-} from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { Layout, Menu, Avatar, Dropdown, Badge, Typography, Divider } from 'antd';
+import type { MenuProps } from 'antd';
+import {
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  DashboardOutlined,
+  HomeOutlined,
+  ShoppingOutlined,
+  AppstoreOutlined,
+  ShoppingCartOutlined,
+  CarOutlined,
+  BarcodeOutlined,
+  SettingOutlined,
+  UserOutlined,
+  LogoutOutlined,
+} from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
+
+const { Header, Sider, Content } = Layout;
 
 const drawerWidth = 240;
 
 // 导航菜单项
 const menuItems = [
   {
-    text: '仪表盘',
-    icon: <Dashboard />,
-    path: '/dashboard',
+    key: '/dashboard',
+    icon: <DashboardOutlined />,
+    label: '仪表盘',
   },
   {
-    text: '仓库管理',
-    icon: <Warehouse />,
-    path: '/warehouses',
+    key: '/warehouses',
+    icon: <HomeOutlined />,
+    label: '仓库管理',
   },
   {
-    text: '产品管理',
-    icon: <Inventory />,
-    path: '/products',
+    key: '/products',
+    icon: <ShoppingOutlined />,
+    label: '产品管理',
   },
   {
-    text: '分类管理',
-    icon: <Category />,
-    path: '/categories',
+    key: '/categories',
+    icon: <AppstoreOutlined />,
+    label: '分类管理',
   },
   {
-    text: '库存管理',
-    icon: <ShoppingCart />,
-    path: '/inventory',
+    key: '/inventory',
+    icon: <ShoppingCartOutlined />,
+    label: '库存管理',
   },
   {
-    text: '入库管理',
-    icon: <LocalShipping />,
-    path: '/inbound',
+    key: '/inbound',
+    icon: <CarOutlined />,
+    label: '入库管理',
   },
   {
-    text: '出库管理',
-    icon: <LocalShipping />,
-    path: '/outbound',
+    key: '/outbound',
+    icon: <CarOutlined />,
+    label: '出库管理',
   },
   {
-    text: '无线备件登记表',
-    icon: <Inventory />,
-    path: '/wireless-spare-parts',
+    key: '/wireless-spare-parts',
+    icon: <ShoppingOutlined />,
+    label: '无线备件登记表',
   },
-  // 报表分析菜单已隐藏
-  // {
-  //   text: '报表分析',
-  //   icon: <Assessment />,
-  //   path: '/reports',
-  // },
   {
-    text: '系统设置',
-    icon: <Settings />,
-    path: '/settings',
+    key: '/serial-numbers',
+    icon: <BarcodeOutlined />,
+    label: '序列号管理',
+  },
+  {
+    key: '/settings',
+    icon: <SettingOutlined />,
+    label: '系统设置',
   },
 ];
 
 const MainLayout: React.FC = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
   
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [collapsed, setCollapsed] = useState(false);
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
-  const handleMenuClick = (path: string) => {
-    navigate(path);
-    if (isMobile) {
-      setMobileOpen(false);
-    }
-  };
-
-  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleProfileMenuClose = () => {
-    setAnchorEl(null);
+  const handleMenuClick = (key: string) => {
+    navigate(key);
   };
 
   const handleLogout = async () => {
-    handleProfileMenuClose();
     await logout();
     navigate('/login');
   };
 
   const handleProfile = () => {
-    handleProfileMenuClose();
     navigate('/profile');
   };
 
@@ -144,198 +107,81 @@ const MainLayout: React.FC = () => {
     return roleMap[role] || role;
   };
 
-  // 获取用户角色颜色
-  const getRoleColor = (role: string) => {
-    const colorMap: Record<string, 'primary' | 'secondary' | 'success' | 'warning'> = {
-      ADMIN: 'primary',
-      MANAGER: 'secondary',
-      OPERATOR: 'success',
-      VIEWER: 'warning',
-    };
-    return colorMap[role] || 'primary';
-  };
-
-  // 侧边栏内容
-  const drawer = (
-    <Box>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div">
-          MonaWMS
-        </Typography>
-      </Toolbar>
-      <Divider />
-      <List>
-        {menuItems.map((item) => {
-          const isActive = location.pathname.startsWith(item.path);
-          return (
-            <ListItem key={item.text} disablePadding>
-              <ListItemButton
-                selected={isActive}
-                onClick={() => handleMenuClick(item.path)}
-                sx={{
-                  '&.Mui-selected': {
-                    backgroundColor: theme.palette.primary.main + '20',
-                    '& .MuiListItemIcon-root': {
-                      color: theme.palette.primary.main,
-                    },
-                    '& .MuiListItemText-primary': {
-                      color: theme.palette.primary.main,
-                      fontWeight: 600,
-                    },
-                  },
-                }}
-              >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItemButton>
-            </ListItem>
-          );
-        })}
-      </List>
-    </Box>
-  );
+  // 用户下拉菜单项
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: '个人资料',
+      onClick: handleProfile,
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: '退出登录',
+      onClick: handleLogout,
+    },
+  ];
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      {/* 应用栏 */}
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider 
+        trigger={null} 
+        collapsible 
+        collapsed={collapsed}
+        width={drawerWidth}
+        breakpoint="lg"
+        onBreakpoint={(broken) => {
+          setCollapsed(broken);
         }}
       >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { md: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
-          
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            仓库管理系统
-          </Typography>
-          
-          {/* 用户信息 */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {user && (
-              <>
-                <Chip
-                  label={getRoleText(user.role)}
-                  color={getRoleColor(user.role)}
-                  size="small"
-                />
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Avatar sx={{ width: 32, height: 32 }}>
-                    {user.fullName?.charAt(0) || user.username?.charAt(0) || 'U'}
-                  </Avatar>
-                  <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
-                    {user.fullName || user.username || '用户'}
-                  </Typography>
-                </Box>
-                <IconButton
-                  size="large"
-                  aria-label="account of current user"
-                  aria-controls="menu-appbar"
-                  aria-haspopup="true"
-                  onClick={handleProfileMenuOpen}
-                  color="inherit"
-                >
-                  <AccountCircle />
-                </IconButton>
-              </>
-            )}
-          </Box>
-        </Toolbar>
-      </AppBar>
-      
-      {/* 用户菜单 */}
-      <Menu
-        id="menu-appbar"
-        anchorEl={anchorEl}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        keepMounted
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        open={Boolean(anchorEl)}
-        onClose={handleProfileMenuClose}
-      >
-        <MenuItem onClick={handleProfile}>
-          <ListItemIcon>
-            <Person fontSize="small" />
-          </ListItemIcon>
-          个人资料
-        </MenuItem>
-        <MenuItem onClick={handleLogout}>
-          <ListItemIcon>
-            <Logout fontSize="small" />
-          </ListItemIcon>
-          退出登录
-        </MenuItem>
-      </Menu>
-
-      {/* 侧边栏 */}
-      <Box
-        component="nav"
-        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
-        aria-label="mailbox folders"
-      >
-        {/* 移动端抽屉 */}
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true, // Better open performance on mobile.
-          }}
-          sx={{
-            display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
-        >
-          {drawer}
-        </Drawer>
-        
-        {/* 桌面端抽屉 */}
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', md: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      </Box>
-
-      {/* 主内容区域 */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: { xs: 2, sm: 3 },
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          minHeight: '100vh',
-          backgroundColor: theme.palette.background.default,
-          overflow: 'auto',
-        }}
-      >
-        <Toolbar />
-        <Box sx={{ maxWidth: '100%', width: '100%' }}>
+        <div style={{ height: 64, padding: 16, display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start' }}>
+          <Typography.Title level={4} style={{ margin: 0, color: '#fff' }}>
+            {collapsed ? 'M' : 'MonaWMS'}
+          </Typography.Title>
+        </div>
+        <Divider style={{ margin: 0, borderColor: 'rgba(255,255,255,0.1)' }} />
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={menuItems}
+          onClick={({ key }) => handleMenuClick(key)}
+        />
+      </Sider>
+      <Layout>
+        <Header style={{ padding: 0, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ paddingLeft: 16 }}>
+            {React.createElement(collapsed ? MenuUnfoldOutlined : MenuFoldOutlined, {
+              className: 'trigger',
+              onClick: () => setCollapsed(!collapsed),
+              style: { fontSize: 18 }
+            })}
+            <span style={{ marginLeft: 16, fontSize: 16 }}>仓库管理系统</span>
+          </div>
+          {user && (
+            <div style={{ display: 'flex', alignItems: 'center', paddingRight: 16 }}>
+              <Badge
+                count={getRoleText(user.role)}
+                style={{ backgroundColor: user.role === 'ADMIN' ? '#1890ff' : '#52c41a' }}
+              >
+                <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                  <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <Avatar style={{ marginRight: 8 }}>
+                      {user.fullName?.charAt(0) || user.username?.charAt(0) || 'U'}
+                    </Avatar>
+                    <span>{user.fullName || user.username || '用户'}</span>
+                  </div>
+                </Dropdown>
+              </Badge>
+            </div>
+          )}
+        </Header>
+        <Content style={{ margin: '24px 16px', padding: 24, background: '#fff', minHeight: 280 }}>
           <Outlet />
-        </Box>
-      </Box>
-    </Box>
+        </Content>
+      </Layout>
+    </Layout>
   );
 };
 

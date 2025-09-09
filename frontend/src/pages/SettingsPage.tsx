@@ -1,89 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
 import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Grid,
-  TextField,
-  Button,
-  Switch,
-  FormControlLabel,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  ListItemSecondaryAction,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Chip,
-  Alert,
-  CircularProgress,
-  Tabs,
-  Tab,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Avatar,
-  Tooltip,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Slider,
-  RadioGroup,
-  Radio,
-  FormLabel,
-  Checkbox,
-  FormGroup,
-} from '@mui/material';
-import {
-  Settings,
-  Security,
-  Notifications,
-  Storage,
-  Language,
-  Palette,
-  Email,
-  Sms,
-  Backup,
-  CloudUpload,
-  Delete,
-  Edit,
-  Add,
-  Save,
-  Refresh,
-  ExpandMore,
-  Person,
-  Group,
-  VpnKey,
-  AdminPanelSettings,
-  Business,
-  LocationOn,
-  Phone,
-  Public,
-  Schedule,
-  Warning,
-  CheckCircle,
-  Error,
-  Info,
-} from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { api } from '../services/api';
+  SettingOutlined,
+  SecurityScanOutlined,
+  BellOutlined,
+  DatabaseOutlined,
+  GlobalOutlined,
+  MailOutlined,
+  MessageOutlined,
+  CloudUploadOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  SaveOutlined,
+  ReloadOutlined,
+  DownOutlined,
+  UserOutlined,
+  TeamOutlined,
+  KeyOutlined,
+  BankOutlined,
+  EnvironmentOutlined,
+  PhoneOutlined,
+  GlobalOutlined as GlobeOutlined,
+  ClockCircleOutlined,
+  WarningOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  InfoCircleOutlined,
+} from '@ant-design/icons';
+import { Modal, Form, Input, Select as AntSelect, Button as AntButton } from 'antd';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -103,9 +48,9 @@ function TabPanel(props: TabPanelProps) {
       {...other}
     >
       {value === index && (
-        <Box sx={{ p: 3 }}>
+        <div style={{ padding: 24 }}>
           {children}
-        </Box>
+        </div>
       )}
     </div>
   );
@@ -117,6 +62,40 @@ function a11yProps(index: number) {
     'aria-controls': `settings-tabpanel-${index}`,
   };
 }
+
+import {
+  Card,
+  Row,
+  Col,
+  Button,
+  Switch,
+  Select,
+  Divider,
+  List,
+  Alert,
+  Spin,
+  Table,
+  Avatar,
+  Tooltip,
+  Collapse,
+  Slider,
+  Radio,
+  Checkbox,
+  Typography,
+  Space,
+  Tag,
+  Tabs,
+} from 'antd';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { api } from '../services/api';
+
+const { Title } = Typography;
+const { Panel } = Collapse;
+const { TabPane } = Tabs;
+const { Option } = Select;
 
 // 系统设置表单验证
 const systemSettingsSchema = z.object({
@@ -187,201 +166,134 @@ interface UserDialogProps {
   loading?: boolean;
 }
 
-const UserDialog: React.FC<UserDialogProps> = ({
-  open,
-  user,
-  onClose,
-  onSubmit,
-  loading = false,
-}) => {
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<UserFormData>({
-    resolver: zodResolver(userFormSchema),
-    defaultValues: {
-      username: user?.username || '',
-      email: user?.email || '',
-      fullName: user?.fullName || '',
-      phone: user?.phone || '',
-      role: user?.role || '',
-      department: user?.department || '',
-      isActive: user?.isActive ?? true,
-    },
-  });
+// UserDialog component with Ant Design
+const UserDialog: React.FC<UserDialogProps> = ({ open, onClose, user, onSubmit, loading }) => {
+  const [form] = Form.useForm();
+  const [submitLoading, setSubmitLoading] = useState(false);
 
-  React.useEffect(() => {
-    if (open) {
-      reset({
-        username: user?.username || '',
-        email: user?.email || '',
-        fullName: user?.fullName || '',
-        phone: user?.phone || '',
-        role: user?.role || '',
-        department: user?.department || '',
-        isActive: user?.isActive ?? true,
+  useEffect(() => {
+    if (open && user) {
+      form.setFieldsValue({
+        username: user.username || '',
+        email: user.email || '',
+        fullName: user.fullName || '',
+        phone: user.phone || '',
+        role: user.role || 'user',
+        department: user.department || '',
+        isActive: user.isActive
       });
+    } else if (open) {
+      form.resetFields();
     }
-  }, [open, user, reset]);
+  }, [open, user, form]);
 
-  const handleFormSubmit = (data: UserFormData) => {
-    onSubmit(data);
+  const handleSubmit = async (values: any) => {
+    setSubmitLoading(true);
+    try {
+      await onSubmit(values);
+      onClose();
+    } catch (error) {
+      console.error('Error saving user:', error);
+    } finally {
+      setSubmitLoading(false);
+    }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Person />
-          {user ? '编辑用户' : '新增用户'}
-        </Box>
-      </DialogTitle>
-      <DialogContent>
-        <Box component="form" sx={{ mt: 2 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="username"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="用户名"
-                    required
-                    error={!!errors.username}
-                    helperText={errors.username?.message}
-                    disabled={loading || !!user}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="email"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="邮箱"
-                    type="email"
-                    required
-                    error={!!errors.email}
-                    helperText={errors.email?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Controller
-                name="fullName"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="姓名"
-                    required
-                    error={!!errors.fullName}
-                    helperText={errors.fullName?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="phone"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="电话"
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="role"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.role}>
-                    <InputLabel>角色</InputLabel>
-                    <Select
-                      {...field}
-                      label="角色"
-                      disabled={loading}
-                    >
-                      <MenuItem value="admin">管理员</MenuItem>
-                      <MenuItem value="manager">经理</MenuItem>
-                      <MenuItem value="operator">操作员</MenuItem>
-                      <MenuItem value="viewer">查看者</MenuItem>
-                    </Select>
-                    {errors.role && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                        {errors.role.message}
-                      </Typography>
-                    )}
-                  </FormControl>
-                )}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Controller
-                name="department"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="部门"
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Controller
-                name="isActive"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        {...field}
-                        checked={field.value}
-                        disabled={loading}
-                      />
-                    }
-                    label="启用用户"
-                  />
-                )}
-              />
-            </Grid>
-          </Grid>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+    <Modal
+      title={user ? '编辑用户' : '添加用户'}
+      open={open}
+      onCancel={onClose}
+      footer={[
+        <Button key="cancel" onClick={onClose}>
           取消
-        </Button>
+        </Button>,
         <Button
-          onClick={handleSubmit(handleFormSubmit)}
-          variant="contained"
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={20} /> : undefined}
+          key="submit"
+          type="primary"
+          loading={submitLoading || loading}
+          onClick={() => form.submit()}
         >
-          {loading ? '保存中...' : '保存'}
+          保存
         </Button>
-      </DialogActions>
-    </Dialog>
+      ]}
+      width={600}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={{
+          role: 'user',
+          isActive: true
+        }}
+      >
+        <Form.Item
+          label="用户名"
+          name="username"
+          rules={[
+            { required: true, message: '请输入用户名' },
+            { min: 3, message: '用户名至少3个字符' }
+          ]}
+        >
+          <Input placeholder="请输入用户名" />
+        </Form.Item>
+
+        <Form.Item
+          label="邮箱"
+          name="email"
+          rules={[
+            { required: true, message: '请输入邮箱' },
+            { type: 'email', message: '请输入有效的邮箱地址' }
+          ]}
+        >
+          <Input placeholder="请输入邮箱" />
+        </Form.Item>
+
+        <Form.Item
+          label="姓名"
+          name="fullName"
+          rules={[{ required: true, message: '请输入姓名' }]}
+        >
+          <Input placeholder="请输入姓名" />
+        </Form.Item>
+
+        <Form.Item
+          label="电话"
+          name="phone"
+        >
+          <Input placeholder="请输入电话" />
+        </Form.Item>
+
+        <Form.Item
+          label="角色"
+          name="role"
+          rules={[{ required: true, message: '请选择角色' }]}
+        >
+          <Select placeholder="请选择角色">
+            <Select.Option value="admin">管理员</Select.Option>
+            <Select.Option value="manager">经理</Select.Option>
+            <Select.Option value="operator">操作员</Select.Option>
+            <Select.Option value="viewer">查看者</Select.Option>
+          </Select>
+        </Form.Item>
+
+        <Form.Item
+          label="部门"
+          name="department"
+        >
+          <Input placeholder="请输入部门" />
+        </Form.Item>
+
+        <Form.Item
+          label="状态"
+          name="isActive"
+          valuePropName="checked"
+        >
+          <Switch checkedChildren="启用" unCheckedChildren="禁用" />
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 };
 
@@ -574,9 +486,9 @@ const SettingsPage: React.FC = () => {
         {/* 基本设置 */}
         <TabPanel value={tabValue} index={0}>
           <Box component="form" onSubmit={handleSystemSubmit(handleSystemSettingsSubmit)}>
-            <Grid container spacing={3}>
+            <Row gutter={[24, 24]}>
               {/* 公司信息 */}
-              <Grid item xs={12}>
+              <Col span={24}>
                 <Accordion defaultExpanded>
                   <AccordionSummary expandIcon={<ExpandMore />}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -585,8 +497,8 @@ const SettingsPage: React.FC = () => {
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
+                    <Row gutter={[16, 16]}>
+                      <Col xs={24} sm={12}>
                         <Controller
                           name="companyName"
                           control={systemControl}
@@ -600,9 +512,9 @@ const SettingsPage: React.FC = () => {
                               helperText={systemErrors.companyName?.message}
                             />
                           )}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
+                        />  
+                      </Col>
+                      <Col xs={24} sm={12}>
                         <Controller
                           name="companyPhone"
                           control={systemControl}
@@ -616,9 +528,9 @@ const SettingsPage: React.FC = () => {
                               helperText={systemErrors.companyPhone?.message}
                             />
                           )}
-                        />
-                      </Grid>
-                      <Grid item xs={12}>
+                        />  
+                      </Col>
+                      <Col span={24}>
                         <Controller
                           name="companyAddress"
                           control={systemControl}
@@ -632,9 +544,9 @@ const SettingsPage: React.FC = () => {
                               helperText={systemErrors.companyAddress?.message}
                             />
                           )}
-                        />
-                      </Grid>
-                      <Grid item xs={12}>
+                        />  
+                      </Col>
+                      <Col span={24}>
                         <Controller
                           name="companyEmail"
                           control={systemControl}
@@ -649,15 +561,15 @@ const SettingsPage: React.FC = () => {
                               helperText={systemErrors.companyEmail?.message}
                             />
                           )}
-                        />
-                      </Grid>
-                    </Grid>
+                        />  
+                      </Col>
+                    </Row>
                   </AccordionDetails>
                 </Accordion>
-              </Grid>
+              </Col>
 
               {/* 系统配置 */}
-              <Grid item xs={12}>
+              <Col span={24}>
                 <Accordion defaultExpanded>
                   <AccordionSummary expandIcon={<ExpandMore />}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -666,8 +578,8 @@ const SettingsPage: React.FC = () => {
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
+                    <Row gutter={[16, 16]}>
+                      <Col xs={24} sm={12}>
                         <Controller
                           name="timezone"
                           control={systemControl}
@@ -681,9 +593,9 @@ const SettingsPage: React.FC = () => {
                               </Select>
                             </FormControl>
                           )}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
+                        />  
+                      </Col>
+                      <Col xs={24} sm={12}>
                         <Controller
                           name="language"
                           control={systemControl}
@@ -697,9 +609,9 @@ const SettingsPage: React.FC = () => {
                               </Select>
                             </FormControl>
                           )}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
+                        />  
+                      </Col>
+                      <Col xs={24} sm={12}>
                         <Controller
                           name="currency"
                           control={systemControl}
@@ -713,9 +625,9 @@ const SettingsPage: React.FC = () => {
                               </Select>
                             </FormControl>
                           )}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
+                        />  
+                      </Col>
+                      <Col xs={24} sm={12}>
                         <Controller
                           name="dateFormat"
                           control={systemControl}
@@ -729,15 +641,15 @@ const SettingsPage: React.FC = () => {
                               </Select>
                             </FormControl>
                           )}
-                        />
-                      </Grid>
-                    </Grid>
+                        />  
+                      </Col>
+                    </Row>
                   </AccordionDetails>
                 </Accordion>
-              </Grid>
+              </Col>
 
               {/* 备份设置 */}
-              <Grid item xs={12}>
+              <Col span={24}>
                 <Accordion>
                   <AccordionSummary expandIcon={<ExpandMore />}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -746,8 +658,8 @@ const SettingsPage: React.FC = () => {
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12}>
+                    <Row gutter={[16, 16]}>
+                      <Col span={24}>
                         <Controller
                           name="autoBackup"
                           control={systemControl}
@@ -762,9 +674,9 @@ const SettingsPage: React.FC = () => {
                               label="启用自动备份"
                             />
                           )}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
+                        />  
+                      </Col>
+                      <Col xs={24} sm={12}>
                         <Controller
                           name="backupInterval"
                           control={systemControl}
@@ -779,9 +691,9 @@ const SettingsPage: React.FC = () => {
                               onChange={(e) => field.onChange(Number(e.target.value))}
                             />
                           )}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
+                        />  
+                      </Col>
+                      <Col xs={24} sm={12}>
                         <Controller
                           name="maxBackupFiles"
                           control={systemControl}
@@ -796,14 +708,14 @@ const SettingsPage: React.FC = () => {
                               onChange={(e) => field.onChange(Number(e.target.value))}
                             />
                           )}
-                        />
-                      </Grid>
-                    </Grid>
+                        />  
+                      </Col>
+                    </Row>
                   </AccordionDetails>
                 </Accordion>
-              </Grid>
+              </Col>
 
-              <Grid item xs={12}>
+              <Col span={24}>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
                   <Button variant="outlined">
                     重置
@@ -817,17 +729,17 @@ const SettingsPage: React.FC = () => {
                     {saveLoading ? '保存中...' : '保存设置'}
                   </Button>
                 </Box>
-              </Grid>
-            </Grid>
+              </Col>
+            </Row>
           </Box>
         </TabPanel>
 
         {/* 通知设置 */}
         <TabPanel value={tabValue} index={1}>
           <Box component="form" onSubmit={handleNotificationSubmit(handleNotificationSettingsSubmit)}>
-            <Grid container spacing={3}>
+            <Row gutter={[24, 24]}>
               {/* 通知开关 */}
-              <Grid item xs={12}>
+              <Col span={24}>
                 <Accordion defaultExpanded>
                   <AccordionSummary expandIcon={<ExpandMore />}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -885,10 +797,10 @@ const SettingsPage: React.FC = () => {
                     </FormGroup>
                   </AccordionDetails>
                 </Accordion>
-              </Grid>
+              </Col>
 
               {/* 通知类型 */}
-              <Grid item xs={12}>
+              <Col span={24}>
                 <Accordion defaultExpanded>
                   <AccordionSummary expandIcon={<ExpandMore />}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -946,9 +858,9 @@ const SettingsPage: React.FC = () => {
                     </FormGroup>
                   </AccordionDetails>
                 </Accordion>
-              </Grid>
+              </Col>
 
-              <Grid item xs={12}>
+              <Col span={24}>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
                   <Button variant="outlined">
                     重置
@@ -962,8 +874,8 @@ const SettingsPage: React.FC = () => {
                     {saveLoading ? '保存中...' : '保存设置'}
                   </Button>
                 </Box>
-              </Grid>
-            </Grid>
+              </Col>
+            </Row>
           </Box>
         </TabPanel>
 
@@ -1075,13 +987,13 @@ const SettingsPage: React.FC = () => {
 
         {/* 安全设置 */}
         <TabPanel value={tabValue} index={3}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
+          <Row gutter={[24, 24]}>
+            <Col span={24}>
               <Alert severity="info">
                 安全设置功能正在开发中，敬请期待。
               </Alert>
-            </Grid>
-          </Grid>
+            </Col>
+          </Row>
         </TabPanel>
       </Card>
 

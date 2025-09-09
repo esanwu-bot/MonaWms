@@ -168,6 +168,30 @@ Route::group('api', function () {
             Route::get('orders', 'ReportsController/orders');        // 订单报表
         });
         
+        // 无线备件管理
+        Route::group('wireless-spare-parts', function () {
+            Route::get('', 'WirelessSparePartController/index');        // 无线备件列表
+            Route::post('', 'WirelessSparePartController/save');        // 创建无线备件
+            Route::get(':id', 'WirelessSparePartController/read');      // 无线备件详情
+            Route::put(':id', 'WirelessSparePartController/update');    // 更新无线备件
+            Route::delete(':id', 'WirelessSparePartController/delete'); // 删除无线备件
+            Route::post('batch-delete', 'WirelessSparePartController/batchDelete'); // 批量删除
+        });
+        
+        // 序列号管理
+        Route::group('serial-numbers', function () {
+            Route::get('', 'SerialNumberController/index');             // 序列号列表
+            Route::post('', 'SerialNumberController/save');             // 创建序列号
+            Route::get(':id', 'SerialNumberController/read');           // 序列号详情
+            Route::put(':id', 'SerialNumberController/update');         // 更新序列号
+            Route::delete(':id', 'SerialNumberController/delete');      // 删除序列号
+            Route::get('query-by-barcode', 'SerialNumberController/queryByBarcode'); // 通过条码查询
+            Route::post('bulk-import', 'SerialNumberController/bulkImport'); // 批量导入
+            Route::post('register-device', 'SerialNumberController/registerDevice'); // 设备登记
+            Route::post('upload-barcode', 'SerialNumberController/uploadBarcode'); // 上传条码图片
+            Route::post('recognize-barcode', 'SerialNumberController/recognizeBarcode'); // 识别条码图片
+        });
+        
     })->middleware(['auth']); // 需要认证的路由组
     
 })->middleware(['cors']); // API路由组，添加CORS中间件

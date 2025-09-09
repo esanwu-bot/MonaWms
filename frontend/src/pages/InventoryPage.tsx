@@ -1,55 +1,38 @@
 import React, { useState } from 'react';
 import {
-  Box,
+  Card,
   Typography,
   Button,
-  Card,
-  CardContent,
-  IconButton,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Grid,
-  Alert,
-  CircularProgress,
-  Tooltip,
-  InputAdornment,
-  FormControl,
-  InputLabel,
+  Input,
   Select,
-  MenuItem,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
-  Paper,
+  Pagination,
   Tabs,
-  Tab,
+  Tag,
+  Avatar,
+  Modal,
+  Form,
+  Alert,
+  Spin,
+  Space,
   Divider,
-  Stack,
-} from '@mui/material';
+  Tooltip,
+  message
+} from 'antd';
 import {
-  Search,
-  Inventory,
-  Add,
-  Remove,
-  SwapHoriz,
-  Refresh,
-  FilterList,
-  GetApp,
-  Warning,
-  CheckCircle,
-  Error,
-  TrendingUp,
-  TrendingDown,
-  Storage,
-} from '@mui/icons-material';
+  SearchOutlined,
+  PlusOutlined,
+  SwapOutlined,
+  SyncOutlined,
+  FilterOutlined,
+  DownloadOutlined,
+  WarningOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  DatabaseOutlined
+} from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -64,6 +47,10 @@ import type {
   InventoryTransferRequest,
   InventoryQueryParams,
 } from '../types/api';
+
+const { Title, Text } = Typography;
+const { Option } = Select;
+const { TabPane } = Tabs;
 
 // 库存调整表单验证
 const adjustmentSchema = z.object({
@@ -88,26 +75,6 @@ const transferSchema = z.object({
 type AdjustmentFormData = z.infer<typeof adjustmentSchema>;
 type TransferFormData = z.infer<typeof transferSchema>;
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-const TabPanel: React.FC<TabPanelProps> = ({ children, value, index, ...other }) => {
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`inventory-tabpanel-${index}`}
-      aria-labelledby={`inventory-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-};
-
 interface InventoryAdjustmentDialogProps {
   open: boolean;
   onClose: () => void;
@@ -121,6 +88,7 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
   onSubmit,
   loading = false,
 }) => {
+  const [form] = Form.useForm();
   const {
     control,
     handleSubmit,
@@ -176,195 +144,139 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
   React.useEffect(() => {
     if (open) {
       reset();
+      form.resetFields();
     }
-  }, [open, reset]);
+  }, [open, reset, form]);
 
   const handleFormSubmit = (data: AdjustmentFormData) => {
     onSubmit(data);
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Inventory />
+    <Modal
+      title={
+        <Space>
+          <DatabaseOutlined />
           库存调整
-        </Box>
-      </DialogTitle>
-      <DialogContent>
-        <Box component="form" sx={{ mt: 2 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="productId"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.productId}>
-                    <InputLabel>产品</InputLabel>
-                    <Select
-                      {...field}
-                      label="产品"
-                      disabled={loading}
-                    >
-                      {productsData?.map((product) => (
-                        <MenuItem key={product.id} value={product.id}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography>{product.name}</Typography>
-                            <Chip label={product.sku} size="small" variant="outlined" />
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {errors.productId && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                        {errors.productId.message}
-                      </Typography>
-                    )}
-                  </FormControl>
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="warehouseId"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.warehouseId}>
-                    <InputLabel>仓库</InputLabel>
-                    <Select
-                      {...field}
-                      label="仓库"
-                      disabled={loading}
-                    >
-                      {warehousesData?.map((warehouse) => (
-                        <MenuItem key={warehouse.id} value={warehouse.id}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Storage fontSize="small" />
-                            <Typography>{warehouse.name}</Typography>
-                            <Chip label={warehouse.code} size="small" variant="outlined" />
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {errors.warehouseId && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                        {errors.warehouseId.message}
-                      </Typography>
-                    )}
-                  </FormControl>
-                )}
-              />
-            </Grid>
-            {currentStock && (
-              <Grid item xs={12}>
-                <Alert severity="info">
-                  当前库存：{currentStock.quantity} {currentStock.product?.unit || '件'}
-                </Alert>
-              </Grid>
-            )}
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="adjustmentType"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.adjustmentType}>
-                    <InputLabel>调整类型</InputLabel>
-                    <Select
-                      {...field}
-                      label="调整类型"
-                      disabled={loading}
-                    >
-                      <MenuItem value="increase">
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <TrendingUp color="success" />
-                          增加库存
-                        </Box>
-                      </MenuItem>
-                      <MenuItem value="decrease">
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <TrendingDown color="error" />
-                          减少库存
-                        </Box>
-                      </MenuItem>
-                    </Select>
-                    {errors.adjustmentType && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                        {errors.adjustmentType.message}
-                      </Typography>
-                    )}
-                  </FormControl>
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="quantity"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="调整数量"
-                    type="number"
-                    required
-                    error={!!errors.quantity}
-                    helperText={errors.quantity?.message}
-                    disabled={loading}
-                    onChange={(e) => field.onChange(Number(e.target.value))}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Controller
-                name="reason"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="调整原因"
-                    required
-                    error={!!errors.reason}
-                    helperText={errors.reason?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Controller
-                name="remark"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="备注"
-                    multiline
-                    rows={3}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-          </Grid>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+        </Space>
+      }
+      open={open}
+      onCancel={onClose}
+      width={800}
+      footer={[
+        <Button key="back" onClick={onClose}>
           取消
-        </Button>
+        </Button>,
         <Button
-          onClick={handleSubmit(handleFormSubmit)}
-          variant="contained"
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={20} /> : undefined}
+          key="submit"
+          type="primary"
+          loading={loading}
+          onClick={() => {
+            form.validateFields().then(values => {
+              handleSubmit(onSubmit)(values);
+            });
+          }}
         >
-          {loading ? '调整中...' : '确认调整'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+          确认调整
+        </Button>,
+      ]}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+      >
+        <Form.Item
+          label="产品"
+          name="productId"
+          rules={[{ required: true, message: '请选择产品' }]}
+        >
+          <Select placeholder="请选择产品" loading={loading}>
+            {productsData?.map((product) => (
+              <Option key={product.id} value={product.id}>
+                <Space>
+                  {product.name}
+                  <Tag>{product.sku}</Tag>
+                </Space>
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        <Form.Item
+          label="仓库"
+          name="warehouseId"
+          rules={[{ required: true, message: '请选择仓库' }]}
+        >
+          <Select placeholder="请选择仓库" loading={loading}>
+            {warehousesData?.map((warehouse) => (
+              <Option key={warehouse.id} value={warehouse.id}>
+                <Space>
+                  <DatabaseOutlined />
+                  {warehouse.name}
+                  <Tag>{warehouse.code}</Tag>
+                </Space>
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        {currentStock && (
+          <Alert
+            message={`当前库存：${currentStock.quantity} ${currentStock.product?.unit || '件'}`}
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        )}
+
+        <Form.Item
+          label="调整类型"
+          name="adjustmentType"
+          rules={[{ required: true, message: '请选择调整类型' }]}
+        >
+          <Select placeholder="请选择调整类型" loading={loading}>
+            <Option value="increase">
+              <Space>
+                <ArrowUpOutlined style={{ color: '#52c41a' }} />
+                增加库存
+              </Space>
+            </Option>
+            <Option value="decrease">
+              <Space>
+                <ArrowDownOutlined style={{ color: '#ff4d4f' }} />
+                减少库存
+              </Space>
+            </Option>
+          </Select>
+        </Form.Item>
+
+        <Form.Item
+          label="调整数量"
+          name="quantity"
+          rules={[
+            { required: true, message: '请输入调整数量' },
+            { type: 'number', min: 1, message: '数量必须大于0' }
+          ]}
+        >
+          <Input type="number" placeholder="请输入调整数量" disabled={loading} />
+        </Form.Item>
+
+        <Form.Item
+          label="调整原因"
+          name="reason"
+          rules={[{ required: true, message: '请输入调整原因' }]}
+        >
+          <Input placeholder="请输入调整原因" disabled={loading} />
+        </Form.Item>
+
+        <Form.Item
+          label="备注"
+          name="remark"
+        >
+          <Input.TextArea rows={3} placeholder="请输入备注" disabled={loading} />
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 };
 
@@ -381,6 +293,7 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
   onSubmit,
   loading = false,
 }) => {
+  const [form] = Form.useForm();
   const {
     control,
     handleSubmit,
@@ -437,8 +350,9 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
   React.useEffect(() => {
     if (open) {
       reset();
+      form.resetFields();
     }
-  }, [open, reset]);
+  }, [open, reset, form]);
 
   const handleFormSubmit = (data: TransferFormData) => {
     onSubmit(data);
@@ -450,198 +364,143 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
   ) || [];
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <SwapHoriz />
+    <Modal
+      title={
+        <Space>
+          <SwapOutlined />
           库存转移
-        </Box>
-      </DialogTitle>
-      <DialogContent>
-        <Box component="form" sx={{ mt: 2 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <Controller
-                name="productId"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.productId}>
-                    <InputLabel>产品</InputLabel>
-                    <Select
-                      {...field}
-                      label="产品"
-                      disabled={loading}
-                    >
-                      {productsData?.map((product) => (
-                        <MenuItem key={product.id} value={product.id}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography>{product.name}</Typography>
-                            <Chip label={product.sku} size="small" variant="outlined" />
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {errors.productId && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                        {errors.productId.message}
-                      </Typography>
-                    )}
-                  </FormControl>
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="fromWarehouseId"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.fromWarehouseId}>
-                    <InputLabel>源仓库</InputLabel>
-                    <Select
-                      {...field}
-                      label="源仓库"
-                      disabled={loading}
-                    >
-                      {warehousesData?.map((warehouse) => (
-                        <MenuItem key={warehouse.id} value={warehouse.id}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Storage fontSize="small" />
-                            <Typography>{warehouse.name}</Typography>
-                            <Chip label={warehouse.code} size="small" variant="outlined" />
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {errors.fromWarehouseId && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                        {errors.fromWarehouseId.message}
-                      </Typography>
-                    )}
-                  </FormControl>
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="toWarehouseId"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.toWarehouseId}>
-                    <InputLabel>目标仓库</InputLabel>
-                    <Select
-                      {...field}
-                      label="目标仓库"
-                      disabled={loading}
-                    >
-                      {availableToWarehouses.map((warehouse) => (
-                        <MenuItem key={warehouse.id} value={warehouse.id}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Storage fontSize="small" />
-                            <Typography>{warehouse.name}</Typography>
-                            <Chip label={warehouse.code} size="small" variant="outlined" />
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {errors.toWarehouseId && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                        {errors.toWarehouseId.message}
-                      </Typography>
-                    )}
-                  </FormControl>
-                )}
-              />
-            </Grid>
-            {sourceStock && (
-              <Grid item xs={12}>
-                <Alert severity="info">
-                  源仓库库存：{sourceStock.quantity} {sourceStock.product?.unit || '件'}
-                </Alert>
-              </Grid>
-            )}
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="quantity"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="转移数量"
-                    type="number"
-                    required
-                    error={!!errors.quantity}
-                    helperText={errors.quantity?.message}
-                    disabled={loading}
-                    onChange={(e) => field.onChange(Number(e.target.value))}
-                    inputProps={{
-                      max: sourceStock?.quantity || undefined,
-                    }}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="reason"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="转移原因"
-                    required
-                    error={!!errors.reason}
-                    helperText={errors.reason?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Controller
-                name="remark"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="备注"
-                    multiline
-                    rows={3}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-          </Grid>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+        </Space>
+      }
+      open={open}
+      onCancel={onClose}
+      width={800}
+      footer={[
+        <Button key="back" onClick={onClose}>
           取消
-        </Button>
+        </Button>,
         <Button
-          onClick={handleSubmit(handleFormSubmit)}
-          variant="contained"
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={20} /> : undefined}
+          key="submit"
+          type="primary"
+          loading={loading}
+          onClick={() => {
+            form.validateFields().then(values => {
+              handleSubmit(onSubmit)(values);
+            });
+          }}
         >
-          {loading ? '转移中...' : '确认转移'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+          确认转移
+        </Button>,
+      ]}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+      >
+        <Form.Item
+          label="产品"
+          name="productId"
+          rules={[{ required: true, message: '请选择产品' }]}
+        >
+          <Select placeholder="请选择产品" loading={loading}>
+            {productsData?.map((product) => (
+              <Option key={product.id} value={product.id}>
+                <Space>
+                  {product.name}
+                  <Tag>{product.sku}</Tag>
+                </Space>
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        <Form.Item
+          label="源仓库"
+          name="fromWarehouseId"
+          rules={[{ required: true, message: '请选择源仓库' }]}
+        >
+          <Select placeholder="请选择源仓库" loading={loading}>
+            {warehousesData?.map((warehouse) => (
+              <Option key={warehouse.id} value={warehouse.id}>
+                <Space>
+                  <DatabaseOutlined />
+                  {warehouse.name}
+                  <Tag>{warehouse.code}</Tag>
+                </Space>
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        <Form.Item
+          label="目标仓库"
+          name="toWarehouseId"
+          rules={[{ required: true, message: '请选择目标仓库' }]}
+        >
+          <Select placeholder="请选择目标仓库" loading={loading}>
+            {availableToWarehouses.map((warehouse) => (
+              <Option key={warehouse.id} value={warehouse.id}>
+                <Space>
+                  <DatabaseOutlined />
+                  {warehouse.name}
+                  <Tag>{warehouse.code}</Tag>
+                </Space>
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        {sourceStock && (
+          <Alert
+            message={`源仓库库存：${sourceStock.quantity} ${sourceStock.product?.unit || '件'}`}
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        )}
+
+        <Form.Item
+          label="转移数量"
+          name="quantity"
+          rules={[
+            { required: true, message: '请输入转移数量' },
+            { type: 'number', min: 1, message: '数量必须大于0' }
+          ]}
+        >
+          <Input 
+            type="number" 
+            placeholder="请输入转移数量" 
+            disabled={loading}
+            max={sourceStock?.quantity}
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="转移原因"
+          name="reason"
+          rules={[{ required: true, message: '请输入转移原因' }]}
+        >
+          <Input placeholder="请输入转移原因" disabled={loading} />
+        </Form.Item>
+
+        <Form.Item
+          label="备注"
+          name="remark"
+        >
+          <Input.TextArea rows={3} placeholder="请输入备注" disabled={loading} />
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 };
 
 const InventoryPage: React.FC = () => {
-  const [tabValue, setTabValue] = useState(0);
+  const [tabValue, setTabValue] = useState('1');
   const [search, setSearch] = useState('');
   const [warehouseFilter, setWarehouseFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [stockStatusFilter, setStockStatusFilter] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
 
@@ -649,8 +508,8 @@ const InventoryPage: React.FC = () => {
 
   // 构建查询参数
   const queryParams: InventoryQueryParams = {
-    page: page + 1,
-    limit: rowsPerPage,
+    page,
+    limit: pageSize,
     search,
     warehouseId: warehouseFilter || undefined,
     categoryId: categoryFilter || undefined,
@@ -689,7 +548,11 @@ const InventoryPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       setAdjustmentDialogOpen(false);
+      message.success('库存调整成功');
     },
+    onError: () => {
+      message.error('库存调整失败');
+    }
   });
 
   // 库存转移
@@ -701,20 +564,20 @@ const InventoryPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       setTransferDialogOpen(false);
+      message.success('库存转移成功');
     },
+    onError: () => {
+      message.error('库存转移失败');
+    }
   });
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
+  const handleTabChange = (key: string) => {
+    setTabValue(key);
   };
 
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handlePageChange = (newPage: number, newPageSize: number) => {
     setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+    setPageSize(newPageSize);
   };
 
   const handleAdjustmentSubmit = (data: AdjustmentFormData) => {
@@ -740,82 +603,133 @@ const InventoryPage: React.FC = () => {
   const inventoryItems = inventoryData?.list || [];
   const total = inventoryData?.pagination?.total || 0;
 
+  const columns = [
+    {
+      title: '产品信息',
+      dataIndex: 'product',
+      key: 'product',
+      render: (product: Product) => (
+        <div>
+          <Text strong>{product?.name}</Text>
+          <br />
+          <Text type="secondary">SKU: {product?.sku}</Text>
+        </div>
+      ),
+    },
+    {
+      title: '仓库',
+      dataIndex: 'warehouse',
+      key: 'warehouse',
+      render: (warehouse: Warehouse) => (
+        <Space>
+          <DatabaseOutlined />
+          <Text>{warehouse?.name}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: '当前库存',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      align: 'right' as const,
+      render: (quantity: number, record: InventoryItem) => (
+        <Text strong>{quantity} {record.product?.unit || '件'}</Text>
+      ),
+    },
+    {
+      title: '最小库存',
+      dataIndex: 'minStock',
+      key: 'minStock',
+      align: 'right' as const,
+      render: (minStock: number, record: InventoryItem) => (
+        <Text>{minStock} {record.product?.unit || '件'}</Text>
+      ),
+    },
+    {
+      title: '最大库存',
+      dataIndex: 'maxStock',
+      key: 'maxStock',
+      align: 'right' as const,
+      render: (maxStock: number, record: InventoryItem) => (
+        <Text>{maxStock} {record.product?.unit || '件'}</Text>
+      ),
+    },
+    {
+      title: '库存状态',
+      key: 'status',
+      render: (record: InventoryItem) => (
+        <Tag
+          color={getStockStatusColor(record.quantity, record.minStock, record.maxStock)}
+          icon={
+            record.quantity <= record.minStock ? (
+              <WarningOutlined />
+            ) : record.quantity >= record.maxStock ? (
+              <CloseCircleOutlined />
+            ) : (
+              <CheckCircleOutlined />
+            )
+          }
+        >
+          {getStockStatusText(record.quantity, record.minStock, record.maxStock)}
+        </Tag>
+      ),
+    },
+    {
+      title: '最后更新',
+      dataIndex: 'updatedAt',
+      key: 'updatedAt',
+      render: (updatedAt: string) => (
+        <Text type="secondary">{new Date(updatedAt).toLocaleDateString()}</Text>
+      ),
+    },
+  ];
+
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+    <div style={{ padding: 24 }}>
+      <Title level={3} style={{ marginBottom: 24 }}>
         库存管理
-      </Typography>
+      </Title>
 
       {/* 标签页 */}
-      <Card sx={{ mb: 3 }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange}>
-            <Tab label="库存查询" />
-            <Tab label="库存调整" />
-            <Tab label="库存转移" />
-          </Tabs>
-        </Box>
-
-        <TabPanel value={tabValue} index={0}>
-          {/* 搜索和过滤 */}
-          <Box sx={{ mb: 3 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
+      <Card>
+        <Tabs activeKey={tabValue} onChange={handleTabChange}>
+          <TabPane tab="库存查询" key="1">
+            {/* 搜索和过滤 */}
+            <div style={{ marginBottom: 16 }}>
+              <Space size="large" wrap>
+                <Input
                   placeholder="搜索产品..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Search />
-                      </InputAdornment>
-                    ),
-                  }}
+                  prefix={<SearchOutlined />}
+                  style={{ width: 300 }}
                 />
-              </Grid>
-              <Grid item xs={12} sm={6} md={2}>
-                <FormControl fullWidth>
-                  <InputLabel>仓库</InputLabel>
-                  <Select
-                    value={warehouseFilter}
-                    onChange={(e) => setWarehouseFilter(e.target.value)}
-                    label="仓库"
-                  >
-                    <MenuItem value="">
-                      <em>全部仓库</em>
-                    </MenuItem>
-                    {warehousesData?.map((warehouse) => (
-                      <MenuItem key={warehouse.id} value={warehouse.id}>
-                        {warehouse.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6} md={2}>
-                <FormControl fullWidth>
-                  <InputLabel>库存状态</InputLabel>
-                  <Select
-                    value={stockStatusFilter}
-                    onChange={(e) => setStockStatusFilter(e.target.value)}
-                    label="库存状态"
-                  >
-                    <MenuItem value="">
-                      <em>全部状态</em>
-                    </MenuItem>
-                    <MenuItem value="normal">正常</MenuItem>
-                    <MenuItem value="low">库存不足</MenuItem>
-                    <MenuItem value="high">库存过多</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6} md={2}>
+                <Select
+                  placeholder="仓库"
+                  value={warehouseFilter}
+                  onChange={setWarehouseFilter}
+                  style={{ width: 200 }}
+                >
+                  <Option value="">全部仓库</Option>
+                  {warehousesData?.map((warehouse) => (
+                    <Option key={warehouse.id} value={warehouse.id}>
+                      {warehouse.name}
+                    </Option>
+                  ))}
+                </Select>
+                <Select
+                  placeholder="库存状态"
+                  value={stockStatusFilter}
+                  onChange={setStockStatusFilter}
+                  style={{ width: 200 }}
+                >
+                  <Option value="">全部状态</Option>
+                  <Option value="normal">正常</Option>
+                  <Option value="low">库存不足</Option>
+                  <Option value="high">库存过多</Option>
+                </Select>
                 <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<Refresh />}
+                  icon={<SyncOutlined />}
                   onClick={() => {
                     setSearch('');
                     setWarehouseFilter('');
@@ -825,172 +739,86 @@ const InventoryPage: React.FC = () => {
                 >
                   重置
                 </Button>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Stack direction="row" spacing={1}>
+                <Space>
                   <Button
-                    variant="contained"
-                    startIcon={<Add />}
+                    type="primary"
+                    icon={<PlusOutlined />}
                     onClick={() => setAdjustmentDialogOpen(true)}
                   >
                     库存调整
                   </Button>
                   <Button
-                    variant="outlined"
-                    startIcon={<SwapHoriz />}
+                    icon={<SwapOutlined />}
                     onClick={() => setTransferDialogOpen(true)}
                   >
                     库存转移
                   </Button>
-                </Stack>
-              </Grid>
-            </Grid>
-          </Box>
+                </Space>
+              </Space>
+            </div>
 
-          {/* 库存列表 */}
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>产品信息</TableCell>
-                  <TableCell>仓库</TableCell>
-                  <TableCell align="right">当前库存</TableCell>
-                  <TableCell align="right">最小库存</TableCell>
-                  <TableCell align="right">最大库存</TableCell>
-                  <TableCell>库存状态</TableCell>
-                  <TableCell>最后更新</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      <CircularProgress />
-                    </TableCell>
-                  </TableRow>
-                ) : inventoryItems.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      <Typography color="textSecondary">暂无库存数据</Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  inventoryItems.map((item) => (
-                    <TableRow key={`${item.productId}-${item.warehouseId}`}>
-                      <TableCell>
-                        <Box>
-                          <Typography variant="body2" fontWeight="medium">
-                            {item.product?.name}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            SKU: {item.product?.sku}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Storage fontSize="small" />
-                          <Typography variant="body2">
-                            {item.warehouse?.name}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight="medium">
-                          {item.quantity} {item.product?.unit || '件'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2">
-                          {item.minStock} {item.product?.unit || '件'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2">
-                          {item.maxStock} {item.product?.unit || '件'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={getStockStatusText(item.quantity, item.minStock, item.maxStock)}
-                          color={getStockStatusColor(item.quantity, item.minStock, item.maxStock)}
-                          size="small"
-                          icon={
-                            item.quantity <= item.minStock ? (
-                              <Warning fontSize="small" />
-                            ) : item.quantity >= item.maxStock ? (
-                              <Error fontSize="small" />
-                            ) : (
-                              <CheckCircle fontSize="small" />
-                            )
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="textSecondary">
-                          {new Date(item.updatedAt).toLocaleDateString()}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              component="div"
-              count={total}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              labelRowsPerPage="每页行数:"
-              labelDisplayedRows={({ from, to, count }) =>
-                `${from}-${to} 共 ${count !== -1 ? count : `超过 ${to}`} 条`
-              }
+            {/* 库存列表 */}
+            <Table
+              columns={columns}
+              dataSource={inventoryItems}
+              rowKey={(record) => `${record.productId}-${record.warehouseId}`}
+              loading={isLoading}
+              pagination={{
+                current: page,
+                pageSize,
+                total,
+                onChange: handlePageChange,
+                showSizeChanger: true,
+                showTotal: (total) => `共 ${total} 条`,
+              }}
+              locale={{
+                emptyText: (
+                  <div style={{ textAlign: 'center', padding: 40 }}>
+                    <Text type="secondary">暂无库存数据</Text>
+                  </div>
+                )
+              }}
             />
-          </TableContainer>
-        </TabPanel>
+          </TabPane>
 
-        <TabPanel value={tabValue} index={1}>
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <Inventory sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" gutterBottom>
-              库存调整
-            </Typography>
-            <Typography color="textSecondary" sx={{ mb: 3 }}>
-              点击下方按钮进行库存调整操作
-            </Typography>
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<Add />}
-              onClick={() => setAdjustmentDialogOpen(true)}
-            >
-              开始调整
-            </Button>
-          </Box>
-        </TabPanel>
+          <TabPane tab="库存调整" key="2">
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <DatabaseOutlined style={{ fontSize: 64, color: '#bfbfbf', marginBottom: 16 }} />
+              <Title level={4}>库存调整</Title>
+              <Text type="secondary" style={{ marginBottom: 24 }}>
+                点击下方按钮进行库存调整操作
+              </Text>
+              <br />
+              <Button
+                type="primary"
+                size="large"
+                icon={<PlusOutlined />}
+                onClick={() => setAdjustmentDialogOpen(true)}
+              >
+                开始调整
+              </Button>
+            </div>
+          </TabPane>
 
-        <TabPanel value={tabValue} index={2}>
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <SwapHoriz sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" gutterBottom>
-              库存转移
-            </Typography>
-            <Typography color="textSecondary" sx={{ mb: 3 }}>
-              在不同仓库之间转移库存
-            </Typography>
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<SwapHoriz />}
-              onClick={() => setTransferDialogOpen(true)}
-            >
-              开始转移
-            </Button>
-          </Box>
-        </TabPanel>
+          <TabPane tab="库存转移" key="3">
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <SwapOutlined style={{ fontSize: 64, color: '#bfbfbf', marginBottom: 16 }} />
+              <Title level={4}>库存转移</Title>
+              <Text type="secondary" style={{ marginBottom: 24 }}>
+                在不同仓库之间转移库存
+              </Text>
+              <br />
+              <Button
+                type="primary"
+                size="large"
+                icon={<SwapOutlined />}
+                onClick={() => setTransferDialogOpen(true)}
+              >
+                开始转移
+              </Button>
+            </div>
+          </TabPane>
+        </Tabs>
       </Card>
 
       {/* 库存调整对话框 */}
@@ -1008,7 +836,7 @@ const InventoryPage: React.FC = () => {
         onSubmit={handleTransferSubmit}
         loading={transferMutation.isPending}
       />
-    </Box>
+    </div>
   );
 };
 

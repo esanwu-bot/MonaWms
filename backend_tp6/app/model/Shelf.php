@@ -3,6 +3,8 @@
 namespace app\model;
 
 use think\Model;
+use app\model\Zone;
+use app\model\Location;
 
 /**
  * 货架模型

@@ -1,10 +1,9 @@
 import { api } from './api';
-import {
+import type {
   Category,
   CreateCategoryRequest,
   UpdateCategoryRequest,
   QueryParams,
-  PaginatedResponse,
 } from '../types/api';
 
 // 分类服务
@@ -13,7 +12,7 @@ export const categoryService = {
   getCategories: async (params?: QueryParams & {
     parentId?: string;
     level?: number;
-  }): Promise<PaginatedResponse<Category[]>> => {
+  }): Promise<any> => {
     const response = await api.get<Category[]>('/categories', { params });
     return response.data;
   },

@@ -17,7 +17,7 @@ const apiClient: AxiosInstance = axios.create({
 
 // 请求拦截器
 apiClient.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
+  (config) => {
     // 添加认证token
     const token = localStorage.getItem('token');
     if (token && config.headers) {
@@ -48,7 +48,7 @@ const processQueue = (error: any, token: string | null = null) => {
 
 // 响应拦截器
 apiClient.interceptors.response.use(
-  (response: AxiosResponse<ApiResponse>) => {
+  (response) => {
     // 检查响应数据中的code字段
     if (response.data && response.data.code === 401) {
       // 使用authStore的forceLogout方法

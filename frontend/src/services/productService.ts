@@ -1,20 +1,15 @@
 import { api } from './api';
-import {
+import type {
   Product,
   CreateProductRequest,
   UpdateProductRequest,
   QueryParams,
-  PaginatedResponse,
 } from '../types/api';
 
 // 产品服务
 export const productService = {
   // 获取产品列表
-  getProducts: async (params?: QueryParams & {
-    categoryId?: string;
-    warehouseId?: string;
-    lowStock?: boolean;
-  }): Promise<PaginatedResponse<Product[]>> => {
+  getProducts: async (params?: QueryParams): Promise<any> => {
     const response = await api.get<Product[]>('/products', { params });
     return response.data;
   },
@@ -82,7 +77,7 @@ export const productService = {
   },
   
   // 获取低库存产品
-  getLowStockProducts: async (params?: QueryParams): Promise<PaginatedResponse<Product[]>> => {
+  getLowStockProducts: async (params?: QueryParams): Promise<any> => {
     const response = await api.get<Product[]>('/products', {
       params: { ...params, lowStock: true }
     });

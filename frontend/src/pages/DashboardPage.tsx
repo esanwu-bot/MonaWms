@@ -1,28 +1,33 @@
 import React from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  Grid,
-  Typography,
-  LinearProgress,
-  List,
-  ListItem,
-  ListItemText,
-  useTheme,
-  Avatar,
-  Paper,
-} from '@mui/material';
-import {
-  Warehouse,
-  Inventory,
-  TrendingUp,
-  Warning,
-} from '@mui/icons-material';
+import { 
+  Card, 
+  Row,
+  Col,
+  Typography, 
+  Avatar, 
+  List, 
+  Spin, 
+  Progress,
+  Tag,
+  Divider,
+  Alert
+} from 'antd';
+import { 
+  BankOutlined,
+  ShoppingCartOutlined, 
+  RiseOutlined, 
+  ExclamationCircleOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined
+} from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
 import type { DashboardStats } from '../types/api';
+
+const { Title, Text } = Typography;
+import { theme } from 'antd';
+const { useToken } = theme;
 
 // 统计卡片组件
 interface StatCardProps {
@@ -37,59 +42,43 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, trend }) => {
-  const theme = useTheme();
+  const { token } = useToken();
   
   return (
-    <Card sx={{ height: '100%' }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box>
-            <Typography color="textSecondary" gutterBottom variant="body2">
-              {title}
-            </Typography>
-            <Typography variant="h4" component="div" sx={{ fontWeight: 600 }}>
-              {value}
-            </Typography>
-            {trend && (
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <TrendingUp
-                  sx={{
-                    fontSize: 16,
-                    color: trend.isPositive ? theme.palette.success.main : theme.palette.error.main,
-                    transform: trend.isPositive ? 'none' : 'rotate(180deg)',
-                  }}
-                />
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: trend.isPositive ? theme.palette.success.main : theme.palette.error.main,
-                    ml: 0.5,
-                  }}
-                >
-                  {trend.value}%
-                </Typography>
-              </Box>
-            )}
-          </Box>
-          <Avatar
-            sx={{
-              backgroundColor: color,
-              width: 56,
-              height: 56,
-            }}
-          >
-            {icon}
-          </Avatar>
-        </Box>
-      </CardContent>
+    <Card style={{ height: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <Text type="secondary">{title}</Text>
+          <Title level={3} style={{ margin: '8px 0' }}>{value}</Title>
+          {trend && (
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
+              {trend.isPositive ? (
+                <ArrowUpOutlined style={{ color: token.colorSuccess, marginRight: 4 }} />
+              ) : (
+                <ArrowDownOutlined style={{ color: token.colorError, marginRight: 4 }} />
+              )}
+              <Text style={{ color: trend.isPositive ? token.colorSuccess : token.colorError }}>
+                {trend.value}%
+              </Text>
+            </div>
+          )}
+        </div>
+        <Avatar 
+          size="large" 
+          icon={icon} 
+          style={{ 
+            backgroundColor: color,
+            color: 'white',
+            fontSize: 24
+          }} 
+        />
+      </div>
     </Card>
   );
 };
 
-
-
 const DashboardPage: React.FC = () => {
-  const theme = useTheme();
+  const { token } = useToken();
 
   // 获取仪表盘统计数据
   const { data: stats, isLoading } = useQuery({
@@ -102,137 +91,131 @@ const DashboardPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <Box sx={{ width: '100%', mt: 2 }}>
-        <LinearProgress />
-      </Box>
+      <div style={{ textAlign: 'center', padding: '24px 0' }}>
+        <Spin size="large" />
+      </div>
     );
   }
 
   return (
-    <Box sx={{ width: '100%', maxWidth: '100%' }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+    <div style={{ width: '100%', maxWidth: '100%' }}>
+      <Title level={3} style={{ marginBottom: 24 }}>
         仪表盘
-      </Typography>
+      </Title>
 
       {/* 统计卡片 */}
-      <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mb: 4, width: '100%' }}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} md={6}>
           <StatCard
             title="仓库总数"
             value={stats?.stats?.total_warehouses || 0}
-            icon={<Warehouse />}
-            color={theme.palette.primary.main}
+            icon={<BankOutlined />}
+            color={token.colorPrimary}
             trend={{ value: 5.2, isPositive: true }}
           />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
           <StatCard
             title="产品总数"
             value={stats?.stats?.total_products || 0}
-            icon={<Inventory />}
-            color={theme.palette.success.main}
+            icon={<ShoppingCartOutlined />}
+            color={token.colorSuccess}
             trend={{ value: 12.8, isPositive: true }}
           />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
           <StatCard
             title="库存总量"
             value={stats?.stats?.total_inventory || 0}
-            icon={<TrendingUp />}
-            color={theme.palette.info.main}
+            icon={<RiseOutlined />}
+            color={token.colorInfo}
             trend={{ value: 8.1, isPositive: true }}
           />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
           <StatCard
             title="低库存产品"
             value={stats?.stats?.low_stock_count || 0}
-            icon={<Warning />}
-            color={theme.palette.warning.main}
+            icon={<ExclamationCircleOutlined />}
+            color={token.colorWarning}
             trend={{ value: 2.3, isPositive: false }}
           />
-        </Grid>
-      </Grid>
+        </Col>
+      </Row>
 
-      <Grid container spacing={{ xs: 2, md: 3 }} sx={{ width: '100%' }}>
+      <Row gutter={[16, 16]}>
         {/* 待处理订单 */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                待处理订单
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      textAlign: 'center',
-                      backgroundColor: theme.palette.success.light + '20',
-                      border: `1px solid ${theme.palette.success.light}`,
-                    }}
-                  >
-                    <Typography variant="h4" sx={{ color: theme.palette.success.main, fontWeight: 600 }}>
-                      {stats?.stats?.pending_inbound || 0}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      待入库订单
-                    </Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={6}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      textAlign: 'center',
-                      backgroundColor: theme.palette.primary.light + '20',
-                      border: `1px solid ${theme.palette.primary.light}`,
-                    }}
-                  >
-                    <Typography variant="h4" sx={{ color: theme.palette.primary.main, fontWeight: 600 }}>
-                      {stats?.stats?.pending_outbound || 0}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      待出库订单
-                    </Typography>
-                  </Paper>
-                </Grid>
-              </Grid>
-            </CardContent>
+        <Col xs={24} md={12}>
+          <Card style={{ height: '100%' }}>
+            <Title level={5} style={{ marginBottom: 16 }}>
+              待处理订单
+            </Title>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Card 
+                  bordered
+                  style={{ 
+                    textAlign: 'center',
+                    backgroundColor: token.colorSuccessBg,
+                    borderColor: token.colorSuccessBorder
+                  }}
+                >
+                  <Title level={3} style={{ color: token.colorSuccess, marginBottom: 8 }}>
+                    {stats?.stats?.pending_inbound || 0}
+                  </Title>
+                  <Text type="secondary">待入库订单</Text>
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card 
+                  bordered
+                  style={{ 
+                    textAlign: 'center',
+                    backgroundColor: token.colorPrimaryBg,
+                    borderColor: token.colorPrimaryBorder
+                  }}
+                >
+                  <Title level={3} style={{ color: token.colorPrimary, marginBottom: 8 }}>
+                    {stats?.stats?.pending_outbound || 0}
+                  </Title>
+                  <Text type="secondary">待出库订单</Text>
+                </Card>
+              </Col>
+            </Row>
           </Card>
-        </Grid>
+        </Col>
 
         {/* 最近活动 */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                最近活动
-              </Typography>
-              <List sx={{ maxHeight: 300, overflow: 'auto' }}>
-                {stats?.recent_transactions?.length ? (
-                  stats.recent_transactions.map((transaction, index) => (
-                    <ListItem key={index}>
-                      <ListItemText
-                        primary={`交易记录 #${index + 1}`}
-                        secondary={`暂无详细信息`}
-                      />
-                    </ListItem>
-                  ))
-                ) : (
-                  <ListItem>
-                    <ListItemText
-                      primary="暂无交易记录"
-                      secondary="系统中还没有任何交易记录"
-                    />
-                  </ListItem>
-                )}
-              </List>
-            </CardContent>
+        <Col xs={24} md={12}>
+          <Card style={{ height: '100%' }}>
+            <Title level={5} style={{ marginBottom: 16 }}>
+              最近活动
+            </Title>
+            <List
+              style={{ maxHeight: 300, overflow: 'auto' }}
+              dataSource={stats?.recent_transactions || []}
+              renderItem={(item, index) => (
+                <List.Item>
+                  <List.Item.Meta
+                    title={`交易记录 #${index + 1}`}
+                    description="暂无详细信息"
+                  />
+                </List.Item>
+              )}
+              locale={{
+                emptyText: (
+                  <div style={{ textAlign: 'center', padding: 24 }}>
+                    <Text type="secondary">暂无交易记录</Text>
+                    <br />
+                    <Text type="secondary">系统中还没有任何交易记录</Text>
+                  </div>
+                )
+              }}
+            />
           </Card>
-        </Grid>
-      </Grid>
-    </Box>
+        </Col>
+      </Row>
+    </div>
   );
 };
 

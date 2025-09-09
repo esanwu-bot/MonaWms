@@ -43,8 +43,8 @@ export interface User {
   role: 'ADMIN' | 'MANAGER' | 'OPERATOR' | 'VIEWER';
   isActive: boolean;
   lastLoginAt?: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface LoginRequest {
@@ -68,8 +68,9 @@ export interface Warehouse {
   contactPerson?: string;
   contactPhone?: string;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  status_text: 'ACTIVE' | 'INACTIVE';
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateWarehouseRequest {
@@ -83,6 +84,32 @@ export interface CreateWarehouseRequest {
 
 export interface UpdateWarehouseRequest extends Partial<CreateWarehouseRequest> {}
 
+// 供应商相关类型
+export interface Supplier {
+  id: string;
+  code: string;
+  name: string;
+  contactPerson?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  address?: string;
+  isActive: boolean;
+  status_text: 'ACTIVE' | 'INACTIVE';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateSupplierRequest {
+  code: string;
+  name: string;
+  contactPerson?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  address?: string;
+}
+
+export interface UpdateSupplierRequest extends Partial<CreateSupplierRequest> {}
+
 // 分类相关类型
 export interface Category {
   id: string;
@@ -93,8 +120,9 @@ export interface Category {
   level: number;
   path: string;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  status_text: '启用' | '禁用';
+  created_at: string;
+  updated_at: string;
   children?: Category[];
   parent?: Category;
 }
@@ -129,8 +157,9 @@ export interface Product {
   project?: Project;         // 所属项目
   specifications?: Record<string, any>;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  status_text: 'ACTIVE' | 'INACTIVE';
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateProductRequest {
@@ -167,8 +196,59 @@ export interface Inventory {
   batchNumber?: string;
   expiryDate?: string;
   lastUpdatedAt: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryItem {
+  id: string;
+  productId: string;
+  product?: Product;
+  warehouseId: string;
+  warehouse?: Warehouse;
+  quantity: number;
+  reservedQuantity: number;
+  availableQuantity: number;
+  location?: string;
+  batchNumber?: string;
+  expiryDate?: string;
+  unitPrice?: number;
+  totalValue?: number;
+  lastUpdatedAt: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryAdjustmentRequest {
+  productId: string;
+  warehouseId: string;
+  adjustmentType: 'increase' | 'decrease';
+  quantity: number;
+  reason: string;
+  location?: string;
+  batchNumber?: string;
+  notes?: string;
+}
+
+export interface InventoryTransferRequest {
+  productId: string;
+  fromWarehouseId: string;
+  toWarehouseId: string;
+  quantity: number;
+  reason: string;
+  fromLocation?: string;
+  toLocation?: string;
+  batchNumber?: string;
+  notes?: string;
+}
+
+export interface InventoryQueryParams extends QueryParams {
+  warehouseId?: string;
+  productId?: string;
+  categoryId?: string;
+  lowStock?: boolean;
+  location?: string;
+  batchNumber?: string;
 }
 
 // 入库单相关类型
@@ -178,13 +258,13 @@ export interface InboundOrder {
   warehouseId: string;
   warehouse?: Warehouse;
   supplierId?: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status_text: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   totalQuantity: number;
   totalAmount: number;
   notes?: string;
   createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   items: InboundOrderItem[];
 }
 
@@ -200,7 +280,31 @@ export interface InboundOrderItem {
   expiryDate?: string;
   location?: string;
   receivedQuantity: number;
-  status: 'PENDING' | 'PARTIAL' | 'COMPLETED';
+  status_text: 'PENDING' | 'PARTIAL' | 'COMPLETED';
+}
+
+export interface CreateInboundOrderRequest {
+  warehouseId: string;
+  supplierId?: string;
+  notes?: string;
+  items: {
+    productId: string;
+    quantity: number;
+    unitPrice: number;
+    batchNumber?: string;
+    expiryDate?: string;
+    location?: string;
+  }[];
+}
+
+export interface UpdateInboundOrderRequest extends Partial<CreateInboundOrderRequest> {}
+
+export interface InboundOrderQueryParams extends QueryParams {
+  warehouseId?: string;
+  supplierId?: string;
+  status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  startDate?: string;
+  endDate?: string;
 }
 
 // 项目相关类型
@@ -214,13 +318,13 @@ export interface Project {
   managerId?: string;
   manager?: User;
   location?: string;
-  status: 'planning' | 'in_progress' | 'completed' | 'cancelled';
+  status_text: 'planning' | 'in_progress' | 'completed' | 'cancelled';
   budget?: number;
   startDate?: string;
   endDate?: string;
   notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateProjectRequest {
@@ -230,7 +334,7 @@ export interface CreateProjectRequest {
   customerId?: string;
   managerId?: string;
   location?: string;
-  status: 'planning' | 'in_progress' | 'completed' | 'cancelled';
+  status_text: 'planning' | 'in_progress' | 'completed' | 'cancelled';
   budget?: number;
   startDate?: string;
   endDate?: string;
@@ -246,13 +350,13 @@ export interface OutboundOrder {
   warehouseId: string;
   warehouse?: Warehouse;
   customerId?: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status_text: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   totalQuantity: number;
   totalAmount: number;
   notes?: string;
   createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   items: OutboundOrderItem[];
 }
 
@@ -267,7 +371,44 @@ export interface OutboundOrderItem {
   batchNumber?: string;
   location?: string;
   pickedQuantity: number;
-  status: 'PENDING' | 'PARTIAL' | 'COMPLETED';
+  status_text: 'PENDING' | 'PARTIAL' | 'COMPLETED';
+}
+
+export interface Customer {
+  id: string;
+  code: string;
+  name: string;
+  contactPerson?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  address?: string;
+  isActive: boolean;
+  status_text: 'ACTIVE' | 'INACTIVE';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateOutboundOrderRequest {
+  warehouseId: string;
+  customerId?: string;
+  notes?: string;
+  items: {
+    productId: string;
+    quantity: number;
+    unitPrice: number;
+    batchNumber?: string;
+    location?: string;
+  }[];
+}
+
+export interface UpdateOutboundOrderRequest extends Partial<CreateOutboundOrderRequest> {}
+
+export interface OutboundOrderQueryParams extends QueryParams {
+  warehouseId?: string;
+  customerId?: string;
+  status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  startDate?: string;
+  endDate?: string;
 }
 
 // 仪表板统计类型
@@ -295,4 +436,76 @@ export interface DashboardStats {
   popular_products: any[];
   warehouse_utilization: any[];
   recent_transactions: any[];
+}
+
+// 无线备件相关类型
+export interface WirelessSparePart {
+  id: string;
+  code: string;
+  partName: string;
+  model?: string;
+  serialNumber?: string;
+  type: '5G' | '4G' | '3G' | '2G' | 'other';
+  quantity: number;
+  operator: string;
+  date: string;
+  status: 'inbound' | 'outbound' | 'returned';
+  status_text: string;
+  project?: string;
+  isActive: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateWirelessSparePartRequest {
+  code: string;
+  partName: string;
+  model?: string;
+  serialNumber?: string;
+  type: '5G' | '4G' | '3G' | '2G' | 'other';
+  quantity: number;
+  operator: string;
+  project?: string;
+  status: 'inbound' | 'outbound' | 'returned';
+}
+
+export interface UpdateWirelessSparePartRequest extends Partial<CreateWirelessSparePartRequest> {}
+
+// 序列号相关类型
+export interface SerialNumber {
+  id: string;
+  serialNumber: string;
+  productId: string;
+  product?: Product;
+  productName?: string;
+  productSku?: string;
+  productModel?: string;
+  manufactureDate?: string;
+  warrantyPeriod?: number;
+  warrantyEndDate?: string;
+  status: 'in_stock' | 'sold' | 'scrapped';
+  status_text: string;
+  location?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateSerialNumberRequest {
+  serialNumber: string;
+  productId: string;
+  manufactureDate?: string;
+  warrantyPeriod?: number;
+  status?: 'in_stock' | 'sold' | 'scrapped';
+  location?: string;
+  notes?: string;
+}
+
+export interface UpdateSerialNumberRequest extends Partial<CreateSerialNumberRequest> {}
+
+export interface QueryByBarcodeResponse {
+  type: 'serial_number' | 'product';
+  info: SerialNumber | Product;
+  product?: Product;
+  status_text: string;
 }

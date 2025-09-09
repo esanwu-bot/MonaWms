@@ -1,5 +1,4 @@
 import { QueryClient } from '@tanstack/react-query';
-import type { ErrorResponse } from '../types/api';
 
 // 创建QueryClient实例
 export const queryClient = new QueryClient({
@@ -27,7 +26,7 @@ export const queryClient = new QueryClient({
     },
     mutations: {
       // 错误处理
-      onError: (error: ErrorResponse) => {
+      onError: (error) => {
         console.error('Mutation error:', error);
         // 这里可以添加全局错误处理逻辑
         // 比如显示错误通知
@@ -142,5 +141,24 @@ export const queryKeys = {
   reports: {
     all: ['reports'] as const,
     dashboard: () => [...queryKeys.reports.all, 'dashboard'] as const,
+  },
+  
+  // 无线备件相关
+  wirelessSpareParts: {
+    all: ['wirelessSpareParts'] as const,
+    lists: () => [...queryKeys.wirelessSpareParts.all, 'list'] as const,
+    list: (params?: any) => [...queryKeys.wirelessSpareParts.lists(), params] as const,
+    details: () => [...queryKeys.wirelessSpareParts.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.wirelessSpareParts.details(), id] as const,
+  },
+  
+  // 序列号相关
+  serialNumbers: {
+    all: ['serialNumbers'] as const,
+    lists: () => [...queryKeys.serialNumbers.all, 'list'] as const,
+    list: (page: number, limit: number, search?: string) => [...queryKeys.serialNumbers.lists(), { page, limit, search }] as const,
+    details: () => [...queryKeys.serialNumbers.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.serialNumbers.details(), id] as const,
+    byBarcode: (barcode: string) => [...queryKeys.serialNumbers.all, 'barcode', barcode] as const,
   },
 };

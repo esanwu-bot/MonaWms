@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import 'dayjs/locale/zh-cn';
+// 引入Ant Design样式
+import { ConfigProvider } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import 'antd/dist/reset.css';
 
-import { theme } from './utils/theme';
 import { queryClient } from './utils/queryClient';
 import { useAuthStore } from './store/authStore';
 
@@ -20,13 +20,14 @@ import DashboardPage from './pages/DashboardPage';
 import WarehousesPage from './pages/WarehousesPage';
 import ProductsPage from './pages/ProductsPage';
 import CategoriesPage from './pages/CategoriesPage';
+import SerialNumbersPage from './pages/SerialNumbersPage';
 import InventoryPage from './pages/InventoryPage';
 import InboundPage from './pages/InboundPage';
 import OutboundPage from './pages/OutboundPage';
 // ReportsPage已删除
 import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
-import DebugTokenPage from './pages/DebugTokenPage';
+
 import WirelessSparePartsPage from './pages/WirelessSparePartsPage';
 
 // 路由保护组件
@@ -75,10 +76,12 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="zh-cn">
-          <CssBaseline />
-          <Router>
+      <ConfigProvider locale={zhCN} theme={{
+        token: {
+          colorPrimary: '#1890ff',
+        },
+      }}>
+        <Router>
             <Routes>
               {/* 公共路由 */}
               <Route
@@ -123,6 +126,9 @@ function App() {
                 {/* 无线备件出入库登记表 */}
                 <Route path="wireless-spare-parts" element={<WirelessSparePartsPage />} />
                 
+                {/* 序列号管理 */}
+                <Route path="serial-numbers" element={<SerialNumbersPage />} />
+                
                 {/* 报表分析页面已删除 */}
                 
                 {/* 系统设置 */}
@@ -131,19 +137,17 @@ function App() {
                 {/* 个人资料 */}
                 <Route path="profile" element={<ProfilePage />} />
                 
-                {/* Token调试页面 */}
-                <Route path="debug-token" element={<DebugTokenPage />} />
+                {/* Token调试页面已移除 */}
               </Route>
               
               {/* 404页面 */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
-          </Router>
-          
-          {/* React Query开发工具 */}
-          {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
-        </LocalizationProvider>
-      </ThemeProvider>
+        </Router>
+        
+        {/* React Query开发工具 */}
+        {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+      </ConfigProvider>
     </QueryClientProvider>
   );
 }

@@ -1,73 +1,40 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Typography,
-  Button,
-  Card,
-  CardContent,
-  IconButton,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Grid,
-  Alert,
-  CircularProgress,
-  Tooltip,
-  InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
-  Paper,
-  Stepper,
-  Step,
-  StepLabel,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  Fab,
-  Badge,
-  LinearProgress,
-} from '@mui/material';
-import {
-  Search,
-  Add,
-  Edit,
-  Delete,
-  Visibility,
-  CheckCircle,
-  Cancel,
-  Pending,
-  LocalShipping,
-  Inventory,
-  Assignment,
-  FilterList,
-  GetApp,
-  Print,
-  Schedule,
-  Done,
-  Close,
-  ShoppingCart,
-  Person,
-  LocationOn,
-  Phone,
-} from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { 
+  Row, 
+  Col, 
+  Modal, 
+  Button, 
+  Card, 
+  Input, 
+  Select, 
+  Form, 
+  Typography, 
+  Table, 
+  Tag, 
+  Spin, 
+  Progress, 
+  Alert, 
+  Space, 
+  Divider,
+  message,
+  Pagination
+} from 'antd';
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  FilterOutlined,
+  EnvironmentOutlined,
+  UserOutlined,
+  PhoneOutlined,
+  SearchOutlined,
+  ShoppingCartOutlined,
+  EyeOutlined
+} from '@ant-design/icons';
 import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
 import type {
@@ -256,8 +223,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
       </DialogTitle>
       <DialogContent>
         <Box component="form" sx={{ mt: 2 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
               <Controller
                 name="orderNumber"
                 control={control}
@@ -273,8 +240,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Col>
+            <Col span={12}>
               <Controller
                 name="expectedDate"
                 control={control}
@@ -292,8 +259,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Col>
+            <Col span={12}>
               <Controller
                 name="warehouseId"
                 control={control}
@@ -322,8 +289,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                   </FormControl>
                 )}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Col>
+            <Col span={12}>
               <Controller
                 name="customerId"
                 control={control}
@@ -353,8 +320,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                   </FormControl>
                 )}
               />
-            </Grid>
-            <Grid item xs={12}>
+            </Col>
+            <Col span={24}>
               <Controller
                 name="shippingAddress"
                 control={control}
@@ -377,8 +344,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Col>
+            <Col span={12}>
               <Controller
                 name="contactPerson"
                 control={control}
@@ -401,8 +368,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Col>
+            <Col span={12}>
               <Controller
                 name="contactPhone"
                 control={control}
@@ -425,8 +392,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12}>
+            </Col>
+            <Col span={24}>
               <Controller
                 name="remark"
                 control={control}
@@ -441,8 +408,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                   />
                 )}
               />
-            </Grid>
-          </Grid>
+            </Col>
+          </Row>
 
           <Divider sx={{ my: 3 }} />
 
@@ -461,8 +428,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
 
           {fields.map((field, index) => (
             <Card key={field.id} sx={{ mb: 2, p: 2 }}>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item xs={12} sm={3}>
+              <Row gutter={[16, 16]} align="middle">
+                <Col span={6}>
                   <Controller
                     name={`items.${index}.productId`}
                     control={control}
@@ -493,8 +460,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                       </FormControl>
                     )}
                   />
-                </Grid>
-                <Grid item xs={12} sm={2}>
+                </Col>
+                <Col span={4}>
                   <Controller
                     name={`items.${index}.requestedQuantity`}
                     control={control}
@@ -512,9 +479,9 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                       />
                     )}
                   />
-                </Grid>
+                </Col>
                 {order && (
-                  <Grid item xs={12} sm={2}>
+                  <Col span={4}>
                     <Controller
                       name={`items.${index}.pickedQuantity`}
                       control={control}
@@ -531,9 +498,9 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                         />
                       )}
                     />
-                  </Grid>
+                  </Col>
                 )}
-                <Grid item xs={12} sm={2}>
+                <Col span={4}>
                   <Controller
                     name={`items.${index}.unitPrice`}
                     control={control}
@@ -554,8 +521,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                       />
                     )}
                   />
-                </Grid>
-                <Grid item xs={12} sm={order ? 2 : 3}>
+                </Col>
+                <Col span={order ? 4 : 6}>
                   <Controller
                     name={`items.${index}.remark`}
                     control={control}
@@ -568,8 +535,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                       />
                     )}
                   />
-                </Grid>
-                <Grid item xs={12} sm={1}>
+                </Col>
+                <Col span={2}>
                   <IconButton
                     color="error"
                     onClick={() => removeItem(index)}
@@ -577,8 +544,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                   >
                     <Delete />
                   </IconButton>
-                </Grid>
-              </Grid>
+                </Col>
+              </Row>
             </Card>
           ))}
 
@@ -713,74 +680,73 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
             <Typography variant="h6" gutterBottom>
               基本信息
             </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
                 <Typography variant="body2" color="textSecondary">
                   出库单号
                 </Typography>
                 <Typography variant="body1" fontWeight="medium">
                   {order.orderNumber}
                 </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Col>
+              <Col span={12}>
                 <Typography variant="body2" color="textSecondary">
                   仓库
                 </Typography>
                 <Typography variant="body1" fontWeight="medium">
                   {order.warehouse?.name}
                 </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Col>
+              <Col span={12}>
                 <Typography variant="body2" color="textSecondary">
                   客户
                 </Typography>
                 <Typography variant="body1" fontWeight="medium">
                   {order.customer?.name}
                 </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Col>
+              <Col span={12}>
                 <Typography variant="body2" color="textSecondary">
                   预期发货日期
                 </Typography>
                 <Typography variant="body1" fontWeight="medium">
                   {new Date(order.expectedDate).toLocaleDateString()}
                 </Typography>
-              </Grid>
-              <Grid item xs={12}>
+              </Col>
+              <Col span={24}>
                 <Typography variant="body2" color="textSecondary">
                   收货地址
                 </Typography>
                 <Typography variant="body1" fontWeight="medium">
                   {order.shippingAddress}
                 </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Col>
+              <Col span={12}>
                 <Typography variant="body2" color="textSecondary">
                   联系人
                 </Typography>
                 <Typography variant="body1" fontWeight="medium">
                   {order.contactPerson}
                 </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Col>
+              <Col span={12}>
                 <Typography variant="body2" color="textSecondary">
                   联系电话
                 </Typography>
                 <Typography variant="body1" fontWeight="medium">
                   {order.contactPhone}
                 </Typography>
-              </Grid>
+              </Col>
               {order.remark && (
-                <Grid item xs={12}>
+                <Col span={24}>
                   <Typography variant="body2" color="textSecondary">
                     备注
                   </Typography>
                   <Typography variant="body1">
                     {order.remark}
                   </Typography>
-                </Grid>
-              )}
-            </Grid>
+                </Col>
+              )}            </Row>
           </CardContent>
         </Card>
 
@@ -1138,8 +1104,8 @@ const OutboundPage: React.FC = () => {
       {/* 操作栏 */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={6} md={3}>
+          <Row gutter={[16, 16]} align="middle">
+            <Col xs={24} sm={12} md={6}>
               <TextField
                 fullWidth
                 placeholder="搜索出库单..."
@@ -1153,8 +1119,8 @@ const OutboundPage: React.FC = () => {
                   ),
                 }}
               />
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            </Col>
+            <Col xs={24} sm={12} md={4}>
               <FormControl fullWidth>
                 <InputLabel>状态</InputLabel>
                 <Select
@@ -1173,8 +1139,8 @@ const OutboundPage: React.FC = () => {
                   <MenuItem value="rejected">已拒绝</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            </Col>
+            <Col xs={24} sm={12} md={4}>
               <FormControl fullWidth>
                 <InputLabel>仓库</InputLabel>
                 <Select
@@ -1192,8 +1158,8 @@ const OutboundPage: React.FC = () => {
                   ))}
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            </Col>
+            <Col xs={24} sm={12} md={4}>
               <Button
                 fullWidth
                 variant="outlined"
@@ -1206,8 +1172,8 @@ const OutboundPage: React.FC = () => {
               >
                 重置
               </Button>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
               <Button
                 fullWidth
                 variant="contained"
@@ -1216,8 +1182,8 @@ const OutboundPage: React.FC = () => {
               >
                 新增出库单
               </Button>
-            </Grid>
-          </Grid>
+            </Col>
+          </Row>
         </CardContent>
       </Card>
 

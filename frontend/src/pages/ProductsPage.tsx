@@ -1,54 +1,41 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Typography,
-  Button,
-  Card,
-  CardContent,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Grid,
-  Alert,
-  CircularProgress,
-  Tooltip,
-  TablePagination,
-  InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Avatar,
-} from '@mui/material';
-import {
-  Add,
-  Edit,
-  Delete,
-  Search,
-  Inventory,
-  Category,
-  AttachMoney,
-  QrCode,
-  Business,
-} from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import {
+  Card,
+  Typography,
+  Button,
+  Input,
+  Select,
+  Table,
+  Modal,
+  Form,
+  Row,
+  Col,
+  Space,
+  Tag,
+  Pagination,
+  message,
+  Spin,
+  Alert
+} from 'antd';
+import {
+  PlusOutlined,
+  SearchOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  FilterOutlined,
+  QrcodeOutlined,
+  ShopOutlined
+} from '@ant-design/icons';
 import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
 import type { Product, Category as CategoryType, CreateProductRequest, UpdateProductRequest, PaginatedResponse } from '../types/api';
+
+const { Title } = Typography;
+const { Option } = Select;
 
 // 表单验证模式
 const productSchema = z.object({
@@ -153,384 +140,314 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Inventory />
+    <Modal
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ShopOutlined />
           {product ? '编辑产品' : '新增产品'}
-        </Box>
-      </DialogTitle>
-      <DialogContent>
-        <Box component="form" sx={{ mt: 2 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="sku"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="SKU"
-                    required
-                    error={!!errors.sku}
-                    helperText={errors.sku?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="name"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="产品名称"
-                    required
-                    error={!!errors.name}
-                    helperText={errors.name?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Controller
-                name="description"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    multiline
-                    rows={3}
-                    label="描述"
-                    error={!!errors.description}
-                    helperText={errors.description?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="deviceType"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="设备类型"
-                    placeholder="如：基站、路由器、光模块"
-                    error={!!errors.deviceType}
-                    helperText={errors.deviceType?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="modelNumber"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="型号"
-                    placeholder="如：HUAWEI MA5683T"
-                    error={!!errors.modelNumber}
-                    helperText={errors.modelNumber?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="frequencyProtocol"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="频段/协议"
-                    placeholder="如：5G 700MHz, WiFi 6"
-                    error={!!errors.frequencyProtocol}
-                    helperText={errors.frequencyProtocol?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="firmwareVersion"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="固件版本"
-                    error={!!errors.firmwareVersion}
-                    helperText={errors.firmwareVersion?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
+        </div>
+      }
+      open={open}
+      onCancel={onClose}
+      width={800}
+      footer={[
+        <Button key="cancel" onClick={onClose} disabled={loading}>
+          取消
+        </Button>,
+        <Button
+          key="submit"
+          type="primary"
+          loading={loading}
+          onClick={handleSubmit(handleFormSubmit)}
+        >
+          保存
+        </Button>
+      ]}
+    >
+      <Form layout="vertical" style={{ marginTop: 16 }}>
+        <Row gutter={16}>
+          <Col span={12}>
+              <Form.Item
+                label="SKU"
+                required
+                validateStatus={errors.sku ? 'error' : ''}
+                help={errors.sku?.message}
+              >
+                <Controller
+                  name="sku"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      disabled={loading}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="产品名称"
+                required
+                validateStatus={errors.name ? 'error' : ''}
+                help={errors.name?.message}
+              >
+                <Controller
+                  name="name"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      disabled={loading}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item
+                label="描述"
+                validateStatus={errors.description ? 'error' : ''}
+                help={errors.description?.message}
+              >
+                <Controller
+                  name="description"
+                  control={control}
+                  render={({ field }) => (
+                    <Input.TextArea
+                      {...field}
+                      rows={3}
+                      disabled={loading}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="设备类型"
+                validateStatus={errors.deviceType ? 'error' : ''}
+                help={errors.deviceType?.message}
+              >
+                <Controller
+                  name="deviceType"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      placeholder="如：基站、路由器、光模块"
+                      disabled={loading}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="型号"
+                validateStatus={errors.modelNumber ? 'error' : ''}
+                help={errors.modelNumber?.message}
+              >
+                <Controller
+                  name="modelNumber"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      placeholder="如：HUAWEI MA5683T"
+                      disabled={loading}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="频段/协议"
+                validateStatus={errors.frequencyProtocol ? 'error' : ''}
+                help={errors.frequencyProtocol?.message}
+              >
+                <Controller
+                  name="frequencyProtocol"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      placeholder="如：5G 700MHz, WiFi 6"
+                      disabled={loading}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="固件版本"
+                validateStatus={errors.firmwareVersion ? 'error' : ''}
+                help={errors.firmwareVersion?.message}
+              >
+                <Controller
+                  name="firmwareVersion"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      disabled={loading}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
 
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="modelNumber"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="型号"
-                    placeholder="如：HUAWEI MA5683T"
-                    error={!!errors.modelNumber}
-                    helperText={errors.modelNumber?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="frequencyProtocol"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="频段/协议"
-                    placeholder="如：5G 700MHz, WiFi 6"
-                    error={!!errors.frequencyProtocol}
-                    helperText={errors.frequencyProtocol?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="firmwareVersion"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="固件版本"
-                    error={!!errors.firmwareVersion}
-                    helperText={errors.firmwareVersion?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="categoryId"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth required error={!!errors.categoryId}>
-                    <InputLabel>分类</InputLabel>
+            <Col span={12}>
+              <Form.Item
+                label="单位"
+                validateStatus={errors.unit ? 'error' : ''}
+                help={errors.unit?.message}
+                required
+              >
+                <Controller
+                  name="unit"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      placeholder="如：台、个、套"
+                      disabled={loading}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="分类"
+                validateStatus={errors.categoryId ? 'error' : ''}
+                help={errors.categoryId?.message}
+                required
+              >
+                <Controller
+                  name="categoryId"
+                  control={control}
+                  render={({ field }) => (
                     <Select
                       {...field}
-                      label="分类"
+                      placeholder="请选择分类"
                       disabled={loading}
                     >
                       {categoriesData?.map((category) => (
-                        <MenuItem key={category.id} value={category.id}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Category fontSize="small" />
+                        <Option key={category.id} value={category.id}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <FilterOutlined />
                             {category.name}
-                          </Box>
-                        </MenuItem>
+                          </div>
+                        </Option>
                       ))}
                     </Select>
-                    {errors.categoryId && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
-                        {errors.categoryId.message}
-                      </Typography>
-                    )}
-                  </FormControl>
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="unit"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="单位"
-                    required
-                    placeholder="如：个、箱、公斤等"
-                    error={!!errors.unit}
-                    helperText={errors.unit?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="unitPrice"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="单价"
-                    type="number"
-                    required
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <AttachMoney />
-                        </InputAdornment>
-                      ),
-                    }}
-                    error={!!errors.unitPrice}
-                    helperText={errors.unitPrice?.message}
-                    disabled={loading}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="barcode"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="条形码"
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <QrCode />
-                        </InputAdornment>
-                      ),
-                    }}
-                    error={!!errors.barcode}
-                    helperText={errors.barcode?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="projectId"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth>
-                    <InputLabel>所属项目</InputLabel>
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="单价"
+                validateStatus={errors.unitPrice ? 'error' : ''}
+                help={errors.unitPrice?.message}
+                required
+              >
+                <Controller
+                  name="unitPrice"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      type="number"
+                      prefix="¥"
+                      placeholder="0.00"
+                      disabled={loading}
+                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="条形码"
+                validateStatus={errors.barcode ? 'error' : ''}
+                help={errors.barcode?.message}
+              >
+                <Controller
+                  name="barcode"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      prefix={<QrcodeOutlined />}
+                      placeholder="请输入条形码"
+                      disabled={loading}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="所属项目"
+                validateStatus={errors.projectId ? 'error' : ''}
+                help={errors.projectId?.message}
+              >
+                <Controller
+                  name="projectId"
+                  control={control}
+                  render={({ field }) => (
                     <Select
                       {...field}
-                      label="所属项目"
+                      placeholder="请选择所属项目"
                       disabled={loading || !projectsData}
+                      allowClear
                     >
-                      <MenuItem value="">无</MenuItem>
+                      <Option value="">无</Option>
                       {projectsData?.map((project) => (
-                        <MenuItem key={project.id} value={project.id}>
+                        <Option key={project.id} value={project.id}>
                           {project.name} ({project.projectCode})
-                        </MenuItem>
+                        </Option>
                       ))}
                     </Select>
-                  </FormControl>
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="minStock"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="最小库存"
-                    type="number"
-                    required
-                    error={!!errors.minStock}
-                    helperText={errors.minStock?.message}
-                    disabled={loading}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="maxStock"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="最大库存"
-                    type="number"
-                    required
-                    error={!!errors.maxStock}
-                    helperText={errors.maxStock?.message || (field.value < minStock ? '最大库存不能小于最小库存' : '')}
-                    disabled={loading}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                  />
-                )}
-              />
-            </Grid>
-          </Grid>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
-          取消
-        </Button>
-        <Button
-          onClick={handleSubmit(handleFormSubmit)}
-          variant="contained"
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={20} /> : undefined}
-        >
-          {loading ? '保存中...' : '保存'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+                  )}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+    </Modal>
   );
 };
 
 const ProductsPage: React.FC = () => {
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>();
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | undefined>();
 
   const queryClient = useQueryClient();
 
   // 获取产品列表
   const { data: productsData, isLoading } = useQuery({
-    queryKey: queryKeys.products.list({ page: page + 1, pageSize, search, categoryId: categoryFilter }),
+    queryKey: queryKeys.products.list({ page: currentPage, limit: pageSize, search: searchTerm, categoryId: selectedCategory }),
     queryFn: async () => {
-      const response = await api.get<PaginatedResponse<Product[]>>('/products', {
-        params: { page: page + 1, pageSize, search, categoryId: categoryFilter || undefined },
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+        ...(searchTerm && { search: searchTerm }),
+        ...(selectedCategory && { categoryId: selectedCategory }),
       });
-      return response.data;
+      const response = await api.get<PaginatedResponse<Product>>(`/products?${params}`);
+      return response.data.data;
     },
   });
 
@@ -539,33 +456,42 @@ const ProductsPage: React.FC = () => {
     queryKey: queryKeys.categories.all,
     queryFn: async () => {
       const response = await api.get<CategoryType[]>('/categories');
-      return response.data.data;
+      return response.data.data.list;
     },
   });
 
   // 创建产品
   const createMutation = useMutation({
-    mutationFn: async (data: CreateProductRequest) => {
+    mutationFn: async (data: ProductFormData) => {
       const response = await api.post<Product>('/products', data);
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+      message.success('产品创建成功');
       setDialogOpen(false);
       setSelectedProduct(undefined);
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || '创建失败');
     },
   });
 
   // 更新产品
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: UpdateProductRequest }) => {
-      const response = await api.put<Product>(`/products/${id}`, data);
+    mutationFn: async (data: ProductFormData) => {
+      if (!selectedProduct) throw new Error('No product selected');
+      const response = await api.put<Product>(`/products/${selectedProduct.id}`, data);
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+      message.success('产品更新成功');
       setDialogOpen(false);
       setSelectedProduct(undefined);
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || '更新失败');
     },
   });
 
@@ -575,15 +501,22 @@ const ProductsPage: React.FC = () => {
       await api.delete(`/products/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
-      setDeleteConfirmOpen(false);
+      message.success('产品删除成功');
+      setDeleteDialogOpen(false);
       setProductToDelete(undefined);
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || '删除失败');
     },
   });
 
-  const handleCreate = () => {
-    setSelectedProduct(undefined);
-    setDialogOpen(true);
+  const handleSubmit = (data: ProductFormData) => {
+    if (selectedProduct) {
+      updateMutation.mutate(data);
+    } else {
+      createMutation.mutate(data);
+    }
   };
 
   const handleEdit = (product: Product) => {
@@ -593,238 +526,171 @@ const ProductsPage: React.FC = () => {
 
   const handleDelete = (product: Product) => {
     setProductToDelete(product);
-    setDeleteConfirmOpen(true);
+    setDeleteDialogOpen(true);
   };
 
-  const handleSubmit = (data: ProductFormData) => {
-    if (selectedProduct) {
-      updateMutation.mutate({ id: selectedProduct.id, data });
-    } else {
-      createMutation.mutate(data);
-    }
-  };
-
-  const handleConfirmDelete = () => {
+  const confirmDelete = () => {
     if (productToDelete) {
       deleteMutation.mutate(productToDelete.id);
     }
   };
 
-  const handlePageChange = (_: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handlePageSizeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setPageSize(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const products = productsData?.data?.list || [];
-  const pagination = productsData?.data?.pagination;
-  const categories = categoriesData || [];
+  const columns = [
+    {
+      title: 'SKU',
+      dataIndex: 'sku',
+      key: 'sku',
+      width: 120,
+    },
+    {
+      title: '产品名称',
+      dataIndex: 'name',
+      key: 'name',
+      width: 200,
+    },
+    {
+      title: '分类',
+      dataIndex: 'categoryName',
+      key: 'categoryName',
+      width: 120,
+    },
+    {
+      title: '单位',
+      dataIndex: 'unit',
+      key: 'unit',
+      width: 80,
+    },
+    {
+      title: '单价',
+      dataIndex: 'unitPrice',
+      key: 'unitPrice',
+      width: 100,
+      render: (price: number) => `¥${price.toFixed(2)}`,
+    },
+    {
+      title: '库存范围',
+      key: 'stockRange',
+      width: 120,
+      render: (_: any, record: Product) => `${record.minStock}-${record.maxStock}`,
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: (status: string) => (
+        <Tag color={status === 'active' ? 'green' : 'red'}>
+          {status === 'active' ? '启用' : '禁用'}
+        </Tag>
+      ),
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 150,
+      render: (_: any, record: Product) => (
+        <Space>
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+          >
+            编辑
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record)}
+          >
+            删除
+          </Button>
+        </Space>
+      ),
+    },
+  ];
 
   return (
-    <Box sx={{ width: '100%', maxWidth: '100%' }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-        产品管理
-      </Typography>
-
-      {/* 操作栏 */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', flex: 1, maxWidth: { xs: '100%', sm: 'none' } }}>
-              <TextField
-                placeholder="搜索产品..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{ minWidth: { xs: '100%', sm: 300 }, flex: { xs: 1, sm: 'none' } }}
-              />
-              <FormControl sx={{ minWidth: { xs: '100%', sm: 200 }, flex: { xs: 1, sm: 'none' } }}>
-                <InputLabel>分类筛选</InputLabel>
-                <Select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  label="分类筛选"
-                >
-                  <MenuItem value="">
-                    <em>全部分类</em>
-                  </MenuItem>
-                  {categories.map((category) => (
-                    <MenuItem key={category.id} value={category.id}>
-                      {category.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={handleCreate}
-            >
-              新增产品
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
-
-      {/* 产品列表 */}
+    <div style={{ padding: 24 }}>
       <Card>
-        <TableContainer sx={{ width: '100%', overflowX: 'auto' }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>SKU</TableCell>
-                <TableCell>产品名称</TableCell>
-                <TableCell>分类</TableCell>
-                <TableCell>设备类型</TableCell>
-                <TableCell>型号</TableCell>
-                <TableCell>项目</TableCell>
-                <TableCell>单位</TableCell>
-                <TableCell>单价</TableCell>
-                <TableCell>库存范围</TableCell>
-                <TableCell>状态</TableCell>
-                <TableCell align="center">操作</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={11} align="center">
-                    <CircularProgress />
-                  </TableCell>
-                </TableRow>
-              ) : products.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={11} align="center">
-                    <Typography color="textSecondary">暂无数据</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                products.map((product) => (
-                  <TableRow key={product.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="medium">
-                        {product.sku}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.light' }}>
-                          <Inventory fontSize="small" />
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body2" fontWeight="medium">
-                            {product.name}
-                          </Typography>
-                          {product.description && (
-                            <Typography variant="caption" color="textSecondary">
-                              {product.description.length > 30 
-                                ? `${product.description.substring(0, 30)}...` 
-                                : product.description}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      {product.category ? (
-                        <Chip
-                          label={product.category.name}
-                          size="small"
-                          variant="outlined"
-                          icon={<Category />}
-                        />
-                      ) : (
-                        '-'
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {product.deviceType || '-'}
-                    </TableCell>
-                    <TableCell>
-                      {product.modelNumber || '-'}
-                    </TableCell>
-                    <TableCell>
-                      {product.project ? (
-                        <Chip
-                          label={product.project.name}
-                          size="small"
-                          variant="outlined"
-                          icon={<Business />}
-                        />
-                      ) : (
-                        '-'
-                      )}
-                    </TableCell>
-                    <TableCell>{product.unit}</TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="primary" fontWeight="medium">
-                        ¥{(product.unitPrice || 0).toFixed(2)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {product.minStock} - {product.maxStock}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={product.isActive ? '启用' : '禁用'}
-                        color={product.isActive ? 'success' : 'default'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <Tooltip title="编辑">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEdit(product)}
-                        >
-                          <Edit />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="删除">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDelete(product)}
-                        >
-                          <Delete />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        
-        {pagination && (
-          <TablePagination
-            component="div"
-            count={pagination.total}
-            page={page}
-            onPageChange={handlePageChange}
-            rowsPerPage={pageSize}
-            onRowsPerPageChange={handlePageSizeChange}
-            rowsPerPageOptions={[5, 10, 25, 50]}
-            labelRowsPerPage="每页显示："
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} 共 ${count} 条`}
+        <div style={{ marginBottom: 16 }}>
+          <Row gutter={16} align="middle">
+            <Col flex="auto">
+              <Title level={2} style={{ margin: 0 }}>
+                产品管理
+              </Title>
+            </Col>
+            <Col>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setSelectedProduct(undefined);
+                  setDialogOpen(true);
+                }}
+              >
+                新增产品
+              </Button>
+            </Col>
+          </Row>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <Row gutter={16}>
+            <Col span={8}>
+              <Input
+                placeholder="搜索产品名称、SKU或条码"
+                prefix={<SearchOutlined />}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                allowClear
+              />
+            </Col>
+            <Col span={6}>
+              <Select
+                placeholder="选择分类"
+                value={selectedCategory}
+                onChange={setSelectedCategory}
+                allowClear
+                style={{ width: '100%' }}
+              >
+                {categoriesData?.map((category) => (
+                  <Option key={category.id} value={category.id}>
+                    {category.name}
+                  </Option>
+                ))}
+              </Select>
+            </Col>
+          </Row>
+        </div>
+
+        <Table
+          columns={columns}
+          dataSource={productsData?.list || []}
+          rowKey="id"
+          loading={isLoading}
+          pagination={false}
+          scroll={{ x: 1000 }}
+        />
+
+        <div style={{ marginTop: 16, textAlign: 'right' }}>
+          <Pagination
+            current={currentPage}
+            pageSize={pageSize}
+            total={productsData?.total || 0}
+            showSizeChanger
+            showQuickJumper
+            showTotal={(total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`}
+            onChange={(page, size) => {
+              setCurrentPage(page);
+              setPageSize(size);
+            }}
           />
-        )}
+        </div>
       </Card>
 
-      {/* 新增/编辑对话框 */}
       <ProductDialog
         open={dialogOpen}
         product={selectedProduct}
@@ -836,31 +702,21 @@ const ProductsPage: React.FC = () => {
         loading={createMutation.isPending || updateMutation.isPending}
       />
 
-      {/* 删除确认对话框 */}
-      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
-        <DialogTitle>确认删除</DialogTitle>
-        <DialogContent>
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            删除操作不可恢复，请谨慎操作！
-          </Alert>
-          <Typography>
-            确定要删除产品 "{productToDelete?.name}" 吗？
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteConfirmOpen(false)}>取消</Button>
-          <Button
-            onClick={handleConfirmDelete}
-            color="error"
-            variant="contained"
-            disabled={deleteMutation.isPending}
-            startIcon={deleteMutation.isPending ? <CircularProgress size={20} /> : undefined}
-          >
-            {deleteMutation.isPending ? '删除中...' : '确认删除'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      <Modal
+        title="确认删除"
+        open={deleteDialogOpen}
+        onOk={confirmDelete}
+        onCancel={() => {
+          setDeleteDialogOpen(false);
+          setProductToDelete(undefined);
+        }}
+        okText="确认删除"
+        cancelText="取消"
+        okButtonProps={{ danger: true, loading: deleteMutation.isPending }}
+      >
+        <p>确定要删除产品 "{productToDelete?.name}" 吗？此操作不可撤销。</p>
+      </Modal>
+    </div>
   );
 };
 

@@ -3,6 +3,10 @@
 namespace app\model;
 
 use think\Model;
+use app\model\Zone;
+use app\model\InboundOrder;
+use app\model\OutboundOrder;
+use app\model\User;
 
 /**
  * 仓库模型
@@ -36,6 +40,20 @@ class Warehouse extends Model
     protected $field = [
         'id',
         'code',
+        'name',
+        'address',
+        'manager_id',
+        'status',
+        'created_at'
+    ];
+    
+    // JSON序列化时的字段映射
+    protected $json = [];
+    
+    // 数据输出字段映射
+    protected $visible = [
+        'id',
+        'code', 
         'name',
         'address',
         'manager_id',
@@ -159,5 +177,29 @@ class Warehouse extends Model
         $statistics['inventory_count'] = $totalInventory;
         
         return $statistics;
+    }
+    
+    /**
+     * 检查仓库是否可以删除
+     * 如果仓库下有库区或关联了订单，则不能删除
+     */
+    public function canDelete()
+    {
+        // 检查是否有库区
+        if ($this->zones()->count() > 0) {
+            return false;
+        }
+        
+        // 检查是否有入库单
+        if ($this->inboundOrders()->count() > 0) {
+            return false;
+        }
+        
+        // 检查是否有出库单
+        if ($this->outboundOrders()->count() > 0) {
+            return false;
+        }
+        
+        return true;
     }
 }

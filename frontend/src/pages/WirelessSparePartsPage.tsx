@@ -1,37 +1,30 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  Typography,
-  Button,
   Card,
-  CardContent,
-  IconButton,
-  Chip,
-  TextField,
-  Grid,
+  Button,
+  Input,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
-  Paper,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-  Stack,
+  Tag,
   Tabs,
-  Tab,
+  Select,
+  Space,
+  Typography,
+  Divider,
   Tooltip,
-} from '@mui/material';
+  Pagination,
+  Form,
+  message,
+} from 'antd';
 import {
-  Search,
-  Refresh,
-  FilterList,
-  GetApp,
-} from '@mui/icons-material';
+  SearchOutlined,
+  SyncOutlined,
+  DownloadOutlined,
+  EyeOutlined,
+} from '@ant-design/icons';
+
+const { Title, Text } = Typography;
+const { TabPane } = Tabs;
+const { Option } = Select;
 
 // 模拟数据
 const mockData = [
@@ -97,59 +90,42 @@ const mockData = [
   },
 ];
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-const TabPanel: React.FC<TabPanelProps> = ({ children, value, index, ...other }) => {
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`tabpanel-${index}`}
-      aria-labelledby={`tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-};
-
 const WirelessSparePartsPage: React.FC = () => {
   // 状态管理
-  const [tabValue, setTabValue] = useState(0);
+  const [tabValue, setTabValue] = useState('1');
   const [filterType, setFilterType] = useState('全部');
   const [searchText, setSearchText] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // 处理标签页切换
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
+  const handleTabChange = (key: string) => {
+    setTabValue(key);
+    setPage(1); // 切换标签页时重置页码
   };
 
   // 处理类型筛选
-  const handleFilterChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFilterType(event.target.value);
-    setPage(0); // 重置页码
+  const handleFilterChange = (value: string) => {
+    setFilterType(value);
+    setPage(1); // 重置页码
   };
 
   // 处理搜索
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchText(event.target.value);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchText(e.target.value);
   };
 
-  // 处理页码变化
-  const handleChangePage = (event: unknown, newPage: number) => {
+  // 处理分页变化
+  const handlePageChange = (newPage: number, newPageSize: number) => {
     setPage(newPage);
+    setPageSize(newPageSize);
   };
 
-  // 处理每页行数变化
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+  // 重置筛选条件
+  const handleReset = () => {
+    setFilterType('全部');
+    setSearchText('');
+    setPage(1);
   };
 
   // 筛选数据
@@ -168,293 +144,156 @@ const WirelessSparePartsPage: React.FC = () => {
       return false;
     }
     // 标签页筛选
-    if (tabValue === 1 && item.status !== '入库') {
+    if (tabValue === '2' && item.status !== '入库') {
       return false;
     }
-    if (tabValue === 2 && item.status !== '出库') {
+    if (tabValue === '3' && item.status !== '出库') {
       return false;
     }
     return true;
   });
 
   // 分页数据
-  const paginatedData = filteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const paginatedData = filteredData.slice((page - 1) * pageSize, page * pageSize);
+
+  // 表格列定义
+  const columns = [
+    {
+      title: '单据编号',
+      dataIndex: 'id',
+      key: 'id',
+    },
+    {
+      title: '备件名称',
+      dataIndex: 'partName',
+      key: 'partName',
+    },
+    {
+      title: '型号',
+      dataIndex: 'model',
+      key: 'model',
+    },
+    {
+      title: '类型',
+      dataIndex: 'type',
+      key: 'type',
+      render: (type: string) => (
+        <Tag color={type === '5G' ? 'success' : 'blue'}>{type}</Tag>
+      ),
+    },
+    {
+      title: '数量',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      align: 'right' as const,
+    },
+    {
+      title: '操作人',
+      dataIndex: 'operator',
+      key: 'operator',
+    },
+    {
+      title: '日期',
+      dataIndex: 'date',
+      key: 'date',
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => (
+        <Tag color={status === '入库' ? 'blue' : 'orange'}>{status}</Tag>
+      ),
+    },
+    {
+      title: '关联项目',
+      dataIndex: 'project',
+      key: 'project',
+    },
+    {
+      title: '操作',
+      key: 'action',
+      align: 'center' as const,
+      render: (_: any, record: any) => (
+        <Tooltip title="查看详情">
+          <Button type="text" icon={<EyeOutlined />} />
+        </Tooltip>
+      ),
+    },
+  ];
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        无线备件出入库登记表
-      </Typography>
+    <div style={{ padding: 24 }}>
+      <Title level={3}>无线备件出入库登记表</Title>
 
       <Card>
-        <CardContent>
-          {/* 标签页 */}
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={tabValue} onChange={handleTabChange} aria-label="wireless spare parts tabs">
-              <Tab label="全部记录" />
-              <Tab label="入库记录" />
-              <Tab label="出库记录" />
-            </Tabs>
-          </Box>
+        {/* 标签页 */}
+        <Tabs activeKey={tabValue} onChange={handleTabChange}>
+          <TabPane tab="全部记录" key="1" />
+          <TabPane tab="入库记录" key="2" />
+          <TabPane tab="出库记录" key="3" />
+        </Tabs>
 
-          {/* 筛选工具栏 */}
-          <Box sx={{ my: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <FormControl sx={{ minWidth: 120 }}>
-              <InputLabel id="type-filter-label">类型</InputLabel>
-              <Select
-                labelId="type-filter-label"
-                value={filterType}
-                label="类型"
-                onChange={handleFilterChange}
-                size="small"
-              >
-                <MenuItem value="全部">全部</MenuItem>
-                <MenuItem value="5G">5G</MenuItem>
-                <MenuItem value="4G">4G</MenuItem>
-              </Select>
-            </FormControl>
+        {/* 筛选工具栏 */}
+        <div style={{ margin: '16px 0', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <Select
+            value={filterType}
+            onChange={handleFilterChange}
+            style={{ width: 120 }}
+          >
+            <Option value="全部">全部</Option>
+            <Option value="5G">5G</Option>
+            <Option value="4G">4G</Option>
+          </Select>
 
-            <TextField
-              label="搜索"
-              variant="outlined"
-              size="small"
-              value={searchText}
-              onChange={handleSearchChange}
-              sx={{ minWidth: 200 }}
-              InputProps={{
-                startAdornment: <Search fontSize="small" sx={{ mr: 1, color: 'action.active' }} />,
-              }}
-            />
+          <Input
+            placeholder="搜索"
+            value={searchText}
+            onChange={handleSearchChange}
+            prefix={<SearchOutlined />}
+            style={{ width: 200 }}
+          />
 
-            <Button
-              variant="outlined"
-              startIcon={<Refresh />}
-              onClick={() => {
-                setFilterType('全部');
-                setSearchText('');
-              }}
-            >
-              重置
-            </Button>
+          <Button
+            icon={<SyncOutlined />}
+            onClick={handleReset}
+          >
+            重置
+          </Button>
 
-            <Box sx={{ flexGrow: 1 }} />
+          <div style={{ flex: 1 }} />
 
-            <Button
-              variant="contained"
-              startIcon={<GetApp />}
-              color="primary"
-            >
-              导出数据
-            </Button>
-          </Box>
+          <Button
+            type="primary"
+            icon={<DownloadOutlined />}
+          >
+            导出数据
+          </Button>
+        </div>
 
-          {/* 表格内容 */}
-          <TabPanel value={tabValue} index={0}>
-            <TableContainer component={Paper} sx={{ mt: 2 }}>
-              <Table sx={{ minWidth: 650 }} aria-label="wireless spare parts table">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>单据编号</TableCell>
-                    <TableCell>备件名称</TableCell>
-                    <TableCell>型号</TableCell>
-                    <TableCell>类型</TableCell>
-                    <TableCell align="right">数量</TableCell>
-                    <TableCell>操作人</TableCell>
-                    <TableCell>日期</TableCell>
-                    <TableCell>状态</TableCell>
-                    <TableCell>关联项目</TableCell>
-                    <TableCell align="center">操作</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedData.map((row) => (
-                    <TableRow key={row.key}>
-                      <TableCell>{row.id}</TableCell>
-                      <TableCell>{row.partName}</TableCell>
-                      <TableCell>{row.model}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={row.type} 
-                          color={row.type === '5G' ? 'success' : 'primary'} 
-                          size="small" 
-                        />
-                      </TableCell>
-                      <TableCell align="right">{row.quantity}</TableCell>
-                      <TableCell>{row.operator}</TableCell>
-                      <TableCell>{row.date}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={row.status} 
-                          color={row.status === '入库' ? 'info' : 'warning'} 
-                          size="small" 
-                        />
-                      </TableCell>
-                      <TableCell>{row.project}</TableCell>
-                      <TableCell align="center">
-                        <Stack direction="row" spacing={1} justifyContent="center">
-                          <Tooltip title="查看详情">
-                            <IconButton size="small" color="primary">
-                              <Search fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <TablePagination
-                rowsPerPageOptions={[5, 10, 25]}
-                component="div"
-                count={filteredData.length}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={handleChangePage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                labelRowsPerPage="每页行数:"
-                labelDisplayedRows={({ from, to, count }) => `${from}-${to} 共 ${count}`}
-              />
-            </TableContainer>
-          </TabPanel>
-
-          <TabPanel value={tabValue} index={1}>
-            <TableContainer component={Paper} sx={{ mt: 2 }}>
-              <Table sx={{ minWidth: 650 }} aria-label="wireless spare parts inbound table">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>单据编号</TableCell>
-                    <TableCell>备件名称</TableCell>
-                    <TableCell>型号</TableCell>
-                    <TableCell>类型</TableCell>
-                    <TableCell align="right">数量</TableCell>
-                    <TableCell>操作人</TableCell>
-                    <TableCell>日期</TableCell>
-                    <TableCell>状态</TableCell>
-                    <TableCell>关联项目</TableCell>
-                    <TableCell align="center">操作</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedData.map((row) => (
-                    <TableRow key={row.key}>
-                      <TableCell>{row.id}</TableCell>
-                      <TableCell>{row.partName}</TableCell>
-                      <TableCell>{row.model}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={row.type} 
-                          color={row.type === '5G' ? 'success' : 'primary'} 
-                          size="small" 
-                        />
-                      </TableCell>
-                      <TableCell align="right">{row.quantity}</TableCell>
-                      <TableCell>{row.operator}</TableCell>
-                      <TableCell>{row.date}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={row.status} 
-                          color="info" 
-                          size="small" 
-                        />
-                      </TableCell>
-                      <TableCell>{row.project}</TableCell>
-                      <TableCell align="center">
-                        <Stack direction="row" spacing={1} justifyContent="center">
-                          <Tooltip title="查看详情">
-                            <IconButton size="small" color="primary">
-                              <Search fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <TablePagination
-                rowsPerPageOptions={[5, 10, 25]}
-                component="div"
-                count={filteredData.length}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={handleChangePage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                labelRowsPerPage="每页行数:"
-                labelDisplayedRows={({ from, to, count }) => `${from}-${to} 共 ${count}`}
-              />
-            </TableContainer>
-          </TabPanel>
-
-          <TabPanel value={tabValue} index={2}>
-            <TableContainer component={Paper} sx={{ mt: 2 }}>
-              <Table sx={{ minWidth: 650 }} aria-label="wireless spare parts outbound table">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>单据编号</TableCell>
-                    <TableCell>备件名称</TableCell>
-                    <TableCell>型号</TableCell>
-                    <TableCell>类型</TableCell>
-                    <TableCell align="right">数量</TableCell>
-                    <TableCell>操作人</TableCell>
-                    <TableCell>日期</TableCell>
-                    <TableCell>状态</TableCell>
-                    <TableCell>关联项目</TableCell>
-                    <TableCell align="center">操作</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedData.map((row) => (
-                    <TableRow key={row.key}>
-                      <TableCell>{row.id}</TableCell>
-                      <TableCell>{row.partName}</TableCell>
-                      <TableCell>{row.model}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={row.type} 
-                          color={row.type === '5G' ? 'success' : 'primary'} 
-                          size="small" 
-                        />
-                      </TableCell>
-                      <TableCell align="right">{row.quantity}</TableCell>
-                      <TableCell>{row.operator}</TableCell>
-                      <TableCell>{row.date}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={row.status} 
-                          color="warning" 
-                          size="small" 
-                        />
-                      </TableCell>
-                      <TableCell>{row.project}</TableCell>
-                      <TableCell align="center">
-                        <Stack direction="row" spacing={1} justifyContent="center">
-                          <Tooltip title="查看详情">
-                            <IconButton size="small" color="primary">
-                              <Search fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <TablePagination
-                rowsPerPageOptions={[5, 10, 25]}
-                component="div"
-                count={filteredData.length}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={handleChangePage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                labelRowsPerPage="每页行数:"
-                labelDisplayedRows={({ from, to, count }) => `${from}-${to} 共 ${count}`}
-              />
-            </TableContainer>
-          </TabPanel>
-        </CardContent>
+        {/* 表格内容 */}
+        <Table
+          columns={columns}
+          dataSource={paginatedData}
+          rowKey="key"
+          pagination={{
+            current: page,
+            pageSize,
+            total: filteredData.length,
+            onChange: handlePageChange,
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 条`,
+          }}
+          locale={{
+            emptyText: (
+              <div style={{ textAlign: 'center', padding: 40 }}>
+                <Text type="secondary">暂无数据</Text>
+              </div>
+            ),
+          }}
+        />
       </Card>
-    </Box>
+    </div>
   );
 };
 
