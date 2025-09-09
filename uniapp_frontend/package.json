@@ -1,0 +1,17 @@
+{
+  "name": "uniapp_frontend",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "dev": "http-server . -p 8080 -o",
+    "serve": "http-server . -p 8080",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["uniapp", "wms", "warehouse"],
+  "author": "",
+  "license": "ISC",
+  "description": "WMS移动端应用",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
