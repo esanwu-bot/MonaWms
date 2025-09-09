@@ -45,8 +45,6 @@ import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
 import type {
   InboundOrder,
-  InboundOrderItem,
-  Warehouse,
   Product,
   Supplier,
   CreateInboundOrderRequest,
@@ -59,22 +57,22 @@ const { Option } = Select;
 const { Step } = Steps;
 
 // 入库单项验证
-const inboundItemSchema = z.object({
+const inboundOrderItemSchema = z.object({
   productId: z.string().min(1, '请选择产品'),
-  expectedQuantity: z.number().min(1, '预期数量必须大于0'),
-  actualQuantity: z.number().min(0, '实际数量不能小于0').optional(),
+  quantity: z.number().min(1, '数量必须大于0'),
   unitPrice: z.number().min(0, '单价不能小于0'),
-  remark: z.string().optional(),
+  batchNumber: z.string().optional(),
+  expiryDate: z.string().optional(),
+  location: z.string().optional(),
 });
 
 // 入库单验证
 const inboundOrderSchema = z.object({
-  orderNumber: z.string().min(1, '请输入入库单号'),
+  orderNumber: z.string().min(1, '请输入订单号'),
   warehouseId: z.string().min(1, '请选择仓库'),
-  supplierId: z.string().min(1, '请选择供应商'),
-  expectedDate: z.string().min(1, '请选择预期到货日期'),
-  remark: z.string().optional(),
-  items: z.array(inboundItemSchema).min(1, '至少添加一个产品'),
+  supplierId: z.string().optional(),
+  notes: z.string().optional(),
+  items: z.array(inboundOrderItemSchema).min(1, '至少添加一个商品'),
 });
 
 type InboundOrderFormData = z.infer<typeof inboundOrderSchema>;
@@ -94,7 +92,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
   onSubmit,
   loading = false,
 }) => {
-  const [form] = Form.useForm();
+
   const {
     control,
     handleSubmit,
@@ -106,14 +104,14 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
       orderNumber: order?.orderNumber || '',
       warehouseId: order?.warehouseId || '',
       supplierId: order?.supplierId || '',
-      expectedDate: order?.expectedDate ? order.expectedDate.split('T')[0] : '',
-      remark: order?.remark || '',
+      notes: order?.notes || '',
       items: order?.items || [{
         productId: '',
-        expectedQuantity: 1,
-        actualQuantity: 0,
+        quantity: 1,
         unitPrice: 0,
-        remark: '',
+        batchNumber: '',
+        expiryDate: '',
+        location: '',
       }],
     },
   });
@@ -128,7 +126,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
     queryKey: queryKeys.warehouses.all,
     queryFn: async () => {
       const response = await api.get('/warehouses');
-      return response.data.data.list;
+      return response.data.data;
     },
   });
 
@@ -153,17 +151,17 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
   React.useEffect(() => {
     if (open) {
       reset({
-        orderNumber: order?.orderNumber || `IN${Date.now()}`,
+        orderNumber: order?.orderNumber || '',
         warehouseId: order?.warehouseId || '',
         supplierId: order?.supplierId || '',
-        expectedDate: order?.expectedDate ? order.expectedDate.split('T')[0] : '',
-        remark: order?.remark || '',
+        notes: order?.notes || '',
         items: order?.items || [{
           productId: '',
-          expectedQuantity: 1,
-          actualQuantity: 0,
+          quantity: 1,
           unitPrice: 0,
-          remark: '',
+          batchNumber: '',
+          expiryDate: '',
+          location: '',
         }],
       });
     }
@@ -176,10 +174,11 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
   const addItem = () => {
     append({
       productId: '',
-      expectedQuantity: 1,
-      actualQuantity: 0,
+      quantity: 1,
       unitPrice: 0,
-      remark: '',
+      batchNumber: '',
+      expiryDate: '',
+      location: '',
     });
   };
 
@@ -235,26 +234,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
               />
             </Form.Item>
           </Col>
-          <Col span={12}>
-            <Form.Item
-              label="预期到货日期"
-              validateStatus={errors.expectedDate ? 'error' : ''}
-              help={errors.expectedDate?.message}
-            >
-              <Controller
-                name="expectedDate"
-                control={control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    type="date"
-                    placeholder="请选择预期到货日期"
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Form.Item>
-          </Col>
+
         </Row>
 
         <Row gutter={16}>
@@ -318,7 +298,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
 
         <Form.Item label="备注">
           <Controller
-            name="remark"
+            name="notes"
             control={control}
             render={({ field }) => (
               <Input.TextArea
@@ -378,12 +358,12 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
               </Col>
               <Col span={4}>
                 <Form.Item
-                  label="预期数量"
-                  validateStatus={errors.items?.[index]?.expectedQuantity ? 'error' : ''}
-                  help={errors.items?.[index]?.expectedQuantity?.message}
+                  label="数量"
+                  validateStatus={errors.items?.[index]?.quantity ? 'error' : ''}
+                  help={errors.items?.[index]?.quantity?.message}
                 >
                   <Controller
-                    name={`items.${index}.expectedQuantity`}
+                    name={`items.${index}.quantity`}
                     control={control}
                     render={({ field }) => (
                       <Input
@@ -396,28 +376,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                   />
                 </Form.Item>
               </Col>
-              {order && (
-                <Col span={4}>
-                  <Form.Item
-                    label="实际数量"
-                    validateStatus={errors.items?.[index]?.actualQuantity ? 'error' : ''}
-                    help={errors.items?.[index]?.actualQuantity?.message}
-                  >
-                    <Controller
-                      name={`items.${index}.actualQuantity`}
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          type="number"
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                          disabled={loading}
-                        />
-                      )}
-                    />
-                  </Form.Item>
-                </Col>
-              )}
+
               <Col span={4}>
                 <Form.Item
                   label="单价"
@@ -439,14 +398,15 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                   />
                 </Form.Item>
               </Col>
-              <Col span={order ? 3 : 4}>
+              <Col span={4}>
                 <Form.Item label="备注">
                   <Controller
-                    name={`items.${index}.remark`}
+                    name={`items.${index}.batchNumber`}
                     control={control}
                     render={({ field }) => (
                       <Input
                         {...field}
+                        placeholder="批次号"
                         disabled={loading}
                       />
                     )}
@@ -512,8 +472,8 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
 
   const steps = [
     { title: '创建', status: 'finish' },
-    { title: '审核', status: order.status === 'pending' ? 'wait' : 'finish' },
-    { title: '收货', status: order.status === 'received' ? 'finish' : 'wait' },
+    { title: '审核', status: order.status_text === 'PENDING' ? 'wait' : 'finish' },
+    { title: '收货', status: order.status_text === 'COMPLETED' ? 'finish' : 'wait' },
   ];
 
   return (
@@ -531,7 +491,7 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
         <Button key="close" onClick={onClose}>
           关闭
         </Button>,
-        order.status === 'pending' && onApprove && onReject && (
+        order.status_text === 'PENDING' && onApprove && onReject && (
           <>
             <Button
               key="reject"
@@ -551,7 +511,7 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
             </Button>
           </>
         ),
-        order.status === 'approved' && onReceive && (
+        order.status_text === 'IN_PROGRESS' && onReceive && (
           <Button
             key="receive"
             type="primary"
@@ -567,23 +527,20 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
         <Descriptions column={2}>
           <Descriptions.Item label="入库单号">{order.orderNumber}</Descriptions.Item>
           <Descriptions.Item label="仓库">{order.warehouse?.name}</Descriptions.Item>
-          <Descriptions.Item label="供应商">{order.supplier?.name}</Descriptions.Item>
-          <Descriptions.Item label="预期到货日期">
-            {new Date(order.expectedDate).toLocaleDateString()}
-          </Descriptions.Item>
-          {order.remark && (
+          <Descriptions.Item label="供应商">{order.supplierId}</Descriptions.Item>
+          {order.notes && (
             <Descriptions.Item label="备注" span={2}>
-              {order.remark}
+              {order.notes}
             </Descriptions.Item>
           )}
           <Descriptions.Item label="状态">
-            {getStatusTag(order.status)}
+            {getStatusTag(order.status_text)}
           </Descriptions.Item>
         </Descriptions>
       </Card>
 
       <Card title="处理流程" style={{ marginBottom: 24 }}>
-        <Steps current={order.status === 'pending' ? 0 : order.status === 'approved' ? 1 : 2}>
+        <Steps current={order.status_text === 'PENDING' ? 0 : order.status_text === 'IN_PROGRESS' ? 1 : 2}>
           {steps.map((step, index) => (
             <Step key={index} title={step.title} status={step.status as any} />
           ))}
@@ -607,16 +564,10 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
               ),
             },
             {
-              title: '预期数量',
-              dataIndex: 'expectedQuantity',
+              title: '数量',
+              dataIndex: 'quantity',
               align: 'right',
               render: (text, record) => `${text} ${record.product?.unit || '件'}`,
-            },
-            {
-              title: '实际数量',
-              dataIndex: 'actualQuantity',
-              align: 'right',
-              render: (text) => text || '-',
             },
             {
               title: '单价',
@@ -628,11 +579,11 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
               title: '金额',
               align: 'right',
               render: (_, record) => 
-                `¥${((record.actualQuantity || record.expectedQuantity) * record.unitPrice).toFixed(2)}`,
+                `¥${(record.quantity * record.unitPrice).toFixed(2)}`,
             },
             {
-              title: '备注',
-              dataIndex: 'remark',
+              title: '批次号',
+              dataIndex: 'batchNumber',
               render: (text) => text || '-',
             },
           ]}
@@ -659,7 +610,7 @@ const InboundPage: React.FC = () => {
     page,
     limit: pageSize,
     search,
-    status: statusFilter || undefined,
+    status: statusFilter as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | undefined,
     warehouseId: warehouseFilter || undefined,
   };
 
@@ -685,9 +636,9 @@ const InboundPage: React.FC = () => {
   const { data: warehousesData } = useQuery({
     queryKey: queryKeys.warehouses.all,
     queryFn: async () => {
-      const response = await api.get('/warehouses');
-      return response.data.data.list;
-    },
+        const response = await api.get('/products');
+        return response.data.data;
+      },
   });
 
   // 创建入库单
@@ -795,8 +746,8 @@ const InboundPage: React.FC = () => {
     }
   };
 
-  const orders = ordersData?.list || [];
-  const total = ordersData?.pagination?.total || 0;
+  const orders = ordersData?.data?.list || [];
+  const total = ordersData?.data?.pagination?.total || 0;
 
   return (
     <div style={{ padding: 24 }}>
@@ -914,7 +865,7 @@ const InboundPage: React.FC = () => {
                     icon={<EyeOutlined />}
                     onClick={() => handleView(record)}
                   />
-                  {record.status === 'pending' && (
+                  {record.status_text === 'PENDING' && (
                     <Button
                       type="text"
                       icon={<EditOutlined />}

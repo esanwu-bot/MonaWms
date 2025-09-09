@@ -390,7 +390,7 @@ const WarehousesPage: React.FC = () => {
     setPageSize(newPageSize);
   };
 
-  const warehouses = warehousesData?.data?.data || [];
+  const warehouses = warehousesData?.data?.list || [];
   const total = warehousesData?.data?.pagination?.total || 0;
 
   const columns = [

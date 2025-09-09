@@ -6,17 +6,12 @@ import {
   Input,
   Select,
   Table,
-  Pagination,
   Tabs,
   Tag,
-  Avatar,
   Modal,
   Form,
   Alert,
-  Spin,
   Space,
-  Divider,
-  Tooltip,
   message
 } from 'antd';
 import {
@@ -24,8 +19,6 @@ import {
   PlusOutlined,
   SwapOutlined,
   SyncOutlined,
-  FilterOutlined,
-  DownloadOutlined,
   WarningOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -34,7 +27,7 @@ import {
   DatabaseOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { queryKeys } from '../utils/queryClient';
@@ -56,7 +49,7 @@ const { TabPane } = Tabs;
 const adjustmentSchema = z.object({
   productId: z.string().min(1, '请选择产品'),
   warehouseId: z.string().min(1, '请选择仓库'),
-  adjustmentType: z.enum(['increase', 'decrease'], { required_error: '请选择调整类型' }),
+  adjustmentType: z.enum(['increase', 'decrease'], { errorMap: () => ({ message: '请选择调整类型' }) }),
   quantity: z.number().min(1, '数量必须大于0'),
   reason: z.string().min(1, '请输入调整原因'),
   remark: z.string().optional(),
@@ -90,11 +83,8 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
 }) => {
   const [form] = Form.useForm();
   const {
-    control,
     handleSubmit,
     reset,
-    watch,
-    formState: { errors },
   } = useForm<AdjustmentFormData>({
     resolver: zodResolver(adjustmentSchema),
     defaultValues: {
@@ -115,7 +105,7 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
     queryKey: queryKeys.products.all,
     queryFn: async () => {
       const response = await api.get<Product[]>('/products');
-      return response.data.data.list;
+      return response.data.data;
     },
   });
 
@@ -148,9 +138,7 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
     }
   }, [open, reset, form]);
 
-  const handleFormSubmit = (data: AdjustmentFormData) => {
-    onSubmit(data);
-  };
+
 
   return (
     <Modal
@@ -295,11 +283,9 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
 }) => {
   const [form] = Form.useForm();
   const {
-    control,
     handleSubmit,
     reset,
     watch,
-    formState: { errors },
   } = useForm<TransferFormData>({
     resolver: zodResolver(transferSchema),
     defaultValues: {
@@ -314,15 +300,14 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
 
   const selectedProductId = watch('productId');
   const selectedFromWarehouseId = watch('fromWarehouseId');
-  const selectedToWarehouseId = watch('toWarehouseId');
 
   // 获取产品列表
   const { data: productsData } = useQuery({
     queryKey: queryKeys.products.all,
     queryFn: async () => {
-      const response = await api.get<Product[]>('/products');
-      return response.data.data.list;
-    },
+        const response = await api.get<Product[]>('/products');
+        return response.data.data;
+      },
   });
 
   // 获取仓库列表
@@ -354,9 +339,7 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
     }
   }, [open, reset, form]);
 
-  const handleFormSubmit = (data: TransferFormData) => {
-    onSubmit(data);
-  };
+
 
   // 过滤目标仓库（不能选择源仓库）
   const availableToWarehouses = warehousesData?.filter(
@@ -509,7 +492,7 @@ const InventoryPage: React.FC = () => {
   // 构建查询参数
   const queryParams: InventoryQueryParams = {
     page,
-    limit: pageSize,
+    pageSize: pageSize,
     search,
     warehouseId: warehouseFilter || undefined,
     categoryId: categoryFilter || undefined,
@@ -588,19 +571,9 @@ const InventoryPage: React.FC = () => {
     transferMutation.mutate(data);
   };
 
-  const getStockStatusColor = (quantity: number, minStock: number, maxStock: number) => {
-    if (quantity <= minStock) return 'error';
-    if (quantity >= maxStock) return 'warning';
-    return 'success';
-  };
 
-  const getStockStatusText = (quantity: number, minStock: number, maxStock: number) => {
-    if (quantity <= minStock) return '库存不足';
-    if (quantity >= maxStock) return '库存过多';
-    return '正常';
-  };
 
-  const inventoryItems = inventoryData?.list || [];
+  const inventoryItems = inventoryData?.data || [];
   const total = inventoryData?.pagination?.total || 0;
 
   const columns = [
@@ -636,41 +609,24 @@ const InventoryPage: React.FC = () => {
         <Text strong>{quantity} {record.product?.unit || '件'}</Text>
       ),
     },
-    {
-      title: '最小库存',
-      dataIndex: 'minStock',
-      key: 'minStock',
-      align: 'right' as const,
-      render: (minStock: number, record: InventoryItem) => (
-        <Text>{minStock} {record.product?.unit || '件'}</Text>
-      ),
-    },
-    {
-      title: '最大库存',
-      dataIndex: 'maxStock',
-      key: 'maxStock',
-      align: 'right' as const,
-      render: (maxStock: number, record: InventoryItem) => (
-        <Text>{maxStock} {record.product?.unit || '件'}</Text>
-      ),
-    },
+
     {
       title: '库存状态',
       key: 'status',
       render: (record: InventoryItem) => (
         <Tag
-          color={getStockStatusColor(record.quantity, record.minStock, record.maxStock)}
+          color={record.quantity <= 10 ? 'red' : record.quantity <= 50 ? 'orange' : 'green'}
           icon={
-            record.quantity <= record.minStock ? (
+            record.quantity <= 10 ? (
               <WarningOutlined />
-            ) : record.quantity >= record.maxStock ? (
-              <CloseCircleOutlined />
-            ) : (
-              <CheckCircleOutlined />
+            ) : record.quantity <= 50 ? (
+                <InfoCircleOutlined />
+             ) : (
+                <CheckCircleOutlined />
             )
           }
         >
-          {getStockStatusText(record.quantity, record.minStock, record.maxStock)}
+          {record.quantity <= 10 ? '库存不足' : record.quantity <= 50 ? '库存偏低' : '库存充足'}
         </Tag>
       ),
     },
