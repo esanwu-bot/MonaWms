@@ -100,7 +100,7 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
     queryKey: queryKeys.categories.all,
     queryFn: async () => {
       const response = await api.get<CategoryType[]>('/categories');
-      return response.data.data.list;
+      return response.data.data;
     },
   });
   
@@ -109,7 +109,7 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
     queryKey: queryKeys.projects?.all,
     queryFn: async () => {
       const response = await api.get('/projects');
-      return response.data.data.list;
+      return response.data.data;
     },
     enabled: !!queryKeys.projects,
   });
@@ -456,7 +456,7 @@ const ProductsPage: React.FC = () => {
     queryKey: queryKeys.categories.all,
     queryFn: async () => {
       const response = await api.get<CategoryType[]>('/categories');
-      return response.data.data.list;
+      return response.data.data;
     },
   });
 
@@ -656,11 +656,11 @@ const ProductsPage: React.FC = () => {
                 allowClear
                 style={{ width: '100%' }}
               >
-                {categoriesData?.map((category) => (
+                {Array.isArray(categoriesData) ? categoriesData.map((category) => (
                   <Option key={category.id} value={category.id}>
                     {category.name}
                   </Option>
-                ))}
+                )) : []}
               </Select>
             </Col>
           </Row>
@@ -668,7 +668,7 @@ const ProductsPage: React.FC = () => {
 
         <Table
           columns={columns}
-          dataSource={productsData?.list || []}
+          dataSource={Array.isArray(productsData?.data) ? productsData.data : []}
           rowKey="id"
           loading={isLoading}
           pagination={false}
@@ -679,7 +679,7 @@ const ProductsPage: React.FC = () => {
           <Pagination
             current={currentPage}
             pageSize={pageSize}
-            total={productsData?.total || 0}
+            total={productsData?.pagination?.total || 0}
             showSizeChanger
             showQuickJumper
             showTotal={(total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`}

@@ -131,91 +131,13 @@ const LoginPage: React.FC = () => {
         animationDelay: '1s',
       }} />
 
-      {/* 左侧装饰区域 - 仅在大屏幕显示 */}
-      <div style={{
-        display: { xs: 'none', lg: 'flex' },
-        width: '50%',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: token.paddingLG * 2,
-        color: 'white',
-        position: 'relative',
-        zIndex: 1,
-      }}>
-        <div style={{ textAlign: 'center', maxWidth: 600 }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 120,
-            height: 120,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%)',
-            marginBottom: token.marginLG,
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-          }}>
-            <HomeOutlined style={{ fontSize: 48, color: 'white' }} />
-          </div>
-          
-          <Title 
-            level={1}
-            style={{ 
-              fontWeight: 700, 
-              marginBottom: token.marginMD,
-              background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            MonaWMS
-          </Title>
-          
-          <Title level={3} style={{ marginBottom: token.marginLG, opacity: 0.95, fontWeight: 500 }}>
-            智能仓库管理系统
-          </Title>
-          
-          <Space 
-            direction="vertical" 
-            size="middle" 
-            style={{ 
-              marginBottom: token.marginXL,
-              textAlign: 'left',
-              maxWidth: 500,
-              margin: '0 auto'
-            }}
-          >
-            <Space>
-              <LineChartOutlined style={{ color: 'rgba(255, 255, 255, 0.9)' }} />
-              <Text style={{ opacity: 0.9 }}>
-                高效管理您的仓库库存
-              </Text>
-            </Space>
-            <Space>
-              <PieChartOutlined style={{ color: 'rgba(255, 255, 255, 0.9)' }} />
-              <Text style={{ opacity: 0.9 }}>
-                实时跟踪货物流转
-              </Text>
-            </Space>
-            <Space>
-              <SafetyOutlined style={{ color: 'rgba(255, 255, 255, 0.9)' }} />
-              <Text style={{ opacity: 0.9 }}>
-                提升仓储运营效率，助力企业数字化转型
-              </Text>
-            </Space>
-          </Space>
-        </div>
-      </div>
-
-      {/* 右侧登录区域 */}
+      {/* 居中登录区域 */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        width: '50%',
+        width: '100%',
         minHeight: '100vh',
         padding: token.paddingLG,
         position: 'relative',
@@ -233,22 +155,22 @@ const LoginPage: React.FC = () => {
             boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)',
           }}
         >
-          {/* 移动端标题 */}
+          {/* 系统标题 */}
           <div style={{ textAlign: 'center', marginBottom: token.marginLG }}>
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 70,
-              height: 70,
+              width: 80,
+              height: 80,
               borderRadius: '50%',
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               marginBottom: token.marginMD,
             }}>
-              <HomeOutlined style={{ fontSize: 32, color: 'white' }} />
+              <HomeOutlined style={{ fontSize: 36, color: 'white' }} />
             </div>
             <Title
-              level={3}
+              level={2}
               style={{
                 fontWeight: 700,
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -260,12 +182,12 @@ const LoginPage: React.FC = () => {
             >
               MonaWMS
             </Title>
-            <Text type="secondary">
+            <Text type="secondary" style={{ fontSize: '16px', marginBottom: token.marginMD, display: 'block' }}>
               智能仓库管理系统
             </Text>
           </div>
 
-          {/* PC端标题 */}
+          {/* 登录标题 */}
           <div style={{ textAlign: 'center', marginBottom: token.marginLG }}>
             <Title
               level={3}

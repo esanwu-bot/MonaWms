@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import {
   Card,
   Typography,
@@ -21,7 +22,6 @@ import {
   SyncOutlined,
   WarningOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
   DatabaseOutlined
@@ -49,7 +49,7 @@ const { TabPane } = Tabs;
 const adjustmentSchema = z.object({
   productId: z.string().min(1, '请选择产品'),
   warehouseId: z.string().min(1, '请选择仓库'),
-  adjustmentType: z.enum(['increase', 'decrease'], { errorMap: () => ({ message: '请选择调整类型' }) }),
+  adjustmentType: z.enum(['increase', 'decrease'], { message: '请选择调整类型' }),
   quantity: z.number().min(1, '数量必须大于0'),
   reason: z.string().min(1, '请输入调整原因'),
   remark: z.string().optional(),
@@ -85,6 +85,7 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
   const {
     handleSubmit,
     reset,
+    watch,
   } = useForm<AdjustmentFormData>({
     resolver: zodResolver(adjustmentSchema),
     defaultValues: {
@@ -496,7 +497,7 @@ const InventoryPage: React.FC = () => {
     search,
     warehouseId: warehouseFilter || undefined,
     categoryId: categoryFilter || undefined,
-    stockStatus: stockStatusFilter || undefined,
+
   };
 
   // 获取库存列表
@@ -574,7 +575,7 @@ const InventoryPage: React.FC = () => {
 
 
   const inventoryItems = inventoryData?.data || [];
-  const total = inventoryData?.pagination?.total || 0;
+  const total = inventoryData?.total || 0;
 
   const columns = [
     {

@@ -287,7 +287,7 @@ const WarehousesPage: React.FC = () => {
   const { data: warehousesData, isLoading } = useQuery({
     queryKey: ['warehouses', { page, pageSize, search }],
     queryFn: async () => {
-      const response = await api.get<ApiResponse<PaginatedResponse<Warehouse[]>>>('/warehouses', {
+      const response = await api.get('/warehouses', {
         params: { page, pageSize, search },
       });
       return response.data;
@@ -390,8 +390,8 @@ const WarehousesPage: React.FC = () => {
     setPageSize(newPageSize);
   };
 
-  const warehouses = warehousesData?.data?.list || [];
-  const total = warehousesData?.data?.pagination?.total || 0;
+  const warehouses: Warehouse[] = warehousesData?.data?.data?.list || [];
+  const total = warehousesData?.data?.data?.pagination?.total || 0;
 
   const columns = [
     {

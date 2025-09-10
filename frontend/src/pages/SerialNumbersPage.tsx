@@ -76,8 +76,8 @@ const SerialNumbersPage: React.FC = () => {
 
   // 获取产品列表
   const { data: productsData } = useQuery({
-    queryKey: ['products', { page: 1, limit: 1000 }],
-    queryFn: () => productService.getProducts({ page: 1, limit: 1000 }),
+    queryKey: ['products', { page: 1, pageSize: 1000 }],
+    queryFn: () => productService.getProducts({ page: 1, pageSize: 1000 }),
   });
 
   // 创建序列号
@@ -127,7 +127,7 @@ const SerialNumbersPage: React.FC = () => {
   const barcodeQueryMutation = useMutation({
     mutationFn: queryByBarcode,
     onSuccess: (data) => {
-      if (data.type === 'serial_number') {
+      if (data.data?.type === 'serial_number') {
         message.success('找到序列号信息');
         // 可以在这里处理查询结果，比如高亮显示或跳转到对应记录
       } else {
@@ -144,7 +144,7 @@ const SerialNumbersPage: React.FC = () => {
       ...prev,
       [field]: value,
       page: 1,
-    }));
+    } as typeof prev));
   };
 
   const handleTableChange = (pagination: any) => {
@@ -220,7 +220,7 @@ const SerialNumbersPage: React.FC = () => {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      const submitData: CreateSerialNumberRequest | UpdateSerialNumberRequest = {
+      const submitData = {
         serialNumber: values.serialNumber,
         productId: values.productId,
         manufactureDate: values.manufactureDate?.format('YYYY-MM-DD'),
@@ -233,7 +233,7 @@ const SerialNumbersPage: React.FC = () => {
       if (editingRecord) {
         updateMutation.mutate({ id: editingRecord.id, data: submitData });
       } else {
-        createMutation.mutate(submitData);
+        createMutation.mutate(submitData as CreateSerialNumberRequest);
       }
     } catch (error) {
       console.error('表单验证失败:', error);
@@ -489,7 +489,7 @@ const SerialNumbersPage: React.FC = () => {
 
         <Table
           columns={columns}
-          dataSource={serialNumbersData?.data?.list || []}
+          dataSource={serialNumbersData?.data?.data || []}
           rowKey="id"
           loading={isLoading}
           scroll={{ x: 1200 }}

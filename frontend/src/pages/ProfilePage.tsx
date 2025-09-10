@@ -150,10 +150,6 @@ const ProfilePage: React.FC = () => {
     defaultValues: {
       fullName: user?.fullName || '',
       email: user?.email || '',
-      phone: user?.phone || '',
-      department: user?.department || '',
-      position: user?.position || '',
-      bio: user?.bio || '',
     },
   });
 
@@ -410,7 +406,7 @@ const ProfilePage: React.FC = () => {
                   <Text type="secondary">@{user?.username}</Text>
                   <div style={{ marginTop: 8 }}>
                     <Tag color="blue">
-                      {user?.role === 'admin' ? '管理员' : user?.role === 'manager' ? '经理' : '操作员'}
+                      {user?.role === 'ADMIN' ? '管理员' : user?.role === 'MANAGER' ? '经理' : '操作员'}
                     </Tag>
                   </div>
                 </Card>

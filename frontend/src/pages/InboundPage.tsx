@@ -144,7 +144,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
     queryKey: queryKeys.products.all,
     queryFn: async () => {
       const response = await api.get<Product[]>('/products');
-      return response.data.data.list;
+      return response.data.data;
     },
   });
 
@@ -608,7 +608,7 @@ const InboundPage: React.FC = () => {
   // 构建查询参数
   const queryParams: InboundOrderQueryParams = {
     page,
-    limit: pageSize,
+    pageSize: pageSize,
     search,
     status: statusFilter as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | undefined,
     warehouseId: warehouseFilter || undefined,

@@ -354,6 +354,10 @@ export interface OutboundOrder {
   totalQuantity: number;
   totalAmount: number;
   notes?: string;
+  expectedDate?: string;
+  contactPerson?: string;
+  contactPhone?: string;
+  remark?: string;
   createdBy: string;
   created_at: string;
   updated_at: string;
@@ -371,6 +375,7 @@ export interface OutboundOrderItem {
   batchNumber?: string;
   location?: string;
   pickedQuantity: number;
+  requestedQuantity?: number;
   status_text: 'PENDING' | 'PARTIAL' | 'COMPLETED';
 }
 
@@ -409,6 +414,7 @@ export interface OutboundOrderQueryParams extends QueryParams {
   status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   startDate?: string;
   endDate?: string;
+  limit?: number;
 }
 
 // 仪表板统计类型

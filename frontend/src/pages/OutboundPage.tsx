@@ -66,7 +66,7 @@ const { confirm } = Modal;
 // 出库单项验证
 const outboundItemSchema = z.object({
   productId: z.string().min(1, '请选择产品'),
-  requestedQuantity: z.number().min(1, '请求数量必须大于0'),
+  quantity: z.number().min(1, '请求数量必须大于0'),
   pickedQuantity: z.number().min(0, '拣货数量不能小于0').optional(),
   unitPrice: z.number().min(0, '单价不能小于0'),
   remark: z.string().optional(),
@@ -114,14 +114,10 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
       orderNumber: order?.orderNumber || '',
       warehouseId: order?.warehouseId || '',
       customerId: order?.customerId || '',
-      expectedDate: order?.expectedDate ? order.expectedDate.split('T')[0] : '',
-      shippingAddress: order?.shippingAddress || '',
-      contactPerson: order?.contactPerson || '',
-      contactPhone: order?.contactPhone || '',
-      remark: order?.remark || '',
+      shippingAddress: (order as any)?.shippingAddress || '',
       items: order?.items || [{
         productId: '',
-        requestedQuantity: 1,
+        quantity: 1,
         pickedQuantity: 0,
         unitPrice: 0,
         remark: '',
@@ -141,7 +137,7 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
     queryKey: queryKeys.warehouses.all,
     queryFn: async () => {
       const response = await api.get('/warehouses');
-      return response.data.data.list;
+      return response.data.data;
     },
   });
 
@@ -150,7 +146,7 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
     queryKey: queryKeys.customers.all,
     queryFn: async () => {
       const response = await api.get<Customer[]>('/customers');
-      return response.data.data.data;
+      return response.data.data;
     },
   });
 
@@ -159,7 +155,7 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
     queryKey: queryKeys.products.all,
     queryFn: async () => {
       const response = await api.get<Product[]>('/products');
-      return response.data.data.list;
+      return response.data.data;
     },
   });
 
@@ -180,14 +176,14 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
         orderNumber: order?.orderNumber || `OUT${Date.now()}`,
         warehouseId: order?.warehouseId || '',
         customerId: order?.customerId || '',
-        expectedDate: order?.expectedDate ? order.expectedDate.split('T')[0] : '',
-        shippingAddress: order?.shippingAddress || '',
+        expectedDate: order?.expectedDate ? (order as any).expectedDate.split('T')[0] : '',
+        shippingAddress: (order as any)?.shippingAddress || '',
         contactPerson: order?.contactPerson || '',
         contactPhone: order?.contactPhone || '',
         remark: order?.remark || '',
         items: order?.items || [{
           productId: '',
-          requestedQuantity: 1,
+          quantity: 1,
           pickedQuantity: 0,
           unitPrice: 0,
           remark: '',
@@ -215,7 +211,7 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
   const addItem = () => {
     append({
       productId: '',
-      requestedQuantity: 1,
+      quantity: 1,
       pickedQuantity: 0,
       unitPrice: 0,
       remark: '',
@@ -249,14 +245,10 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
           orderNumber: order?.orderNumber || `OUT${Date.now()}`,
           warehouseId: order?.warehouseId || '',
           customerId: order?.customerId || '',
-          expectedDate: order?.expectedDate ? order.expectedDate.split('T')[0] : '',
-          shippingAddress: order?.shippingAddress || '',
-          contactPerson: order?.contactPerson || '',
-          contactPhone: order?.contactPhone || '',
-          remark: order?.remark || '',
+          notes: order?.notes || '',
           items: order?.items || [{
             productId: '',
-            requestedQuantity: 1,
+            quantity: 1,
             pickedQuantity: 0,
             unitPrice: 0,
             remark: '',
@@ -504,11 +496,11 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                 <Form.Item
                   label="请求数量"
                   required
-                  validateStatus={errors.items?.[index]?.requestedQuantity ? 'error' : ''}
-                  help={errors.items?.[index]?.requestedQuantity?.message}
+                  validateStatus={errors.items?.[index]?.quantity ? 'error' : ''}
+                  help={errors.items?.[index]?.quantity?.message}
                 >
                   <Controller
-                    name={`items.${index}.requestedQuantity`}
+                    name={`items.${index}.quantity`}
                     control={control}
                     render={({ field }) => (
                       <Input
@@ -691,14 +683,14 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
     }
   };
 
-  const activeStep = getActiveStep(order.status);
+  const activeStep = getActiveStep(order.status_text);
 
   // 计算拣货进度
   const calculatePickingProgress = () => {
     if (!order.items || order.items.length === 0) return 0;
     const totalItems = order.items.length;
     const pickedItems = order.items.filter(item => 
-      (item.pickedQuantity || 0) >= item.requestedQuantity
+      (item.pickedQuantity || 0) >= item.quantity
     ).length;
     return (pickedItems / totalItems) * 100;
   };
@@ -722,7 +714,7 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
           <Button onClick={onClose}>
             关闭
           </Button>
-          {order.status === 'pending' && onApprove && onReject && (
+          {order.status_text === 'PENDING' && onApprove && onReject && (
             <>
               <Button
                 onClick={() => onReject(order.id)}
@@ -740,7 +732,7 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
               </Button>
             </>
           )}
-          {order.status === 'approved' && onPick && (
+          {order.status_text === 'IN_PROGRESS' && onPick && (
             <Button
               onClick={() => onPick(order.id)}
               type="primary"
@@ -749,7 +741,7 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
               {loading ? '开始拣货...' : '开始拣货'}
             </Button>
           )}
-          {order.status === 'picked' && onShip && (
+          {order.status_text === 'COMPLETED' && onShip && (
             <Button
               onClick={() => onShip(order.id)}
               type="primary"
@@ -764,11 +756,11 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
       <div style={{ padding: '24px 0' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
           <Badge
-            status={getStatusColor(order.status)}
+            status={getStatusColor(order.status_text)}
             text={
               <Space>
-                {getStatusIcon(order.status)}
-                {getStatusText(order.status)}
+                {getStatusIcon(order.status_text)}
+                {getStatusText(order.status_text)}
               </Space>
             }
           />
@@ -804,53 +796,17 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
               </Text>
               <br />
               <Text strong>
-                {order.customer?.name}
+                {order.customerId || '未指定'}
               </Text>
             </Col>
-            <Col span={12}>
-              <Text type="secondary">
-                预期发货日期
-              </Text>
-              <br />
-              <Text strong>
-                {new Date(order.expectedDate).toLocaleDateString()}
-              </Text>
-            </Col>
-            <Col span={24}>
-              <Text type="secondary">
-                收货地址
-              </Text>
-              <br />
-              <Text strong>
-                {order.shippingAddress}
-              </Text>
-            </Col>
-            <Col span={12}>
-              <Text type="secondary">
-                联系人
-              </Text>
-              <br />
-              <Text strong>
-                {order.contactPerson}
-              </Text>
-            </Col>
-            <Col span={12}>
-              <Text type="secondary">
-                联系电话
-              </Text>
-              <br />
-              <Text strong>
-                {order.contactPhone}
-              </Text>
-            </Col>
-            {order.remark && (
+            {order.notes && (
               <Col span={24}>
                 <Text type="secondary">
                   备注
                 </Text>
                 <br />
                 <Text>
-                  {order.remark}
+                  {order.notes}
                 </Text>
               </Col>
             )}
@@ -867,7 +823,7 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
               <Step key={label} title={label} />
             ))}
           </Steps>
-          {(order.status === 'picking' || order.status === 'picked') && (
+          {((order as any).status === 'picking' || (order as any).status === 'picked') && (
             <div style={{ marginTop: 16 }}>
               <Text type="secondary">
                 拣货进度: {pickingProgress.toFixed(0)}%
@@ -884,7 +840,7 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
           </Title>
           <Table
             dataSource={order.items}
-            rowKey={(record, index) => `item-${index}`}
+            rowKey={(_, index) => `item-${index}`}
             pagination={false}
             scroll={{ x: 'max-content' }}
             columns={[
@@ -906,8 +862,8 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
               },
               {
                 title: '请求数量',
-                dataIndex: 'requestedQuantity',
-                key: 'requestedQuantity',
+                dataIndex: 'quantity',
+        key: 'quantity',
                 align: 'right',
               },
               {
@@ -953,7 +909,7 @@ const OutboundPage: React.FC = () => {
     page,
     limit: pageSize,
     search,
-    status: statusFilter || undefined,
+    status: statusFilter as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | undefined,
     warehouseId: warehouseFilter || undefined,
   };
 
@@ -1127,8 +1083,8 @@ const OutboundPage: React.FC = () => {
     }
   };
 
-  const orders = ordersData?.list || [];
-  const total = ordersData?.pagination?.total || 0;
+  const orders = ordersData?.data?.list || [];
+  const total = ordersData?.data?.pagination?.total || 0;
 
   return (
     <div style={{ padding: 24 }}>
@@ -1264,7 +1220,7 @@ const OutboundPage: React.FC = () => {
                       onClick={() => handleView(record)}
                     />
                   </Tooltip>
-                  {record.status === 'pending' && (
+                  {record.status_text === 'PENDING' && (
                     <Tooltip title="编辑">
                       <Button
                         type="text"

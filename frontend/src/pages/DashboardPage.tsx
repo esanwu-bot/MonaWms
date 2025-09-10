@@ -7,10 +7,7 @@ import {
   Avatar, 
   List, 
   Spin, 
-  Progress,
-  Tag,
-  Divider,
-  Alert
+
 } from 'antd';
 import { 
   BankOutlined,
@@ -194,7 +191,7 @@ const DashboardPage: React.FC = () => {
             <List
               style={{ maxHeight: 300, overflow: 'auto' }}
               dataSource={stats?.recent_transactions || []}
-              renderItem={(item, index) => (
+              renderItem={(_, index) => (
                 <List.Item>
                   <List.Item.Meta
                     title={`交易记录 #${index + 1}`}
