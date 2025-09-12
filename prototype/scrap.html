@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>报废管理 - 通信设备WMS管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            height: 100vh;
+            position: fixed;
+            overflow-y: auto;
+        }
+        
+        .logo {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .logo h2 {
+            font-size: 22px;
+            margin-top: 10px;
+        }
+        
+        .menu {
+            padding: 15px 0;
+        }
+        
+        .menu-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: white;
+        }
+        
+        .menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .menu-item.active {
+            background-color: #4a72df;
+        }
+        
+        .menu-item i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+        
+        /* 主内容区域样式 */
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #1e3c72;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        /* 统计卡片样式 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+            color: #dc3545;
+        }
+        
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        /* 内容卡片样式 */
+        .content-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        
+        .card-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .card-body {
+            padding: 20px;
+        }
+        
+        /* 按钮样式 */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        
+        .btn-primary {
+            background: #1e3c72;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        /* 表格样式 */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        /* 状态标签样式 */
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-approved {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-completed {
+            background-color: #cce5ff;
+            color: #004085;
+        }
+        
+        /* 搜索和筛选区域 */
+        .filter-section {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        
+        .form-control {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .form-select {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            min-width: 120px;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-control {
+            width: 100%;
+        }
+        
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 侧边栏 -->
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fas fa-warehouse" style="font-size: 32px;"></i>
+                <h2>通信设备WMS</h2>
+            </div>
+            <div class="menu">
+                <a href="index.html" class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span>首页</span>
+                </a>
+                <a href="dashboard.html" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>仪表板</span>
+                </a>
+                <a href="warehouse.html" class="menu-item">
+                    <i class="fas fa-warehouse"></i>
+                    <span>仓库管理</span>
+                </a>
+                <a href="devices.html" class="menu-item">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span>设备登记</span>
+                </a>
+                <a href="inbound.html" class="menu-item">
+                    <i class="fas fa-arrow-down"></i>
+                    <span>入库管理</span>
+                </a>
+                <a href="outbound.html" class="menu-item">
+                    <i class="fas fa-arrow-up"></i>
+                    <span>出库管理</span>
+                </a>
+                <a href="scrap.html" class="menu-item active">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>报废管理</span>
+                </a>
+                <a href="reports.html" class="menu-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>报表统计</span>
+                </a>
+                <a href="logs.html" class="menu-item">
+                    <i class="fas fa-history"></i>
+                    <span>操作日志</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <div class="header">
+                <div>
+                    <h1 class="page-title">报废管理</h1>
+                    <div class="breadcrumb">仓库管理 > 报废管理</div>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar">管</div>
+                    <span>管理员</span>
+                </div>
+            </div>
+
+            <!-- 统计卡片 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-number">23</div>
+                    <div class="stat-label">待审核报废</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-number">156</div>
+                    <div class="stat-label">已审核报废</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-trash"></i>
+                    </div>
+                    <div class="stat-number">89</div>
+                    <div class="stat-label">已处理报废</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <div class="stat-number">¥45,230</div>
+                    <div class="stat-label">报废损失金额</div>
+                </div>
+            </div>
+
+            <!-- 报废申请列表 -->
+            <div class="content-card">
+                <div class="card-header">
+                    <h3 class="card-title">报废申请列表</h3>
+                    <button class="btn btn-primary" onclick="openScrapModal()">
+                        <i class="fas fa-plus"></i> 新建报废申请
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- 搜索和筛选 -->
+                    <div class="filter-section">
+                        <input type="text" class="form-control" placeholder="搜索设备型号或序列号..." style="width: 300px;">
+                        <select class="form-select">
+                            <option value="">全部状态</option>
+                            <option value="pending">待审核</option>
+                            <option value="approved">已审核</option>
+                            <option value="completed">已处理</option>
+                        </select>
+                        <select class="form-select">
+                            <option value="">全部原因</option>
+                            <option value="damage">设备损坏</option>
+                            <option value="obsolete">技术淘汰</option>
+                            <option value="expired">超期使用</option>
+                            <option value="other">其他原因</option>
+                        </select>
+                        <button class="btn btn-primary">搜索</button>
+                    </div>
+
+                    <!-- 报废申请表格 -->
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>申请编号</th>
+                                <th>设备信息</th>
+                                <th>报废原因</th>
+                                <th>申请人</th>
+                                <th>申请时间</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>SCR202401001</td>
+                                <td>
+                                    <div><strong>华为5G基站</strong></div>
+                                    <div style="color: #666; font-size: 12px;">SN: HW5G20240101</div>
+                                </td>
+                                <td>设备损坏</td>
+                                <td>张三</td>
+                                <td>2024-01-15 09:30</td>
+                                <td><span class="status-badge status-pending">待审核</span></td>
+                                <td>
+                                    <button class="btn btn-primary" onclick="viewScrapDetail('SCR202401001')">查看</button>
+                                    <button class="btn btn-warning" onclick="approveScrap('SCR202401001')">审核</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>SCR202401002</td>
+                                <td>
+                                    <div><strong>中兴光纤设备</strong></div>
+                                    <div style="color: #666; font-size: 12px;">SN: ZTE20240102</div>
+                                </td>
+                                <td>技术淘汰</td>
+                                <td>李四</td>
+                                <td>2024-01-14 14:20</td>
+                                <td><span class="status-badge status-approved">已审核</span></td>
+                                <td>
+                                    <button class="btn btn-primary" onclick="viewScrapDetail('SCR202401002')">查看</button>
+                                    <button class="btn btn-danger" onclick="processScrap('SCR202401002')">处理</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>SCR202401003</td>
+                                <td>
+                                    <div><strong>爱立信基站控制器</strong></div>
+                                    <div style="color: #666; font-size: 12px;">SN: ERI20240103</div>
+                                </td>
+                                <td>超期使用</td>
+                                <td>王五</td>
+                                <td>2024-01-13 11:45</td>
+                                <td><span class="status-badge status-completed">已处理</span></td>
+                                <td>
+                                    <button class="btn btn-primary" onclick="viewScrapDetail('SCR202401003')">查看</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 新建报废申请模态框 -->
+    <div id="scrapModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">新建报废申请</h3>
+                <button class="close" onclick="closeScrapModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="scrapForm">
+                    <div class="form-group">
+                        <label class="form-label">设备选择</label>
+                        <select class="form-control" required>
+                            <option value="">请选择设备</option>
+                            <option value="HW5G20240104">华为5G基站 - HW5G20240104</option>
+                            <option value="ZTE20240105">中兴光纤设备 - ZTE20240105</option>
+                            <option value="ERI20240106">爱立信基站控制器 - ERI20240106</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">报废原因</label>
+                        <select class="form-control" required>
+                            <option value="">请选择报废原因</option>
+                            <option value="damage">设备损坏</option>
+                            <option value="obsolete">技术淘汰</option>
+                            <option value="expired">超期使用</option>
+                            <option value="other">其他原因</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">详细说明</label>
+                        <textarea class="form-control" rows="4" placeholder="请详细描述报废原因..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">预估损失金额</label>
+                        <input type="number" class="form-control" placeholder="请输入预估损失金额" step="0.01">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="submitScrapForm()">提交申请</button>
+                <button class="btn" onclick="closeScrapModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 打开报废申请模态框
+        function openScrapModal() {
+            document.getElementById('scrapModal').style.display = 'block';
+        }
+
+        // 关闭报废申请模态框
+        function closeScrapModal() {
+            document.getElementById('scrapModal').style.display = 'none';
+            document.getElementById('scrapForm').reset();
+        }
+
+        // 提交报废申请
+        function submitScrapForm() {
+            // 这里添加表单验证和提交逻辑
+            alert('报废申请已提交，等待审核！');
+            closeScrapModal();
+        }
+
+        // 查看报废详情
+        function viewScrapDetail(scrapId) {
+            alert('查看报废申请详情：' + scrapId);
+        }
+
+        // 审核报废申请
+        function approveScrap(scrapId) {
+            if (confirm('确认审核通过此报废申请？')) {
+                alert('报废申请已审核通过：' + scrapId);
+                // 这里添加审核逻辑
+            }
+        }
+
+        // 处理报废
+        function processScrap(scrapId) {
+            if (confirm('确认处理此报废申请？')) {
+                alert('报废申请已处理完成：' + scrapId);
+                // 这里添加处理逻辑
+            }
+        }
+
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('scrapModal');
+            if (event.target === modal) {
+                closeScrapModal();
+            }
+        }
+    </script>
+</body>
+</html>

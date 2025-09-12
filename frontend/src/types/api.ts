@@ -247,6 +247,7 @@ export interface InventoryQueryParams extends QueryParams {
   productId?: string;
   categoryId?: string;
   lowStock?: boolean;
+  stockStatus?: string;
   location?: string;
   batchNumber?: string;
 }

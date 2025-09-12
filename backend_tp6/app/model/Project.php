@@ -25,8 +25,6 @@ class Project extends Model
     // 字段类型转换
     protected $type = [
         'id' => 'integer',
-        'customer_id' => 'integer',
-        'manager_id' => 'integer',
         'budget' => 'float',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -41,16 +39,16 @@ class Project extends Model
     protected $field = [
         'id',
         'project_code',      // 项目编号
-        'name',              // 项目名称
+        'project_name',      // 项目名称
         'description',       // 项目描述
-        'customer_id',       // 客户ID
-        'manager_id',        // 项目经理ID
-        'location',          // 项目地点
-        'status',            // 状态：planning（规划中）, in_progress（进行中）, completed（已完成）, cancelled（已取消）
+        'manager',           // 项目经理
+        'contact_phone',     // 联系电话
+        'contact_email',     // 联系邮箱
+        'address',           // 项目地址
+        'status',            // 状态：planning（规划中）, executing（执行中）, completed（已完成）, cancelled（已取消）
         'budget',            // 预算
         'start_date',        // 开始日期
         'end_date',          // 结束日期
-        'notes',             // 备注
         'created_at',
         'updated_at'
     ];
@@ -59,7 +57,7 @@ class Project extends Model
      * 状态枚举
      */
     const STATUS_PLANNING = 'planning';
-    const STATUS_IN_PROGRESS = 'in_progress';
+    const STATUS_EXECUTING = 'executing';
     const STATUS_COMPLETED = 'completed';
     const STATUS_CANCELLED = 'cancelled';
     
@@ -70,7 +68,7 @@ class Project extends Model
     {
         $statuses = [
             self::STATUS_PLANNING => '规划中',
-            self::STATUS_IN_PROGRESS => '进行中',
+            self::STATUS_EXECUTING => '执行中',
             self::STATUS_COMPLETED => '已完成',
             self::STATUS_CANCELLED => '已取消'
         ];

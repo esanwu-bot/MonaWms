@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>出库管理 - 通信设备WMS管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            height: 100vh;
+            position: fixed;
+            overflow-y: auto;
+        }
+
+        .logo {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo h2 {
+            font-size: 22px;
+            margin-top: 10px;
+            color: white;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 15px 0;
+        }
+
+        .nav-item {
+            margin: 0;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-link.active {
+            background-color: #4a72df;
+        }
+
+        .nav-link i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1e3c72;
+            margin-bottom: 0;
+        }
+
+        .breadcrumb {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #1e3c72;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .stat-title {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stat-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+            color: #1e3c72;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .content-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary {
+            background: #1e3c72;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .search-bar {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .filter-select {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            min-width: 120px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            background: #feca57;
+            color: white;
+        }
+
+        .status-processing {
+            background: #48dbfb;
+            color: white;
+        }
+
+        .status-completed {
+            background: #1dd1a1;
+            color: white;
+        }
+
+        .status-cancelled {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .action-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin: 0 2px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .device-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        .device-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .device-item:last-child {
+            border-bottom: none;
+        }
+
+        .device-info {
+            flex: 1;
+        }
+
+        .device-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .device-code {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .quantity-input {
+            width: 80px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                order: 2;
+            }
+
+            .main-content {
+                order: 1;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .search-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn-group {
+                flex-wrap: wrap;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <div class="logo">
+                <h2><i class="fas fa-broadcast-tower"></i> 通信设备WMS</h2>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="index.html" class="nav-link">
+                        <i class="fas fa-home"></i>
+                        <span>首页</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="dashboard.html" class="nav-link">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>仪表板</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="warehouse.html" class="nav-link">
+                        <i class="fas fa-warehouse"></i>
+                        <span>仓库管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="devices.html" class="nav-link">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>设备登记</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="inbound.html" class="nav-link">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>入库管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="outbound.html" class="nav-link active">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>出库管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="scrap.html" class="nav-link">
+                        <i class="fas fa-trash-alt"></i>
+                        <span>报废管理</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="reports.html" class="nav-link">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>报表统计</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="logs.html" class="nav-link">
+                        <i class="fas fa-history"></i>
+                        <span>操作日志</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <div class="header">
+                <div>
+                    <h1><i class="fas fa-arrow-up"></i> 出库管理</h1>
+                    <div class="breadcrumb">
+                        <i class="fas fa-home"></i> 首页 > 出库管理
+                    </div>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar">管</div>
+                    <span>管理员</span>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">待出库订单</span>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #feca57, #ff9ff3);">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">18</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">今日出库</span>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #1dd1a1, #48dbfb);">
+                            <i class="fas fa-truck"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">45</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">本月出库</span>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">1,234</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">出库总值</span>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #ff6b6b, #ee5a24);">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">¥156.8万</div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="card-header">
+                    <h3 class="card-title">出库单列表</h3>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="openOutboundModal()">
+                            <i class="fas fa-plus"></i> 新建出库单
+                        </button>
+                        <button class="btn btn-success" onclick="batchPicking()">
+                            <i class="fas fa-boxes"></i> 批量拣货
+                        </button>
+                        <button class="btn btn-warning" onclick="exportData()">
+                            <i class="fas fa-download"></i> 导出数据
+                        </button>
+                    </div>
+                </div>
+
+                <div class="search-bar">
+                    <input type="text" class="search-input" placeholder="搜索出库单号、客户名称..." id="searchInput">
+                    <select class="filter-select" id="statusFilter">
+                        <option value="">全部状态</option>
+                        <option value="pending">待处理</option>
+                        <option value="processing">拣货中</option>
+                        <option value="completed">已完成</option>
+                        <option value="cancelled">已取消</option>
+                    </select>
+                    <select class="filter-select" id="priorityFilter">
+                        <option value="">全部优先级</option>
+                        <option value="high">高</option>
+                        <option value="medium">中</option>
+                        <option value="low">低</option>
+                    </select>
+                    <input type="date" class="filter-select" id="dateFilter">
+                    <button class="btn btn-primary" onclick="searchOutbound()">
+                        <i class="fas fa-search"></i> 搜索
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="selectAll"></th>
+                                <th>出库单号</th>
+                                <th>客户名称</th>
+                                <th>设备数量</th>
+                                <th>创建时间</th>
+                                <th>预计出库时间</th>
+                                <th>优先级</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="outboundTableBody">
+                            <tr>
+                                <td><input type="checkbox" class="row-checkbox"></td>
+                                <td>OUT202401001</td>
+                                <td>华为技术有限公司</td>
+                                <td>25台</td>
+                                <td>2024-01-15 09:30</td>
+                                <td>2024-01-16 14:00</td>
+                                <td><span class="status-badge" style="background: #ff6b6b;">高</span></td>
+                                <td><span class="status-badge status-pending">待处理</span></td>
+                                <td>
+                                    <button class="action-btn btn-primary" onclick="viewDetails('OUT202401001')">查看</button>
+                                    <button class="action-btn btn-success" onclick="startPicking('OUT202401001')">拣货</button>
+                                    <button class="action-btn btn-warning" onclick="editOutbound('OUT202401001')">编辑</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox" class="row-checkbox"></td>
+                                <td>OUT202401002</td>
+                                <td>中兴通讯股份有限公司</td>
+                                <td>18台</td>
+                                <td>2024-01-15 10:15</td>
+                                <td>2024-01-17 10:00</td>
+                                <td><span class="status-badge" style="background: #feca57;">中</span></td>
+                                <td><span class="status-badge status-processing">拣货中</span></td>
+                                <td>
+                                    <button class="action-btn btn-primary" onclick="viewDetails('OUT202401002')">查看</button>
+                                    <button class="action-btn btn-success" onclick="completeOutbound('OUT202401002')">完成</button>
+                                    <button class="action-btn btn-danger" onclick="cancelOutbound('OUT202401002')">取消</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox" class="row-checkbox"></td>
+                                <td>OUT202401003</td>
+                                <td>大唐移动通信设备有限公司</td>
+                                <td>32台</td>
+                                <td>2024-01-14 16:20</td>
+                                <td>2024-01-15 09:00</td>
+                                <td><span class="status-badge" style="background: #1dd1a1;">低</span></td>
+                                <td><span class="status-badge status-completed">已完成</span></td>
+                                <td>
+                                    <button class="action-btn btn-primary" onclick="viewDetails('OUT202401003')">查看</button>
+                                    <button class="action-btn btn-warning" onclick="printLabel('OUT202401003')">打印</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 新建出库单模态框 -->
+    <div id="outboundModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>新建出库单</h3>
+                <span class="close" onclick="closeOutboundModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="outboundForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">客户名称</label>
+                            <input type="text" class="form-input" id="customerName" placeholder="请输入客户名称" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">联系人</label>
+                            <input type="text" class="form-input" id="contactPerson" placeholder="请输入联系人" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">联系电话</label>
+                            <input type="tel" class="form-input" id="contactPhone" placeholder="请输入联系电话" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">预计出库时间</label>
+                            <input type="datetime-local" class="form-input" id="expectedDate" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">收货地址</label>
+                        <input type="text" class="form-input" id="deliveryAddress" placeholder="请输入收货地址" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">优先级</label>
+                        <select class="form-input" id="priority" required>
+                            <option value="">请选择优先级</option>
+                            <option value="high">高</option>
+                            <option value="medium">中</option>
+                            <option value="low">低</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">出库设备</label>
+                        <button type="button" class="btn btn-primary" onclick="selectDevices()">
+                            <i class="fas fa-plus"></i> 选择设备
+                        </button>
+                        <div id="selectedDevices" class="device-list" style="display: none;">
+                            <!-- 选中的设备将显示在这里 -->
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-input" id="remarks" rows="3" placeholder="请输入备注信息..."></textarea>
+                    </div>
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> 创建出库单
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="closeOutboundModal()">
+                            <i class="fas fa-times"></i> 取消
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设备选择模态框 -->
+    <div id="deviceSelectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>选择出库设备</h3>
+                <span class="close" onclick="closeDeviceSelectModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="search-bar">
+                    <input type="text" class="search-input" placeholder="搜索设备名称、编号..." id="deviceSearchInput">
+                    <select class="filter-select" id="deviceTypeFilter">
+                        <option value="">全部类型</option>
+                        <option value="router">路由器</option>
+                        <option value="switch">交换机</option>
+                        <option value="phone">电话机</option>
+                        <option value="modem">调制解调器</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="searchDevices()">
+                        <i class="fas fa-search"></i> 搜索
+                    </button>
+                </div>
+                <div class="device-list" id="availableDevices">
+                    <div class="device-item">
+                        <div class="device-info">
+                            <div class="device-name">华为路由器AR2220</div>
+                            <div class="device-code">DEV001 | 库存: 15台</div>
+                        </div>
+                        <input type="number" class="quantity-input" placeholder="数量" min="1" max="15">
+                        <button class="btn btn-primary" onclick="addDevice('DEV001', '华为路由器AR2220', 15)">添加</button>
+                    </div>
+                    <div class="device-item">
+                        <div class="device-info">
+                            <div class="device-name">思科交换机WS-C2960</div>
+                            <div class="device-code">DEV002 | 库存: 8台</div>
+                        </div>
+                        <input type="number" class="quantity-input" placeholder="数量" min="1" max="8">
+                        <button class="btn btn-primary" onclick="addDevice('DEV002', '思科交换机WS-C2960', 8)">添加</button>
+                    </div>
+                    <div class="device-item">
+                        <div class="device-info">
+                            <div class="device-name">IP电话机7940G</div>
+                            <div class="device-code">DEV003 | 库存: 22台</div>
+                        </div>
+                        <input type="number" class="quantity-input" placeholder="数量" min="1" max="22">
+                        <button class="btn btn-primary" onclick="addDevice('DEV003', 'IP电话机7940G', 22)">添加</button>
+                    </div>
+                </div>
+                <div class="btn-group" style="margin-top: 20px;">
+                    <button class="btn btn-success" onclick="confirmDeviceSelection()">
+                        <i class="fas fa-check"></i> 确认选择
+                    </button>
+                    <button class="btn btn-danger" onclick="closeDeviceSelectModal()">
+                        <i class="fas fa-times"></i> 取消
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedDevicesList = [];
+
+        // 打开新建出库单模态框
+        function openOutboundModal() {
+            document.getElementById('outboundModal').style.display = 'block';
+        }
+
+        // 关闭新建出库单模态框
+        function closeOutboundModal() {
+            document.getElementById('outboundModal').style.display = 'none';
+            document.getElementById('outboundForm').reset();
+            selectedDevicesList = [];
+            document.getElementById('selectedDevices').style.display = 'none';
+        }
+
+        // 选择设备
+        function selectDevices() {
+            document.getElementById('deviceSelectModal').style.display = 'block';
+        }
+
+        // 关闭设备选择模态框
+        function closeDeviceSelectModal() {
+            document.getElementById('deviceSelectModal').style.display = 'none';
+        }
+
+        // 添加设备到选择列表
+        function addDevice(deviceCode, deviceName, maxStock) {
+            const quantityInput = event.target.parentElement.querySelector('.quantity-input');
+            const quantity = parseInt(quantityInput.value);
+            
+            if (!quantity || quantity <= 0) {
+                alert('请输入有效的数量');
+                return;
+            }
+            
+            if (quantity > maxStock) {
+                alert(`数量不能超过库存 ${maxStock} 台`);
+                return;
+            }
+            
+            // 检查是否已添加
+            const existingIndex = selectedDevicesList.findIndex(item => item.code === deviceCode);
+            if (existingIndex >= 0) {
+                selectedDevicesList[existingIndex].quantity += quantity;
+            } else {
+                selectedDevicesList.push({
+                    code: deviceCode,
+                    name: deviceName,
+                    quantity: quantity,
+                    maxStock: maxStock
+                });
+            }
+            
+            quantityInput.value = '';
+            updateSelectedDevicesDisplay();
+        }
+
+        // 更新已选设备显示
+        function updateSelectedDevicesDisplay() {
+            const container = document.getElementById('selectedDevices');
+            if (selectedDevicesList.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            container.style.display = 'block';
+            container.innerHTML = selectedDevicesList.map(device => `
+                <div class="device-item">
+                    <div class="device-info">
+                        <div class="device-name">${device.name}</div>
+                        <div class="device-code">${device.code} | 数量: ${device.quantity}台</div>
+                    </div>
+                    <button class="btn btn-danger" onclick="removeDevice('${device.code}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // 移除设备
+        function removeDevice(deviceCode) {
+            selectedDevicesList = selectedDevicesList.filter(device => device.code !== deviceCode);
+            updateSelectedDevicesDisplay();
+        }
+
+        // 确认设备选择
+        function confirmDeviceSelection() {
+            if (selectedDevicesList.length === 0) {
+                alert('请至少选择一个设备');
+                return;
+            }
+            closeDeviceSelectModal();
+        }
+
+        // 提交出库单
+        document.getElementById('outboundForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (selectedDevicesList.length === 0) {
+                alert('请选择出库设备');
+                return;
+            }
+            
+            const formData = {
+                customerName: document.getElementById('customerName').value,
+                contactPerson: document.getElementById('contactPerson').value,
+                contactPhone: document.getElementById('contactPhone').value,
+                expectedDate: document.getElementById('expectedDate').value,
+                deliveryAddress: document.getElementById('deliveryAddress').value,
+                priority: document.getElementById('priority').value,
+                devices: selectedDevicesList,
+                remarks: document.getElementById('remarks').value
+            };
+            
+            console.log('出库单数据:', formData);
+            alert('出库单创建成功！');
+            closeOutboundModal();
+            loadOutboundData();
+        });
+
+        // 搜索出库单
+        function searchOutbound() {
+            const searchTerm = document.getElementById('searchInput').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const priorityFilter = document.getElementById('priorityFilter').value;
+            const dateFilter = document.getElementById('dateFilter').value;
+            
+            console.log('搜索条件:', { searchTerm, statusFilter, priorityFilter, dateFilter });
+            loadOutboundData();
+        }
+
+        // 查看详情
+        function viewDetails(outboundId) {
+            alert(`查看出库单 ${outboundId} 的详细信息`);
+        }
+
+        // 开始拣货
+        function startPicking(outboundId) {
+            if (confirm(`确认开始拣货出库单 ${outboundId} 吗？`)) {
+                alert(`出库单 ${outboundId} 已开始拣货`);
+                loadOutboundData();
+            }
+        }
+
+        // 完成出库
+        function completeOutbound(outboundId) {
+            if (confirm(`确认完成出库单 ${outboundId} 吗？`)) {
+                alert(`出库单 ${outboundId} 已完成`);
+                loadOutboundData();
+            }
+        }
+
+        // 取消出库
+        function cancelOutbound(outboundId) {
+            if (confirm(`确认取消出库单 ${outboundId} 吗？`)) {
+                alert(`出库单 ${outboundId} 已取消`);
+                loadOutboundData();
+            }
+        }
+
+        // 编辑出库单
+        function editOutbound(outboundId) {
+            alert(`编辑出库单 ${outboundId}`);
+        }
+
+        // 打印标签
+        function printLabel(outboundId) {
+            alert(`打印出库单 ${outboundId} 的标签`);
+        }
+
+        // 批量拣货
+        function batchPicking() {
+            const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                alert('请选择要拣货的出库单');
+                return;
+            }
+            
+            if (confirm(`确认批量拣货 ${checkedBoxes.length} 个出库单吗？`)) {
+                alert(`已开始批量拣货 ${checkedBoxes.length} 个出库单`);
+                loadOutboundData();
+            }
+        }
+
+        // 导出数据
+        function exportData() {
+            alert('正在导出出库数据...');
+        }
+
+        // 全选功能
+        document.getElementById('selectAll').addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+
+        // 搜索设备
+        function searchDevices() {
+            const searchTerm = document.getElementById('deviceSearchInput').value;
+            const typeFilter = document.getElementById('deviceTypeFilter').value;
+            
+            console.log('搜索设备:', { searchTerm, typeFilter });
+            // 这里实现设备搜索逻辑
+        }
+
+        // 加载出库数据
+        function loadOutboundData() {
+            console.log('加载出库数据...');
+        }
+
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            const outboundModal = document.getElementById('outboundModal');
+            const deviceModal = document.getElementById('deviceSelectModal');
+            
+            if (event.target === outboundModal) {
+                closeOutboundModal();
+            }
+            if (event.target === deviceModal) {
+                closeDeviceSelectModal();
+            }
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOutboundData();
+        });
+    </script>
+</body>
+</html>

@@ -5,12 +5,12 @@ namespace app\model;
 use think\Model;
 
 /**
- * BOM明细模型
+ * 项目库存预留模型
  */
-class BOMItem extends Model
+class ProjectInventoryReservation extends Model
 {
     // 表名
-    protected $name = 'bom_items';
+    protected $name = 'project_inventory_reservations';
     
     // 主键
     protected $pk = 'id';
@@ -25,7 +25,7 @@ class BOMItem extends Model
     // 字段类型转换
     protected $type = [
         'id' => 'integer',
-        'bom_header_id' => 'integer',
+        'project_id' => 'integer',
         'product_id' => 'integer',
         'quantity' => 'float',
         'created_at' => 'datetime',
@@ -38,25 +38,24 @@ class BOMItem extends Model
     // 字段映射
     protected $field = [
         'id',
-        'bom_header_id',     // BOM头表ID
-        'product_id',        // 组件产品ID
-        'quantity',          // 数量
-        'unit',              // 单位
+        'project_id',        // 项目ID
+        'product_id',        // 产品ID
+        'quantity',          // 预留数量
         'notes',             // 备注
         'created_at',
         'updated_at'
     ];
     
     /**
-     * 关联BOM头表
+     * 关联项目
      */
-    public function bomHeader()
+    public function project()
     {
-        return $this->belongsTo(BOMHeader::class, 'bom_header_id');
+        return $this->belongsTo(Project::class, 'project_id');
     }
     
     /**
-     * 关联组件产品
+     * 关联产品
      */
     public function product()
     {

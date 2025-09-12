@@ -15,6 +15,9 @@ import {
   SettingOutlined,
   UserOutlined,
   LogoutOutlined,
+  ToolOutlined,
+  UnorderedListOutlined,
+  ProjectOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 
@@ -25,17 +28,22 @@ const drawerWidth = 240;
 // 导航菜单项
 const menuItems = [
   {
-    key: '/dashboard',
+    key: 'dashboard',
     icon: <DashboardOutlined />,
     label: '仪表盘',
   },
   {
-    key: '/warehouses',
+    key: 'warehouses',
     icon: <HomeOutlined />,
     label: '仓库管理',
   },
   {
-    key: '/products',
+    key: 'devices',
+    icon: <ToolOutlined />,
+    label: '设备管理',
+  },
+  {
+    key: 'products',
     icon: <ShoppingOutlined />,
     label: '产品管理',
   },
@@ -68,6 +76,16 @@ const menuItems = [
     key: '/serial-numbers',
     icon: <BarcodeOutlined />,
     label: '序列号管理',
+  },
+  {
+    key: '/bom',
+    icon: <UnorderedListOutlined />,
+    label: 'BOM管理',
+  },
+  {
+    key: '/projects',
+    icon: <ProjectOutlined />,
+    label: '项目管理',
   },
   {
     key: '/settings',
@@ -161,19 +179,14 @@ const MainLayout: React.FC = () => {
           </div>
           {user && (
             <div style={{ display: 'flex', alignItems: 'center', paddingRight: 16 }}>
-              <Badge
-                count={getRoleText(user.role)}
-                style={{ backgroundColor: user.role === 'ADMIN' ? '#1890ff' : '#52c41a' }}
-              >
-                <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                  <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                    <Avatar style={{ marginRight: 8 }}>
-                      {user.fullName?.charAt(0) || user.username?.charAt(0) || 'U'}
-                    </Avatar>
-                    <span>{user.fullName || user.username || '用户'}</span>
-                  </div>
-                </Dropdown>
-              </Badge>
+              <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                  <Avatar style={{ marginRight: 8 }}>
+                    {user.fullName?.charAt(0) || user.username?.charAt(0) || 'U'}
+                  </Avatar>
+                  <span>{user.fullName || user.username || '用户'}</span>
+                </div>
+              </Dropdown>
             </div>
           )}
         </Header>

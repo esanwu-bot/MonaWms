@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通信设备WMS管理系统 - 仓库管理</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            height: 100vh;
+            position: fixed;
+            overflow-y: auto;
+        }
+        
+        .logo {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .logo h2 {
+            font-size: 22px;
+            margin-top: 10px;
+        }
+        
+        .menu {
+            padding: 15px 0;
+        }
+        
+        .menu-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: white;
+        }
+        
+        .menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .menu-item.active {
+            background-color: #4a72df;
+        }
+        
+        .menu-item i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+        
+        /* 主内容区域样式 */
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .user-info img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+        
+        /* 表格样式 */
+        .table-container {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        /* 按钮样式 */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: #4a72df;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #3a62cf;
+        }
+        
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        /* 标签样式 */
+        .badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 500px;
+            max-width: 90%;
+            padding: 20px;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        /* 仓库卡片样式 */
+        .warehouse-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .warehouse-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s;
+        }
+        
+        .warehouse-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .warehouse-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .warehouse-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+        
+        .warehouse-status {
+            font-size: 14px;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+        
+        .status-active {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-maintenance {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .warehouse-info {
+            margin-bottom: 15px;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .info-label {
+            color: #6c757d;
+        }
+        
+        .info-value {
+            font-weight: 500;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+        
+        .progress-low {
+            background-color: #28a745;
+        }
+        
+        .progress-medium {
+            background-color: #ffc107;
+        }
+        
+        .progress-high {
+            background-color: #dc3545;
+        }
+        
+        .warehouse-actions {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 992px) {
+            .sidebar {
+                width: 70px;
+            }
+            
+            .sidebar .logo-text, .menu-item span {
+                display: none;
+            }
+            
+            .main-content {
+                margin-left: 70px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .warehouse-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <div class="logo">
+                <i class="fas fa-warehouse fa-2x"></i>
+                <h2 class="logo-text">设备WMS系统</h2>
+            </div>
+            <div class="menu">
+                <a href="index.html" class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span>首页</span>
+                </a>
+                <a href="dashboard.html" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>仪表板</span>
+                </a>
+                <a href="warehouse.html" class="menu-item active">
+                    <i class="fas fa-building"></i>
+                    <span>仓库管理</span>
+                </a>
+                <a href="devices.html" class="menu-item">
+                    <i class="fas fa-server"></i>
+                    <span>设备登记</span>
+                </a>
+                <a href="inbound.html" class="menu-item">
+                    <i class="fas fa-arrow-circle-down"></i>
+                    <span>入库管理</span>
+                </a>
+                <a href="outbound.html" class="menu-item">
+                    <i class="fas fa-arrow-circle-up"></i>
+                    <span>出库管理</span>
+                </a>
+                <a href="scrap.html" class="menu-item">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>报废管理</span>
+                </a>
+                <a href="reports.html" class="menu-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>报表统计</span>
+                </a>
+                <a href="logs.html" class="menu-item">
+                    <i class="fas fa-history"></i>
+                    <span>操作日志</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="main-content">
+            <div class="header">
+                <h1 class="page-title">仓库管理</h1>
+                <div class="user-info">
+                    <img src="https://ui-avatars.com/api/?name=管理员&background=4a72df&color=fff" alt="用户头像">
+                    <span>管理员</span>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">仓库操作</h3>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="openModal('addWarehouseModal')">
+                        <i class="fas fa-plus"></i> 添加仓库
+                    </button>
+                    <button class="btn btn-success" onclick="openModal('transferModal')">
+                        <i class="fas fa-exchange-alt"></i> 设备调拨
+                    </button>
+                    <button class="btn btn-primary">
+                        <i class="fas fa-print"></i> 打印仓库报表
+                    </button>
+                </div>
+            </div>
+
+            <!-- 仓库概览 -->
+            <div class="warehouse-grid">
+                <!-- 主仓库A区 -->
+                <div class="warehouse-card">
+                    <div class="warehouse-header">
+                        <h3 class="warehouse-title">主仓库A区</h3>
+                        <span class="warehouse-status status-active">正常运行</span>
+                    </div>
+                    <div class="warehouse-info">
+                        <div class="info-item">
+                            <span class="info-label">仓库编号</span>
+                            <span class="info-value">WH-001</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">设备数量</span>
+                            <span class="info-value">356台</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">容量使用</span>
+                            <span class="info-value">82%</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill progress-high" style="width: 82%;"></div>
+                    </div>
+                    <div class="warehouse-actions">
+                        <button class="btn btn-primary" onclick="openModal('warehouseDetailModal')">查看详情</button>
+                        <button class="btn btn-success">管理设备</button>
+                    </div>
+                </div>
+
+                <!-- 主仓库B区 -->
+                <div class="warehouse-card">
+                    <div class="warehouse-header">
+                        <h3 class="warehouse-title">主仓库B区</h3>
+                        <span class="warehouse-status status-active">正常运行</span>
+                    </div>
+                    <div class="warehouse-info">
+                        <div class="info-item">
+                            <span class="info-label">仓库编号</span>
+                            <span class="info-value">WH-002</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">设备数量</span>
+                            <span class="info-value">245台</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">容量使用</span>
+                            <span class="info-value">65%</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill progress-medium" style="width: 65%;"></div>
+                    </div>
+                    <div class="warehouse-actions">
+                        <button class="btn btn-primary">查看详情</button>
+                        <button class="btn btn-success">管理设备</button>
+                    </div>
+                </div>
+
+                <!-- 备用仓库 -->
+                <div class="warehouse-card">
+                    <div class="warehouse-header">
+                        <h3 class="warehouse-title">备用仓库</h3>
+                        <span class="warehouse-status status-active">正常运行</span>
+                    </div>
+                    <div class="warehouse-info">
+                        <div class="info-item">
+                            <span class="info-label">仓库编号</span>
+                            <span class="info-value">WH-003</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">设备数量</span>
+                            <span class="info-value">124台</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">容量使用</span>
+                            <span class="info-value">42%</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill progress-low" style="width: 42%;"></div>
+                    </div>
+                    <div class="warehouse-actions">
+                        <button class="btn btn-primary">查看详情</button>
+                        <button class="btn btn-success">管理设备</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 最近调拨记录 -->
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>调拨单号</th>
+                            <th>设备编号</th>
+                            <th>设备类型</th>
+                            <th>源仓库</th>
+                            <th>目标仓库</th>
+                            <th>调拨时间</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>TR20240901001</td>
+                            <td>DEV2024010005</td>
+                            <td>5G基站</td>
+                            <td>主仓库A区</td>
+                            <td>主仓库B区</td>
+                            <td>2024-09-01 09:15:22</td>
+                            <td><span class="badge badge-success">已完成</span></td>
+                            <td>
+                                <button class="btn btn-primary">查看</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>TR20240902002</td>
+                            <td>DEV2024010012</td>
+                            <td>核心网设备</td>
+                            <td>主仓库B区</td>
+                            <td>备用仓库</td>
+                            <td>2024-09-02 14:30:45</td>
+                            <td><span class="badge badge-warning">进行中</span></td>
+                            <td>
+                                <button class="btn btn-primary">查看</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加仓库模态框 -->
+    <div id="addWarehouseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">添加新仓库</h3>
+                <button class="close" onclick="closeModal('addWarehouseModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">仓库名称</label>
+                    <input type="text" class="form-control" placeholder="输入仓库名称">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">仓库编号</label>
+                    <input type="text" class="form-control" placeholder="输入仓库编号">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">仓库位置</label>
+                    <input type="text" class="form-control" placeholder="输入仓库位置">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">仓库容量</label>
+                    <input type="number" class="form-control" placeholder="输入最大设备数量">
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-primary" style="width: 100%;">添加仓库</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设备调拨模态框 -->
+    <div id="transferModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">设备调拨</h3>
+                <button class="close" onclick="closeModal('transferModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">设备编号</label>
+                    <input type="text" class="form-control" placeholder="输入设备编号">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">源仓库</label>
+                    <select class="form-control">
+                        <option>主仓库A区</option>
+                        <option>主仓库B区</option>
+                        <option>备用仓库</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">目标仓库</label>
+                    <select class="form-control">
+                        <option>主仓库A区</option>
+                        <option>主仓库B区</option>
+                        <option>备用仓库</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-success" style="width: 100%;">确认调拨</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模态框控制
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = 'flex';
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        // 点击页面其他区域关闭模态框
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

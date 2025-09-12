@@ -18,6 +18,7 @@ import MainLayout from './layouts/MainLayout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import WarehousesPage from './pages/WarehousesPage';
+import DevicesPage from './pages/DevicesPage';
 import ProductsPage from './pages/ProductsPage';
 import CategoriesPage from './pages/CategoriesPage';
 import SerialNumbersPage from './pages/SerialNumbersPage';
@@ -29,6 +30,8 @@ import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 
 import WirelessSparePartsPage from './pages/WirelessSparePartsPage';
+import BOMPage from './pages/BOMPage';
+import ProjectsPage from './pages/ProjectsPage';
 
 // 路由保护组件
 interface ProtectedRouteProps {
@@ -108,6 +111,9 @@ function App() {
                 {/* 仓库管理 */}
                 <Route path="warehouses" element={<WarehousesPage />} />
                 
+                {/* 设备管理 */}
+                <Route path="devices" element={<DevicesPage />} />
+                
                 {/* 产品管理 */}
                 <Route path="products" element={<ProductsPage />} />
                 
@@ -128,6 +134,12 @@ function App() {
                 
                 {/* 序列号管理 */}
                 <Route path="serial-numbers" element={<SerialNumbersPage />} />
+                
+                {/* BOM管理 */}
+                <Route path="bom" element={<BOMPage />} />
+                
+                {/* 项目管理 */}
+                <Route path="projects" element={<ProjectsPage />} />
                 
                 {/* 报表分析页面已删除 */}
                 

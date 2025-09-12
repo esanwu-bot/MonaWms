@@ -6,8 +6,10 @@ import {
   Typography, 
   Avatar, 
   List, 
-  Spin, 
-
+  Spin,
+  Badge,
+  Button,
+  Table
 } from 'antd';
 import { 
   BankOutlined,
@@ -15,7 +17,12 @@ import {
   RiseOutlined, 
   ExclamationCircleOutlined,
   ArrowUpOutlined,
-  ArrowDownOutlined
+  ArrowDownOutlined,
+  HomeOutlined,
+  WarningOutlined,
+  ClockCircleOutlined,
+  DeleteOutlined,
+  EyeOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../utils/queryClient';
@@ -35,6 +42,7 @@ interface StatCardProps {
   trend?: {
     value: number;
     isPositive: boolean;
+    label?: string;
   };
 }
 
@@ -49,13 +57,16 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, trend })
           <Title level={3} style={{ margin: '8px 0' }}>{value}</Title>
           {trend && (
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
-              {trend.isPositive ? (
-                <ArrowUpOutlined style={{ color: token.colorSuccess, marginRight: 4 }} />
-              ) : (
-                <ArrowDownOutlined style={{ color: token.colorError, marginRight: 4 }} />
+              {trend.value > 0 && (
+                trend.isPositive ? (
+                  <ArrowUpOutlined style={{ color: token.colorSuccess, marginRight: 4 }} />
+                ) : (
+                  <ArrowDownOutlined style={{ color: token.colorError, marginRight: 4 }} />
+                )
               )}
               <Text style={{ color: trend.isPositive ? token.colorSuccess : token.colorError }}>
-                {trend.value}%
+                {trend.value > 0 ? `${trend.value}%` : ''}
+                {trend.label && ` ${trend.label}`}
               </Text>
             </div>
           )}
@@ -100,118 +111,223 @@ const DashboardPage: React.FC = () => {
         仪表盘
       </Title>
 
-      {/* 统计卡片 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} md={6}>
-          <StatCard
-            title="仓库总数"
-            value={stats?.stats?.total_warehouses || 0}
-            icon={<BankOutlined />}
-            color={token.colorPrimary}
-            trend={{ value: 5.2, isPositive: true }}
-          />
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <StatCard
-            title="产品总数"
-            value={stats?.stats?.total_products || 0}
-            icon={<ShoppingCartOutlined />}
-            color={token.colorSuccess}
-            trend={{ value: 12.8, isPositive: true }}
-          />
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <StatCard
-            title="库存总量"
-            value={stats?.stats?.total_inventory || 0}
-            icon={<RiseOutlined />}
-            color={token.colorInfo}
-            trend={{ value: 8.1, isPositive: true }}
-          />
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <StatCard
-            title="低库存产品"
-            value={stats?.stats?.low_stock_count || 0}
-            icon={<ExclamationCircleOutlined />}
-            color={token.colorWarning}
-            trend={{ value: 2.3, isPositive: false }}
-          />
-        </Col>
-      </Row>
-
-      <Row gutter={[16, 16]}>
-        {/* 待处理订单 */}
-        <Col xs={24} md={12}>
-          <Card style={{ height: '100%' }}>
-            <Title level={5} style={{ marginBottom: 16 }}>
-              待处理订单
-            </Title>
-            <Row gutter={16}>
-              <Col span={12}>
-                <Card 
-                  bordered
-                  style={{ 
-                    textAlign: 'center',
-                    backgroundColor: token.colorSuccessBg,
-                    borderColor: token.colorSuccessBorder
-                  }}
-                >
-                  <Title level={3} style={{ color: token.colorSuccess, marginBottom: 8 }}>
-                    {stats?.stats?.pending_inbound || 0}
-                  </Title>
-                  <Text type="secondary">待入库订单</Text>
-                </Card>
-              </Col>
-              <Col span={12}>
-                <Card 
-                  bordered
-                  style={{ 
-                    textAlign: 'center',
-                    backgroundColor: token.colorPrimaryBg,
-                    borderColor: token.colorPrimaryBorder
-                  }}
-                >
-                  <Title level={3} style={{ color: token.colorPrimary, marginBottom: 8 }}>
-                    {stats?.stats?.pending_outbound || 0}
-                  </Title>
-                  <Text type="secondary">待出库订单</Text>
-                </Card>
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-
-        {/* 最近活动 */}
-        <Col xs={24} md={12}>
-          <Card style={{ height: '100%' }}>
-            <Title level={5} style={{ marginBottom: 16 }}>
-              最近活动
-            </Title>
-            <List
-              style={{ maxHeight: 300, overflow: 'auto' }}
-              dataSource={stats?.recent_transactions || []}
-              renderItem={(_, index) => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={`交易记录 #${index + 1}`}
-                    description="暂无详细信息"
-                  />
-                </List.Item>
-              )}
-              locale={{
-                emptyText: (
-                  <div style={{ textAlign: 'center', padding: 24 }}>
-                    <Text type="secondary">暂无交易记录</Text>
-                    <br />
-                    <Text type="secondary">系统中还没有任何交易记录</Text>
-                  </div>
-                )
-              }}
+      {/* 库存概览统计卡片 */}
+      <Card style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 16 }}>
+          <Title level={4}>库存概览</Title>
+        </div>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} md={6}>
+            <StatCard
+              title="总设备数"
+              value={stats?.stats?.total_products || 1258}
+              icon={<ShoppingCartOutlined />}
+              color={token.colorPrimary}
+              trend={{ value: 5, isPositive: true, label: "较上月" }}
             />
-          </Card>
-        </Col>
-      </Row>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <StatCard
+              title="在库设备"
+              value={stats?.stats?.total_inventory || 856}
+              icon={<RiseOutlined />}
+              color={token.colorSuccess}
+              trend={{ value: 92, isPositive: true, label: "可用率" }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <StatCard
+              title="本月入库"
+              value={stats?.stats?.pending_inbound || 142}
+              icon={<ShoppingCartOutlined />}
+              color={token.colorInfo}
+              trend={{ value: 12, isPositive: true, label: "较上月" }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <StatCard
+              title="本月出库"
+              value={stats?.stats?.pending_outbound || 98}
+              icon={<ExclamationCircleOutlined />}
+              color={token.colorWarning}
+              trend={{ value: 3, isPositive: false, label: "较上月" }}
+            />
+          </Col>
+        </Row>
+      </Card>
+      
+      {/* 仓库状态统计卡片 */}
+      <Card style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 16 }}>
+          <Title level={4}>仓库状态</Title>
+        </div>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} md={6}>
+            <StatCard
+              title="总仓库数"
+              value={stats?.stats?.total_warehouses || 6}
+              icon={<HomeOutlined />}
+              color={token.colorPrimary}
+              trend={{ value: 0, isPositive: true, label: "正常运行" }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <StatCard
+              title="主仓库容量"
+              value="82%"
+              icon={<BankOutlined />}
+              color={token.colorWarning}
+              trend={{ value: 0, isPositive: false, label: "接近饱和" }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <StatCard
+              title="待处理事务"
+              value={stats?.stats?.pending_inbound + stats?.stats?.pending_outbound || 12}
+              icon={<ClockCircleOutlined />}
+              color={token.colorInfo}
+              trend={{ value: 0, isPositive: false, label: "需及时处理" }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <StatCard
+              title="报废设备"
+              value={stats?.stats?.low_stock_count || 24}
+              icon={<WarningOutlined />}
+              color={token.colorError}
+              trend={{ value: 0, isPositive: false, label: "待处理" }}
+            />
+          </Col>
+        </Row>
+      </Card>
+
+      {/* 设备列表表格 */}
+      <Card>
+        <div style={{ marginBottom: 16 }}>
+          <Title level={4}>设备列表</Title>
+        </div>
+        <Table 
+          dataSource={[
+            {
+              key: '1',
+              deviceId: 'DEV2024010001',
+              deviceType: '5G基站',
+              model: 'AAU5613',
+              warehouse: '主仓库A区',
+              status: 'in_stock'
+            },
+            {
+              key: '2',
+              deviceId: 'DEV2024010002',
+              deviceType: '核心网设备',
+              model: 'NE9000',
+              warehouse: '主仓库B区',
+              status: 'outbound'
+            },
+            {
+              key: '3',
+              deviceId: 'DEV2024010003',
+              deviceType: '光传输设备',
+              model: 'OTN9800',
+              warehouse: '备用仓库',
+              status: 'in_stock'
+            },
+            {
+              key: '4',
+              deviceId: 'DEV2023120015',
+              deviceType: '路由器',
+              model: 'AR6100',
+              warehouse: '主仓库A区',
+              status: 'scrap'
+            }
+          ]}
+          columns={[
+            {
+              title: '设备编号',
+              dataIndex: 'deviceId',
+              key: 'deviceId',
+            },
+            {
+              title: '设备类型',
+              dataIndex: 'deviceType',
+              key: 'deviceType',
+            },
+            {
+              title: '型号',
+              dataIndex: 'model',
+              key: 'model',
+            },
+            {
+              title: '所属仓库',
+              dataIndex: 'warehouse',
+              key: 'warehouse',
+            },
+            {
+              title: '状态',
+              dataIndex: 'status',
+              key: 'status',
+              render: (status: string) => {
+                let color = '';
+                let text = '';
+                
+                switch(status) {
+                  case 'in_stock':
+                    color = 'success';
+                    text = '在库';
+                    break;
+                  case 'outbound':
+                    color = 'warning';
+                    text = '出库中';
+                    break;
+                  case 'scrap':
+                    color = 'error';
+                    text = '待报废';
+                    break;
+                  default:
+                    color = 'default';
+                    text = '未知';
+                }
+                
+                return <Badge status={color as any} text={text} />;
+              }
+            },
+            {
+              title: '操作',
+              key: 'action',
+              render: (_: any, record: any) => (
+                <>
+                  <Button 
+                    type="primary" 
+                    size="small" 
+                    icon={<EyeOutlined />}
+                    style={{ marginRight: 8 }}
+                  >
+                    查看
+                  </Button>
+                  {record.status !== 'scrap' ? (
+                    <Button 
+                      danger 
+                      size="small" 
+                      icon={<DeleteOutlined />}
+                    >
+                      报废
+                    </Button>
+                  ) : (
+                    <Button 
+                      type="primary" 
+                      size="small" 
+                      style={{ backgroundColor: token.colorSuccess }}
+                    >
+                      确认
+                    </Button>
+                  )}
+                </>
+              ),
+            },
+          ]}
+          pagination={{ pageSize: 4 }}
+        />
+      </Card>
     </div>
   );
 };

@@ -148,7 +148,7 @@ const LoginPage: React.FC = () => {
             padding: token.paddingLG,
             borderRadius: token.borderRadiusLG,
             width: '100%',
-            maxWidth: 500,
+            maxWidth: 520,
             background: 'rgba(255, 255, 255, 0.97)',
             backdropFilter: 'blur(20px)',
             border: '1px solid rgba(255, 255, 255, 0.3)',

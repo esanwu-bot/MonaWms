@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>操作日志 - MonaWMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 414px;
+            margin: 0 auto;
+            background: #f5f7fa;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* 顶部导航栏 */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 44px 16px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .menu-btn:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        .header-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* 抽屉菜单样式 */
+        .drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 998;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .drawer-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .drawer {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100%;
+            background: white;
+            z-index: 999;
+            transition: left 0.3s ease;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .drawer.active {
+            left: 0;
+        }
+        
+        .drawer-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 44px 20px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .drawer-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+        }
+        
+        .drawer-content {
+            padding: 0;
+        }
+        
+        .menu-section {
+            border-bottom: 1px solid #eee;
+        }
+        
+        .menu-section-title {
+            padding: 16px 20px 8px;
+            font-size: 14px;
+            color: #666;
+            font-weight: 600;
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #333;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+        
+        .menu-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .menu-item.active {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .menu-item-icon {
+            margin-right: 12px;
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            padding: 16px;
+        }
+
+        /* 筛选栏 */
+        .filter-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .filter-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .filter-select {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            min-width: 100px;
+        }
+
+        .filter-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s;
+        }
+
+        .filter-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        /* 日志列表 */
+        .logs-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .log-item {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .log-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .log-time {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .log-type {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .log-type.success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .log-type.warning {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .log-type.error {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+
+        .log-type.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .log-user {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .log-action {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .log-details {
+            font-size: 13px;
+            color: #888;
+            line-height: 1.4;
+        }
+
+        .log-ip {
+            font-size: 12px;
+            color: #999;
+            margin-top: 8px;
+        }
+
+        /* 加载更多按钮 */
+        .load-more {
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 20px auto;
+            display: block;
+            transition: all 0.3s;
+        }
+
+        .load-more:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        /* 底部导航 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 414px;
+            background: white;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #666;
+            font-size: 12px;
+            padding: 4px 8px;
+            transition: color 0.3s;
+        }
+
+        .nav-item.active {
+            color: #667eea;
+        }
+
+        .nav-item:hover {
+            color: #667eea;
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            color: #ddd;
+            margin-bottom: 16px;
+        }
+
+        .empty-text {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .empty-subtext {
+            font-size: 14px;
+            color: #999;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 375px) {
+            .container {
+                max-width: 100%;
+            }
+            
+            .filter-row {
+                flex-direction: column;
+            }
+            
+            .filter-input, .filter-select {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 抽屉菜单覆盖层 -->
+        <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+        
+        <!-- 抽屉菜单 -->
+        <div class="drawer" id="drawer">
+            <div class="drawer-header">
+                <div class="drawer-title">MonaWMS</div>
+                <button class="close-btn" onclick="closeDrawer()">×</button>
+            </div>
+            <div class="drawer-content">
+                <div class="menu-section">
+                    <div class="menu-section-title">主要功能</div>
+                    <a href="dashboard.html" class="menu-item">
+                        <span class="menu-item-icon">📊</span>
+                        仪表板
+                    </a>
+                    <a href="warehouse.html" class="menu-item">
+                        <span class="menu-item-icon">🏢</span>
+                        仓库管理
+                    </a>
+                    <a href="devices.html" class="menu-item">
+                        <span class="menu-item-icon">📱</span>
+                        设备登记
+                    </a>
+                </div>
+                <div class="menu-section">
+                    <div class="menu-section-title">库存操作</div>
+                    <a href="inbound.html" class="menu-item">
+                        <span class="menu-item-icon">📥</span>
+                        入库管理
+                    </a>
+                    <a href="outbound.html" class="menu-item">
+                        <span class="menu-item-icon">📤</span>
+                        出库管理
+                    </a>
+                    <a href="scrap.html" class="menu-item">
+                        <span class="menu-item-icon">🗑️</span>
+                        报废管理
+                    </a>
+                </div>
+                <div class="menu-section">
+                    <div class="menu-section-title">系统功能</div>
+                    <a href="reports.html" class="menu-item">
+                        <span class="menu-item-icon">📈</span>
+                        报表统计
+                    </a>
+                    <a href="logs.html" class="menu-item active">
+                        <span class="menu-item-icon">📋</span>
+                        操作日志
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 顶部导航栏 -->
+        <div class="header">
+            <button class="menu-btn" onclick="openDrawer()">☰</button>
+            <h1>操作日志</h1>
+            <div class="header-actions">
+                <button class="header-btn" onclick="refreshLogs()">🔄</button>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="main-content">
+            <!-- 筛选栏 -->
+            <div class="filter-bar">
+                <div class="filter-row">
+                    <input type="text" class="filter-input" placeholder="搜索用户或操作..." id="searchInput">
+                    <select class="filter-select" id="typeFilter">
+                        <option value="">全部类型</option>
+                        <option value="success">成功</option>
+                        <option value="warning">警告</option>
+                        <option value="error">错误</option>
+                        <option value="info">信息</option>
+                    </select>
+                </div>
+                <div class="filter-row">
+                    <input type="date" class="filter-input" id="startDate">
+                    <input type="date" class="filter-input" id="endDate">
+                    <button class="filter-btn" onclick="filterLogs()">筛选</button>
+                </div>
+            </div>
+
+            <!-- 日志列表 -->
+            <div class="logs-list" id="logsList">
+                <!-- 日志项将通过JavaScript动态生成 -->
+            </div>
+
+            <!-- 加载更多按钮 -->
+            <button class="load-more" id="loadMoreBtn" onclick="loadMoreLogs()">加载更多</button>
+        </div>
+
+        <!-- 底部导航 -->
+        <div class="bottom-nav">
+            <a href="dashboard.html" class="nav-item">
+                <div class="nav-icon">🏠</div>
+                <div>首页</div>
+            </a>
+            <a href="warehouse.html" class="nav-item">
+                <div class="nav-icon">📦</div>
+                <div>仓库</div>
+            </a>
+            <a href="devices.html" class="nav-item">
+                <div class="nav-icon">📱</div>
+                <div>设备</div>
+            </a>
+            <a href="reports.html" class="nav-item">
+                <div class="nav-icon">📊</div>
+                <div>报表</div>
+            </a>
+            <a href="logs.html" class="nav-item active">
+                <div class="nav-icon">📋</div>
+                <div>日志</div>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // 模拟日志数据
+        const mockLogs = [
+            {
+                id: 1,
+                time: '2024-01-30 14:30:25',
+                user: '张三',
+                action: '设备入库',
+                type: 'success',
+                details: '成功将设备 iPhone 15 Pro (序列号: DEV20240130001) 入库至仓库A-01-01',
+                ip: '192.168.1.100'
+            },
+            {
+                id: 2,
+                time: '2024-01-30 14:25:18',
+                user: '李四',
+                action: '设备出库',
+                type: 'success',
+                details: '成功将设备 MacBook Pro (序列号: DEV20240129005) 出库给员工王五',
+                ip: '192.168.1.101'
+            },
+            {
+                id: 3,
+                time: '2024-01-30 14:20:12',
+                user: '王五',
+                action: '登录系统',
+                type: 'info',
+                details: '用户成功登录系统',
+                ip: '192.168.1.102'
+            },
+            {
+                id: 4,
+                time: '2024-01-30 14:15:45',
+                user: '赵六',
+                action: '设备报废',
+                type: 'warning',
+                details: '将设备 iPad Air (序列号: DEV20240125003) 标记为报废，原因：屏幕损坏无法修复',
+                ip: '192.168.1.103'
+            },
+            {
+                id: 5,
+                time: '2024-01-30 14:10:33',
+                user: '系统',
+                action: '数据备份',
+                type: 'info',
+                details: '系统自动备份完成，备份文件大小: 2.3GB',
+                ip: 'localhost'
+            },
+            {
+                id: 6,
+                time: '2024-01-30 14:05:21',
+                user: '陈七',
+                action: '库存盘点',
+                type: 'success',
+                details: '完成仓库A区域库存盘点，发现差异设备2台，已生成盘点报告',
+                ip: '192.168.1.104'
+            },
+            {
+                id: 7,
+                time: '2024-01-30 13:58:16',
+                user: '张三',
+                action: '设备入库失败',
+                type: 'error',
+                details: '设备入库失败：序列号 DEV20240130002 已存在于系统中',
+                ip: '192.168.1.100'
+            },
+            {
+                id: 8,
+                time: '2024-01-30 13:55:09',
+                user: '李四',
+                action: '修改设备信息',
+                type: 'success',
+                details: '成功修改设备 Surface Pro (序列号: DEV20240128010) 的位置信息',
+                ip: '192.168.1.101'
+            }
+        ];
+
+        let currentLogs = [];
+        let filteredLogs = [];
+        let currentPage = 1;
+        const pageSize = 5;
+
+        // 初始化页面
+        function initPage() {
+            currentLogs = [...mockLogs];
+            filteredLogs = [...mockLogs];
+            renderLogs();
+            
+            // 设置默认日期范围（最近7天）
+            const today = new Date();
+            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            document.getElementById('endDate').value = today.toISOString().split('T')[0];
+            document.getElementById('startDate').value = weekAgo.toISOString().split('T')[0];
+        }
+
+        // 渲染日志列表
+        function renderLogs() {
+            const logsList = document.getElementById('logsList');
+            const startIndex = 0;
+            const endIndex = currentPage * pageSize;
+            const logsToShow = filteredLogs.slice(startIndex, endIndex);
+
+            if (logsToShow.length === 0) {
+                logsList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-text">暂无日志记录</div>
+                        <div class="empty-subtext">请调整筛选条件或稍后再试</div>
+                    </div>
+                `;
+                document.getElementById('loadMoreBtn').style.display = 'none';
+                return;
+            }
+
+            logsList.innerHTML = logsToShow.map(log => `
+                <div class="log-item">
+                    <div class="log-header">
+                        <div class="log-time">${log.time}</div>
+                        <div class="log-type ${log.type}">${getTypeText(log.type)}</div>
+                    </div>
+                    <div class="log-user">${log.user}</div>
+                    <div class="log-action">${log.action}</div>
+                    <div class="log-details">${log.details}</div>
+                    <div class="log-ip">IP: ${log.ip}</div>
+                </div>
+            `).join('');
+
+            // 控制加载更多按钮显示
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            if (endIndex >= filteredLogs.length) {
+                loadMoreBtn.style.display = 'none';
+            } else {
+                loadMoreBtn.style.display = 'block';
+            }
+        }
+
+        // 获取类型文本
+        function getTypeText(type) {
+            const typeMap = {
+                'success': '成功',
+                'warning': '警告',
+                'error': '错误',
+                'info': '信息'
+            };
+            return typeMap[type] || type;
+        }
+
+        // 筛选日志
+        function filterLogs() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const typeFilter = document.getElementById('typeFilter').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            filteredLogs = currentLogs.filter(log => {
+                // 文本搜索
+                const matchesSearch = !searchText || 
+                    log.user.toLowerCase().includes(searchText) ||
+                    log.action.toLowerCase().includes(searchText) ||
+                    log.details.toLowerCase().includes(searchText);
+
+                // 类型筛选
+                const matchesType = !typeFilter || log.type === typeFilter;
+
+                // 日期筛选
+                let matchesDate = true;
+                if (startDate || endDate) {
+                    const logDate = new Date(log.time.split(' ')[0]);
+                    if (startDate) {
+                        matchesDate = matchesDate && logDate >= new Date(startDate);
+                    }
+                    if (endDate) {
+                        matchesDate = matchesDate && logDate <= new Date(endDate);
+                    }
+                }
+
+                return matchesSearch && matchesType && matchesDate;
+            });
+
+            currentPage = 1;
+            renderLogs();
+        }
+
+        // 加载更多日志
+        function loadMoreLogs() {
+            currentPage++;
+            renderLogs();
+        }
+
+        // 刷新日志
+        function refreshLogs() {
+            // 模拟刷新动画
+            const refreshBtn = document.querySelector('.header-btn');
+            refreshBtn.style.transform = 'rotate(360deg)';
+            
+            setTimeout(() => {
+                refreshBtn.style.transform = 'rotate(0deg)';
+                // 这里可以添加实际的数据刷新逻辑
+                initPage();
+            }, 500);
+        }
+
+        // 搜索输入实时筛选
+        document.getElementById('searchInput').addEventListener('input', function() {
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(filterLogs, 300);
+        });
+
+        // 类型筛选变化时自动筛选
+        document.getElementById('typeFilter').addEventListener('change', filterLogs);
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', initPage);
+
+        // 添加旋转动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .header-btn {
+                transition: transform 0.5s ease;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // 抽屉菜单控制
+        function openDrawer() {
+            document.getElementById('drawer').classList.add('active');
+            document.getElementById('drawerOverlay').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeDrawer() {
+            document.getElementById('drawer').classList.remove('active');
+            document.getElementById('drawerOverlay').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+    </script>
+</body>
+</html>

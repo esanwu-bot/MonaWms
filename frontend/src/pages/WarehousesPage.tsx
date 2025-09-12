@@ -18,6 +18,8 @@ import {
   Row,
   Col,
   message,
+  Progress,
+  Badge,
 } from 'antd';
 import {
   PlusOutlined,
@@ -28,6 +30,8 @@ import {
   PhoneOutlined,
   UserOutlined,
   ExclamationCircleOutlined,
+  SyncOutlined,
+  PrinterOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -274,11 +278,155 @@ const WarehouseDialog: React.FC<WarehouseDialogProps> = ({
   );
 };
 
+// 设备调拨表单类型
+interface TransferFormData {
+  deviceId: string;
+  sourceWarehouseId: string;
+  targetWarehouseId: string;
+  remarks?: string;
+}
+
+// 设备调拨对话框组件
+const TransferDialog: React.FC<{
+  open: boolean;
+  warehouses: Warehouse[];
+  onClose: () => void;
+  onSubmit: (data: TransferFormData) => void;
+  loading: boolean;
+}> = ({ open, warehouses, onClose, onSubmit, loading }) => {
+  const { control, handleSubmit, reset, formState: { errors } } = useForm<TransferFormData>({
+    defaultValues: {
+      deviceId: '',
+      sourceWarehouseId: '',
+      targetWarehouseId: '',
+      remarks: '',
+    },
+  });
+
+  // 重置表单
+  React.useEffect(() => {
+    if (open) {
+      reset();
+    }
+  }, [open, reset]);
+
+  const handleFormSubmit = handleSubmit((data) => {
+    onSubmit(data);
+  });
+
+  return (
+    <Modal
+      title="设备调拨"
+      open={open}
+      onCancel={onClose}
+      footer={[
+        <Button key="cancel" onClick={onClose}>
+          取消
+        </Button>,
+        <Button
+          key="submit"
+          type="primary"
+          loading={loading}
+          onClick={handleFormSubmit}
+        >
+          确认调拨
+        </Button>,
+      ]}
+    >
+      <Form layout="vertical">
+        <Row gutter={16}>
+          <Col span={24}>
+            <Form.Item
+              label="设备编号"
+              validateStatus={errors.deviceId ? 'error' : undefined}
+              help={errors.deviceId?.message}
+            >
+              <Controller
+                name="deviceId"
+                control={control}
+                rules={{ required: '请输入设备编号' }}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    placeholder="请输入设备编号"
+                    disabled={loading}
+                  />
+                )}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="源仓库"
+              validateStatus={errors.sourceWarehouseId ? 'error' : undefined}
+              help={errors.sourceWarehouseId?.message}
+            >
+              <Controller
+                name="sourceWarehouseId"
+                control={control}
+                rules={{ required: '请选择源仓库' }}
+                render={({ field }) => (
+                  <Select
+                    {...field}
+                    placeholder="请选择源仓库"
+                    disabled={loading}
+                    options={warehouses.map(w => ({ label: w.name, value: w.id }))}
+                  />
+                )}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="目标仓库"
+              validateStatus={errors.targetWarehouseId ? 'error' : undefined}
+              help={errors.targetWarehouseId?.message}
+            >
+              <Controller
+                name="targetWarehouseId"
+                control={control}
+                rules={{ required: '请选择目标仓库' }}
+                render={({ field }) => (
+                  <Select
+                    {...field}
+                    placeholder="请选择目标仓库"
+                    disabled={loading}
+                    options={warehouses.map(w => ({ label: w.name, value: w.id }))}
+                  />
+                )}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item
+              label="备注"
+            >
+              <Controller
+                name="remarks"
+                control={control}
+                render={({ field }) => (
+                  <Input.TextArea
+                    {...field}
+                    rows={3}
+                    placeholder="请输入备注信息"
+                    disabled={loading}
+                  />
+                )}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+      </Form>
+    </Modal>
+  );
+};
+
 const WarehousesPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | undefined>();
 
   const queryClient = useQueryClient();
@@ -342,9 +490,31 @@ const WarehousesPage: React.FC = () => {
     },
   });
 
+  // 设备调拨处理
+  const transferMutation = useMutation({
+    mutationFn: async (data: TransferFormData) => {
+      // 这里应该调用实际的API
+      console.log('调拨设备:', data);
+      // 模拟API调用
+      return new Promise(resolve => setTimeout(() => resolve(data), 1000));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.warehouses.all });
+      setTransferDialogOpen(false);
+      message.success('设备调拨成功');
+    },
+    onError: () => {
+      message.error('设备调拨失败');
+    },
+  });
+
   const handleCreate = () => {
     setSelectedWarehouse(undefined);
     setDialogOpen(true);
+  };
+
+  const handleTransfer = () => {
+    setTransferDialogOpen(true);
   };
 
   const handleEdit = (warehouse: Warehouse) => {
@@ -383,6 +553,10 @@ const WarehousesPage: React.FC = () => {
     } else {
       createMutation.mutate(data);
     }
+  };
+
+  const handleTransferSubmit = (data: TransferFormData) => {
+    transferMutation.mutate(data);
   };
 
   const handlePageChange = (newPage: number, newPageSize: number) => {
@@ -478,6 +652,28 @@ const WarehousesPage: React.FC = () => {
       {/* 操作栏 */}
       <Card style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <Space>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleCreate}
+            >
+              添加仓库
+            </Button>
+            <Button
+              type="primary"
+              icon={<SyncOutlined />}
+              onClick={handleTransfer}
+            >
+              设备调拨
+            </Button>
+            <Button
+              type="primary"
+              icon={<PrinterOutlined />}
+            >
+              打印仓库报表
+            </Button>
+          </Space>
           <Input
             placeholder="搜索仓库..."
             value={search}
@@ -485,38 +681,138 @@ const WarehousesPage: React.FC = () => {
             prefix={<SearchOutlined />}
             style={{ width: 300 }}
           />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleCreate}
-          >
-            新增仓库
-          </Button>
         </div>
       </Card>
 
-      {/* 仓库列表 */}
-      <Card>
+      {/* 仓库卡片网格 */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+        gap: '20px',
+        marginBottom: '30px'
+      }}>
+        {isLoading ? (
+          Array(3).fill(null).map((_, index) => (
+            <Card key={`skeleton-${index}`} loading={true} style={{ height: '300px' }} />
+          ))
+        ) : warehouses.length > 0 ? (
+          warehouses.map(warehouse => {
+            // 计算容量使用百分比（示例数据，实际应从API获取）
+            const capacityUsage = Math.floor(Math.random() * 100);
+            let progressStatus: 'success' | 'exception' | 'normal' | 'active' = 'success';
+            let statusText = '正常运行';
+            let statusType = 'success';
+            
+            if (capacityUsage > 80) {
+              progressStatus = 'exception';
+            } else if (capacityUsage > 60) {
+              progressStatus = 'active';
+            }
+            
+            if (!warehouse.isActive) {
+              statusText = '维护中';
+              statusType = 'warning';
+            }
+            
+            return (
+              <Card key={warehouse.id} style={{ borderRadius: '8px', boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #eee' }}>
+                  <Typography.Title level={5} style={{ margin: 0, color: '#1e3c72' }}>{warehouse.name}</Typography.Title>
+                  <Badge status={statusType as any} text={statusText} />
+                </div>
+                
+                <div style={{ marginBottom: '15px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ color: '#6c757d' }}>仓库编号</span>
+                    <span style={{ fontWeight: 500 }}>{warehouse.code}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ color: '#6c757d' }}>设备数量</span>
+                    <span style={{ fontWeight: 500 }}>{Math.floor(Math.random() * 400)}台</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ color: '#6c757d' }}>容量使用</span>
+                    <span style={{ fontWeight: 500 }}>{capacityUsage}%</span>
+                  </div>
+                </div>
+                
+                <Progress percent={capacityUsage} status={progressStatus} size="small" style={{ marginBottom: '15px' }} />
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Button type="primary" onClick={() => handleEdit(warehouse)}>查看详情</Button>
+                  <Button type="primary">管理设备</Button>
+                </div>
+              </Card>
+            );
+          })
+        ) : (
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>
+            <Typography.Text type="secondary">暂无仓库数据</Typography.Text>
+          </div>
+        )}
+      </div>
+      
+      {/* 最近调拨记录 */}
+      <Card title="最近调拨记录" style={{ marginBottom: '24px' }}>
         <Table
-          columns={columns}
-          dataSource={warehouses}
-          rowKey="id"
-          loading={isLoading}
-          pagination={{
-            current: page,
-            pageSize,
-            total,
-            onChange: handlePageChange,
-            showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 条`,
-          }}
-          locale={{
-            emptyText: (
-              <div style={{ textAlign: 'center', padding: 40 }}>
-                <Text type="secondary">暂无仓库数据</Text>
-              </div>
-            ),
-          }}
+          columns={[
+            { title: '调拨单号', dataIndex: 'transferId', key: 'transferId' },
+            { title: '设备编号', dataIndex: 'deviceId', key: 'deviceId' },
+            { title: '设备类型', dataIndex: 'deviceType', key: 'deviceType' },
+            { title: '源仓库', dataIndex: 'sourceWarehouse', key: 'sourceWarehouse' },
+            { title: '目标仓库', dataIndex: 'targetWarehouse', key: 'targetWarehouse' },
+            { title: '调拨时间', dataIndex: 'transferTime', key: 'transferTime' },
+            { 
+              title: '状态', 
+              dataIndex: 'status', 
+              key: 'status',
+              render: (status: string) => (
+                <Badge 
+                  status={status === '已完成' ? 'success' : status === '处理中' ? 'processing' : 'warning'} 
+                  text={status} 
+                />
+              )
+            },
+            {
+              title: '操作',
+              key: 'action',
+              render: () => <Button type="primary" size="small">查看</Button>
+            }
+          ]}
+          dataSource={[
+            {
+              key: '1',
+              transferId: 'TR20240901001',
+              deviceId: 'DEV2024010005',
+              deviceType: '5G基站',
+              sourceWarehouse: '主仓库A区',
+              targetWarehouse: '主仓库B区',
+              transferTime: '2024-09-01 09:15:22',
+              status: '已完成'
+            },
+            {
+              key: '2',
+              transferId: 'TR20240831002',
+              deviceId: 'DEV2024010012',
+              deviceType: '路由器',
+              sourceWarehouse: '备用仓库',
+              targetWarehouse: '主仓库A区',
+              transferTime: '2024-08-31 14:22:45',
+              status: '处理中'
+            },
+            {
+              key: '3',
+              transferId: 'TR20240830003',
+              deviceId: 'DEV2024010018',
+              deviceType: '交换机',
+              sourceWarehouse: '主仓库B区',
+              targetWarehouse: '备用仓库',
+              transferTime: '2024-08-30 11:05:37',
+              status: '已完成'
+            }
+          ]}
+          pagination={false}
+          size="small"
         />
       </Card>
 
@@ -530,6 +826,15 @@ const WarehousesPage: React.FC = () => {
         }}
         onSubmit={handleSubmit}
         loading={createMutation.isPending || updateMutation.isPending}
+      />
+      
+      {/* 设备调拨对话框 */}
+      <TransferDialog
+        open={transferDialogOpen}
+        warehouses={warehouses}
+        onClose={() => setTransferDialogOpen(false)}
+        onSubmit={handleTransferSubmit}
+        loading={transferMutation.isPending}
       />
     </div>
   );

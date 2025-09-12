@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { useForm, Controller, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -106,7 +106,6 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
     control,
     handleSubmit,
     reset,
-    watch,
     formState: { errors },
   } = useForm<OutboundOrderFormData>({
     resolver: zodResolver(outboundOrderSchema),
@@ -130,7 +129,11 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
     name: 'items',
   });
 
-  const selectedCustomerId = watch('customerId');
+  const selectedCustomerId = useWatch({
+    control,
+    name: 'customerId',
+    defaultValue: ''
+  });
 
   // 获取仓库列表
   const { data: warehousesData } = useQuery({

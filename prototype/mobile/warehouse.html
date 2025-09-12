@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>仓库管理 - 通信设备WMS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* 顶部导航栏 */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+        }
+        
+        .menu-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #1e3c72;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            margin-right: 15px;
+        }
+        
+        .menu-btn:hover {
+            background: rgba(30, 60, 114, 0.1);
+        }
+        
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .header-btn {
+            background: none;
+            border: none;
+            font-size: 16px;
+            color: #1e3c72;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background-color 0.3s;
+        }
+        
+        .header-btn:active {
+            background-color: rgba(30, 60, 114, 0.1);
+        }
+        
+        /* 左侧抽屉菜单 */
+        .drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1500;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .drawer-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .drawer {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            z-index: 1600;
+            transition: left 0.3s ease;
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .drawer.active {
+            left: 0;
+        }
+        
+        .drawer-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .drawer-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .drawer-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .drawer-menu {
+            padding: 20px 0;
+        }
+        
+        .menu-section {
+            margin-bottom: 30px;
+        }
+        
+        .menu-section-title {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0 20px;
+            margin-bottom: 10px;
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .menu-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-left-color: #667eea;
+        }
+        
+        .menu-item.active {
+            background: rgba(102, 126, 234, 0.15);
+            border-left-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .menu-item i {
+            width: 20px;
+            margin-right: 15px;
+            font-size: 16px;
+        }
+        
+        .menu-item-text {
+            font-size: 14px;
+        }
+        
+        /* 主内容区域 */
+        .main-content {
+            padding: 80px 20px 100px;
+        }
+        
+        /* 搜索栏 */
+        .search-bar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .search-input {
+            width: 100%;
+            border: none;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            padding: 12px 15px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .search-input::placeholder {
+            color: #999;
+        }
+        
+        /* 仓库卡片 */
+        .warehouse-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .warehouse-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .warehouse-card:active {
+            transform: scale(0.98);
+        }
+        
+        .warehouse-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .warehouse-info {
+            flex: 1;
+        }
+        
+        .warehouse-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e3c72;
+            margin-bottom: 4px;
+        }
+        
+        .warehouse-location {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .warehouse-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+        
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-maintenance {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .warehouse-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+        
+        .warehouse-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e3c72;
+            margin-bottom: 2px;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .warehouse-progress {
+            margin-bottom: 15px;
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .progress-bar {
+            height: 6px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        
+        .warehouse-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .action-btn {
+            flex: 1;
+            background: rgba(30, 60, 114, 0.1);
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 12px;
+            color: #1e3c72;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .action-btn:active {
+            background: rgba(30, 60, 114, 0.2);
+        }
+        
+        .action-btn.primary {
+            background: #1e3c72;
+            color: white;
+        }
+        
+        .action-btn.primary:active {
+            background: #163056;
+        }
+        
+        /* 浮动操作按钮 */
+        .fab {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .fab:active {
+            transform: scale(0.9);
+        }
+        
+        /* 底部导航 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 10px 0;
+            box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-items {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #666;
+            padding: 5px;
+            transition: color 0.3s ease;
+        }
+        
+        .nav-item.active {
+            color: #667eea;
+        }
+        
+        .nav-item i {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+        
+        .nav-item span {
+            font-size: 10px;
+        }
+        
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #666;
+            cursor: pointer;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .form-input {
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .form-input:focus {
+            border-color: #667eea;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background: #1e3c72;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #666;
+        }
+        
+        /* 触摸反馈 */
+        .touchable {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- 左侧抽屉菜单 -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+    <div class="drawer" id="drawer">
+        <div class="drawer-header">
+            <div class="drawer-title">通信设备WMS</div>
+            <div class="drawer-subtitle">仓库管理系统</div>
+        </div>
+        <div class="drawer-menu">
+            <div class="menu-section">
+                <div class="menu-section-title">主要功能</div>
+                <a href="dashboard.html" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span class="menu-item-text">仪表板</span>
+                </a>
+                <a href="warehouse.html" class="menu-item active">
+                    <i class="fas fa-warehouse"></i>
+                    <span class="menu-item-text">仓库管理</span>
+                </a>
+                <a href="devices.html" class="menu-item">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span class="menu-item-text">设备登记</span>
+                </a>
+            </div>
+            <div class="menu-section">
+                <div class="menu-section-title">库存管理</div>
+                <a href="inbound.html" class="menu-item">
+                    <i class="fas fa-arrow-down"></i>
+                    <span class="menu-item-text">入库管理</span>
+                </a>
+                <a href="outbound.html" class="menu-item">
+                    <i class="fas fa-arrow-up"></i>
+                    <span class="menu-item-text">出库管理</span>
+                </a>
+                <a href="scrap.html" class="menu-item">
+                    <i class="fas fa-trash-alt"></i>
+                    <span class="menu-item-text">报废管理</span>
+                </a>
+            </div>
+            <div class="menu-section">
+                <div class="menu-section-title">系统功能</div>
+                <a href="reports.html" class="menu-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span class="menu-item-text">报表统计</span>
+                </a>
+                <a href="logs.html" class="menu-item">
+                    <i class="fas fa-history"></i>
+                    <span class="menu-item-text">操作日志</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 顶部导航栏 -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <button class="menu-btn" onclick="openDrawer()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="page-title">仓库管理</h1>
+            </div>
+            <div class="header-actions">
+                <button class="header-btn" onclick="showFilterModal()">
+                    <i class="fas fa-filter"></i>
+                </button>
+                <button class="header-btn" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区域 -->
+    <main class="main-content">
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+            <input type="text" class="search-input" placeholder="搜索仓库名称或位置..." id="searchInput">
+        </div>
+
+        <!-- 仓库列表 -->
+        <div class="warehouse-list" id="warehouseList">
+            <div class="warehouse-card touchable">
+                <div class="warehouse-header">
+                    <div class="warehouse-info">
+                        <div class="warehouse-name">主仓库A</div>
+                        <div class="warehouse-location">北京市朝阳区科技园</div>
+                        <span class="warehouse-status status-active">正常运行</span>
+                    </div>
+                    <div class="warehouse-icon">
+                        <i class="fas fa-warehouse"></i>
+                    </div>
+                </div>
+                
+                <div class="warehouse-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">1,258</div>
+                        <div class="stat-label">总设备</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">856</div>
+                        <div class="stat-label">在库</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">68%</div>
+                        <div class="stat-label">利用率</div>
+                    </div>
+                </div>
+                
+                <div class="warehouse-progress">
+                    <div class="progress-label">
+                        <span>库存容量</span>
+                        <span>856/1,258</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 68%"></div>
+                    </div>
+                </div>
+                
+                <div class="warehouse-actions">
+                    <button class="action-btn" onclick="viewDetails('warehouse-a')">
+                        <i class="fas fa-eye"></i> 查看详情
+                    </button>
+                    <button class="action-btn primary" onclick="manageStock('warehouse-a')">
+                        <i class="fas fa-boxes"></i> 库存管理
+                    </button>
+                </div>
+            </div>
+            
+            <div class="warehouse-card touchable">
+                <div class="warehouse-header">
+                    <div class="warehouse-info">
+                        <div class="warehouse-name">分仓库B</div>
+                        <div class="warehouse-location">上海市浦东新区张江</div>
+                        <span class="warehouse-status status-active">正常运行</span>
+                    </div>
+                    <div class="warehouse-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                </div>
+                
+                <div class="warehouse-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">892</div>
+                        <div class="stat-label">总设备</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">634</div>
+                        <div class="stat-label">在库</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">71%</div>
+                        <div class="stat-label">利用率</div>
+                    </div>
+                </div>
+                
+                <div class="warehouse-progress">
+                    <div class="progress-label">
+                        <span>库存容量</span>
+                        <span>634/892</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 71%"></div>
+                    </div>
+                </div>
+                
+                <div class="warehouse-actions">
+                    <button class="action-btn" onclick="viewDetails('warehouse-b')">
+                        <i class="fas fa-eye"></i> 查看详情
+                    </button>
+                    <button class="action-btn primary" onclick="manageStock('warehouse-b')">
+                        <i class="fas fa-boxes"></i> 库存管理
+                    </button>
+                </div>
+            </div>
+            
+            <div class="warehouse-card touchable">
+                <div class="warehouse-header">
+                    <div class="warehouse-info">
+                        <div class="warehouse-name">临时仓库C</div>
+                        <div class="warehouse-location">深圳市南山区科技园</div>
+                        <span class="warehouse-status status-maintenance">维护中</span>
+                    </div>
+                    <div class="warehouse-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                </div>
+                
+                <div class="warehouse-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">456</div>
+                        <div class="stat-label">总设备</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">123</div>
+                        <div class="stat-label">在库</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">27%</div>
+                        <div class="stat-label">利用率</div>
+                    </div>
+                </div>
+                
+                <div class="warehouse-progress">
+                    <div class="progress-label">
+                        <span>库存容量</span>
+                        <span>123/456</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 27%"></div>
+                    </div>
+                </div>
+                
+                <div class="warehouse-actions">
+                    <button class="action-btn" onclick="viewDetails('warehouse-c')">
+                        <i class="fas fa-eye"></i> 查看详情
+                    </button>
+                    <button class="action-btn" onclick="scheduleMaintenance('warehouse-c')">
+                        <i class="fas fa-wrench"></i> 维护计划
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 浮动操作按钮 -->
+    <button class="fab" onclick="showAddWarehouseModal()">
+        <i class="fas fa-plus"></i>
+    </button>
+
+    <!-- 底部导航 -->
+    <nav class="bottom-nav">
+        <div class="nav-items">
+            <a href="dashboard.html" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>仪表板</span>
+            </a>
+            <a href="warehouse.html" class="nav-item active">
+                <i class="fas fa-warehouse"></i>
+                <span>仓库</span>
+            </a>
+            <a href="devices.html" class="nav-item">
+                <i class="fas fa-mobile-alt"></i>
+                <span>设备</span>
+            </a>
+            <a href="inbound.html" class="nav-item">
+                <i class="fas fa-arrow-down"></i>
+                <span>入库</span>
+            </a>
+            <a href="outbound.html" class="nav-item">
+                <i class="fas fa-arrow-up"></i>
+                <span>出库</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- 新增仓库模态框 -->
+    <div class="modal" id="addWarehouseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">新增仓库</h2>
+                <button class="close-btn" onclick="closeModal('addWarehouseModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="addWarehouseForm">
+                <div class="form-group">
+                    <label class="form-label">仓库名称</label>
+                    <input type="text" class="form-input" placeholder="请输入仓库名称" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">仓库位置</label>
+                    <input type="text" class="form-input" placeholder="请输入仓库地址" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">容量</label>
+                    <input type="number" class="form-input" placeholder="请输入仓库容量" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">负责人</label>
+                    <input type="text" class="form-input" placeholder="请输入负责人姓名" required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addWarehouseModal')">取消</button>
+                    <button type="submit" class="btn btn-primary">确认添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 搜索功能
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const warehouseCards = document.querySelectorAll('.warehouse-card');
+            
+            warehouseCards.forEach(card => {
+                const name = card.querySelector('.warehouse-name').textContent.toLowerCase();
+                const location = card.querySelector('.warehouse-location').textContent.toLowerCase();
+                
+                if (name.includes(searchTerm) || location.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        // 查看仓库详情
+        function viewDetails(warehouseId) {
+            console.log('查看仓库详情:', warehouseId);
+            alert('查看仓库详情功能开发中...');
+        }
+
+        // 库存管理
+        function manageStock(warehouseId) {
+            console.log('库存管理:', warehouseId);
+            alert('库存管理功能开发中...');
+        }
+
+        // 维护计划
+        function scheduleMaintenance(warehouseId) {
+            console.log('维护计划:', warehouseId);
+            alert('维护计划功能开发中...');
+        }
+
+        // 显示新增仓库模态框
+        function showAddWarehouseModal() {
+            document.getElementById('addWarehouseModal').style.display = 'flex';
+        }
+
+        // 关闭模态框
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        // 抽屉菜单控制
+        function openDrawer() {
+            document.getElementById('drawer').classList.add('active');
+            document.getElementById('drawerOverlay').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeDrawer() {
+            document.getElementById('drawer').classList.remove('active');
+            document.getElementById('drawerOverlay').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // 显示筛选模态框
+        function showFilterModal() {
+            alert('筛选功能开发中...');
+        }
+
+        // 刷新数据
+        function refreshData() {
+            console.log('刷新数据');
+            // 模拟刷新动画
+            const refreshBtn = document.querySelector('.header-btn .fa-sync-alt');
+            refreshBtn.style.animation = 'spin 1s linear';
+            setTimeout(() => {
+                refreshBtn.style.animation = '';
+            }, 1000);
+        }
+
+        // 新增仓库表单提交
+        document.getElementById('addWarehouseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('新增仓库功能开发中...');
+            closeModal('addWarehouseModal');
+        });
+
+        // 添加触摸反馈
+        document.querySelectorAll('.touchable').forEach(element => {
+            element.addEventListener('touchstart', function() {
+                this.style.opacity = '0.7';
+            });
+            
+            element.addEventListener('touchend', function() {
+                this.style.opacity = '1';
+            });
+        });
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('移动端仓库管理页面加载完成');
+        });
+
+        // 添加旋转动画
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

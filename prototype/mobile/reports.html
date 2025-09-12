@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>报表统计 - 通信设备WMS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* 顶部导航栏 */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+        }
+        
+        .back-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: #1e3c72;
+            margin-right: 15px;
+            padding: 5px;
+            cursor: pointer;
+        }
+        
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .header-btn {
+            background: none;
+            border: none;
+            font-size: 16px;
+            color: #1e3c72;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background-color 0.3s;
+        }
+        
+        .header-btn:active {
+            background-color: rgba(30, 60, 114, 0.1);
+        }
+        
+        /* 主内容区域 */
+        .main-content {
+            padding: 80px 20px 100px;
+        }
+        
+        /* 时间筛选栏 */
+        .time-filter-bar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        
+        .filter-tab {
+            background: rgba(0, 0, 0, 0.05);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s;
+        }
+        
+        .filter-tab.active {
+            background: #1e3c72;
+            color: white;
+        }
+        
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+        
+        .stat-icon.blue {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        }
+        
+        .stat-icon.green {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+        
+        .stat-icon.orange {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        }
+        
+        .stat-icon.red {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1e3c72;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .stat-change {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+        
+        .stat-change.positive {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .stat-change.negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        /* 图表容器 */
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+        
+        .chart-menu {
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .chart-canvas {
+            width: 100%;
+            height: 200px;
+        }
+        
+        /* 报表列表 */
+        .report-list {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .report-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+        
+        .report-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .report-item:last-child {
+            border-bottom: none;
+        }
+        
+        .report-info {
+            flex: 1;
+        }
+        
+        .report-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .report-desc {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .report-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .report-btn {
+            background: rgba(30, 60, 114, 0.1);
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 11px;
+            color: #1e3c72;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .report-btn:active {
+            background: rgba(30, 60, 114, 0.2);
+        }
+        
+        .report-btn.primary {
+            background: #1e3c72;
+            color: white;
+        }
+        
+        .report-btn.primary:active {
+            background: #2c5aa0;
+        }
+        
+        /* 底部导航 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 10px 0;
+            box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-items {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #666;
+            padding: 5px;
+            transition: color 0.3s ease;
+        }
+        
+        .nav-item.active {
+            color: #1e3c72;
+        }
+        
+        .nav-item i {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+        
+        .nav-item span {
+            font-size: 10px;
+        }
+        
+        /* 触摸反馈 */
+        .touchable {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 抽屉菜单样式 */
+        .drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .drawer-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .drawer {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 1000;
+            transition: left 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .drawer.active {
+            left: 0;
+        }
+
+        .drawer-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .drawer-title {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .drawer-subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            margin: 5px 0 0 0;
+        }
+
+        .menu-section {
+            padding: 15px 0;
+        }
+
+        .menu-section-title {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0 20px 10px 20px;
+            margin: 0;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: white;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+
+        .menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .menu-item.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .menu-item i {
+            width: 20px;
+            margin-right: 15px;
+            font-size: 16px;
+        }
+
+        .menu-item span {
+            font-size: 14px;
+        }
+
+        .close-drawer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+        }
+        
+        /* 加载动画 */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: #666;
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #1e3c72;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 抽屉菜单覆盖层 -->
+    <div class="drawer-overlay" onclick="closeDrawer()"></div>
+    
+    <!-- 左侧抽屉菜单 -->
+    <div class="drawer">
+        <div class="drawer-header">
+            <button class="close-drawer" onclick="closeDrawer()">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="drawer-title">MonaWMS</h2>
+            <p class="drawer-subtitle">仓库管理系统</p>
+        </div>
+        
+        <div class="menu-section">
+            <h3 class="menu-section-title">主要功能</h3>
+            <a href="dashboard.html" class="menu-item">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>仪表板</span>
+            </a>
+            <a href="warehouse.html" class="menu-item">
+                <i class="fas fa-warehouse"></i>
+                <span>仓库管理</span>
+            </a>
+            <a href="devices.html" class="menu-item">
+                <i class="fas fa-laptop"></i>
+                <span>设备登记</span>
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <h3 class="menu-section-title">库存管理</h3>
+            <a href="inbound.html" class="menu-item">
+                <i class="fas fa-arrow-down"></i>
+                <span>入库管理</span>
+            </a>
+            <a href="outbound.html" class="menu-item">
+                <i class="fas fa-arrow-up"></i>
+                <span>出库管理</span>
+            </a>
+            <a href="scrap.html" class="menu-item">
+                <i class="fas fa-trash-alt"></i>
+                <span>报废管理</span>
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <h3 class="menu-section-title">系统功能</h3>
+            <a href="reports.html" class="menu-item active">
+                <i class="fas fa-chart-bar"></i>
+                <span>报表统计</span>
+            </a>
+            <a href="logs.html" class="menu-item">
+                <i class="fas fa-history"></i>
+                <span>操作日志</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 顶部导航栏 -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <button class="back-btn" onclick="openDrawer()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="page-title">报表统计</h1>
+            </div>
+            <div class="header-actions">
+                <button class="header-btn" onclick="exportReport()">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button class="header-btn" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区域 -->
+    <main class="main-content">
+        <!-- 时间筛选栏 -->
+        <div class="time-filter-bar">
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-period="today">今日</button>
+                <button class="filter-tab" data-period="week">本周</button>
+                <button class="filter-tab" data-period="month">本月</button>
+                <button class="filter-tab" data-period="quarter">本季度</button>
+                <button class="filter-tab" data-period="year">本年</button>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon blue">
+                    <i class="fas fa-boxes"></i>
+                </div>
+                <div class="stat-value" id="totalDevices">1,248</div>
+                <div class="stat-label">设备总数</div>
+                <div class="stat-change positive">+12 今日</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+                <div class="stat-value" id="inboundCount">156</div>
+                <div class="stat-label">入库数量</div>
+                <div class="stat-change positive">+8 今日</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon orange">
+                    <i class="fas fa-arrow-up"></i>
+                </div>
+                <div class="stat-value" id="outboundCount">89</div>
+                <div class="stat-label">出库数量</div>
+                <div class="stat-change negative">-3 今日</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon red">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <div class="stat-value" id="scrapCount">23</div>
+                <div class="stat-label">报废数量</div>
+                <div class="stat-change positive">+2 今日</div>
+            </div>
+        </div>
+
+        <!-- 库存趋势图表 -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3 class="chart-title">库存趋势</h3>
+                <button class="chart-menu" onclick="toggleChartType('inventory')">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+            </div>
+            <canvas id="inventoryChart" class="chart-canvas"></canvas>
+        </div>
+
+        <!-- 设备分类分布图表 -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3 class="chart-title">设备分类分布</h3>
+                <button class="chart-menu" onclick="toggleChartType('category')">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+            </div>
+            <canvas id="categoryChart" class="chart-canvas"></canvas>
+        </div>
+
+        <!-- 出入库统计图表 -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3 class="chart-title">出入库统计</h3>
+                <button class="chart-menu" onclick="toggleChartType('flow')">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+            </div>
+            <canvas id="flowChart" class="chart-canvas"></canvas>
+        </div>
+
+        <!-- 报表列表 -->
+        <div class="report-list">
+            <div class="report-header">
+                <h3 class="report-title">快速报表</h3>
+            </div>
+            
+            <div class="report-item">
+                <div class="report-info">
+                    <div class="report-name">库存明细报表</div>
+                    <div class="report-desc">详细的设备库存信息统计</div>
+                </div>
+                <div class="report-actions">
+                    <button class="report-btn" onclick="previewReport('inventory')">
+                        <i class="fas fa-eye"></i> 预览
+                    </button>
+                    <button class="report-btn primary" onclick="downloadReport('inventory')">
+                        <i class="fas fa-download"></i> 下载
+                    </button>
+                </div>
+            </div>
+            
+            <div class="report-item">
+                <div class="report-info">
+                    <div class="report-name">出入库流水报表</div>
+                    <div class="report-desc">设备出入库操作记录统计</div>
+                </div>
+                <div class="report-actions">
+                    <button class="report-btn" onclick="previewReport('flow')">
+                        <i class="fas fa-eye"></i> 预览
+                    </button>
+                    <button class="report-btn primary" onclick="downloadReport('flow')">
+                        <i class="fas fa-download"></i> 下载
+                    </button>
+                </div>
+            </div>
+            
+            <div class="report-item">
+                <div class="report-info">
+                    <div class="report-name">设备状态报表</div>
+                    <div class="report-desc">设备运行状态和维护记录</div>
+                </div>
+                <div class="report-actions">
+                    <button class="report-btn" onclick="previewReport('status')">
+                        <i class="fas fa-eye"></i> 预览
+                    </button>
+                    <button class="report-btn primary" onclick="downloadReport('status')">
+                        <i class="fas fa-download"></i> 下载
+                    </button>
+                </div>
+            </div>
+            
+            <div class="report-item">
+                <div class="report-info">
+                    <div class="report-name">报废处理报表</div>
+                    <div class="report-desc">设备报废申请和处理统计</div>
+                </div>
+                <div class="report-actions">
+                    <button class="report-btn" onclick="previewReport('scrap')">
+                        <i class="fas fa-eye"></i> 预览
+                    </button>
+                    <button class="report-btn primary" onclick="downloadReport('scrap')">
+                        <i class="fas fa-download"></i> 下载
+                    </button>
+                </div>
+            </div>
+            
+            <div class="report-item">
+                <div class="report-info">
+                    <div class="report-name">成本分析报表</div>
+                    <div class="report-desc">设备采购和维护成本分析</div>
+                </div>
+                <div class="report-actions">
+                    <button class="report-btn" onclick="previewReport('cost')">
+                        <i class="fas fa-eye"></i> 预览
+                    </button>
+                    <button class="report-btn primary" onclick="downloadReport('cost')">
+                        <i class="fas fa-download"></i> 下载
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部导航 -->
+    <nav class="bottom-nav">
+        <div class="nav-items">
+            <a href="dashboard.html" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>仪表板</span>
+            </a>
+            <a href="warehouse.html" class="nav-item">
+                <i class="fas fa-warehouse"></i>
+                <span>仓库</span>
+            </a>
+            <a href="devices.html" class="nav-item">
+                <i class="fas fa-mobile-alt"></i>
+                <span>设备</span>
+            </a>
+            <a href="reports.html" class="nav-item active">
+                <i class="fas fa-chart-bar"></i>
+                <span>报表</span>
+            </a>
+            <a href="logs.html" class="nav-item">
+                <i class="fas fa-list-alt"></i>
+                <span>日志</span>
+            </a>
+        </div>
+    </nav>
+
+    <script>
+        let inventoryChart, categoryChart, flowChart;
+        
+        // 初始化图表
+        function initCharts() {
+            // 库存趋势图表
+            const inventoryCtx = document.getElementById('inventoryChart').getContext('2d');
+            inventoryChart = new Chart(inventoryCtx, {
+                type: 'line',
+                data: {
+                    labels: ['1月', '2月', '3月', '4月', '5月', '6月'],
+                    datasets: [{
+                        label: '库存数量',
+                        data: [1200, 1180, 1250, 1300, 1280, 1248],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 设备分类分布图表
+            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+            categoryChart = new Chart(categoryCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['路由器', '交换机', '光端机', '基站设备', '其他'],
+                    datasets: [{
+                        data: [320, 280, 180, 220, 248],
+                        backgroundColor: [
+                            '#3498db',
+                            '#27ae60',
+                            '#f39c12',
+                            '#e74c3c',
+                            '#9b59b6'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 出入库统计图表
+            const flowCtx = document.getElementById('flowChart').getContext('2d');
+            flowChart = new Chart(flowCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                    datasets: [{
+                        label: '入库',
+                        data: [25, 32, 18, 28, 35, 12, 8],
+                        backgroundColor: '#27ae60'
+                    }, {
+                        label: '出库',
+                        data: [18, 24, 15, 22, 28, 8, 5],
+                        backgroundColor: '#f39c12'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 时间筛选功能
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // 更新活跃状态
+                document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                const period = this.dataset.period;
+                updateDataByPeriod(period);
+            });
+        });
+        
+        // 根据时间周期更新数据
+        function updateDataByPeriod(period) {
+            console.log('更新数据周期:', period);
+            
+            // 模拟数据更新
+            const mockData = {
+                today: { devices: 1248, inbound: 12, outbound: 8, scrap: 2 },
+                week: { devices: 1248, inbound: 156, outbound: 89, scrap: 23 },
+                month: { devices: 1248, inbound: 680, outbound: 420, scrap: 85 },
+                quarter: { devices: 1248, inbound: 2100, outbound: 1350, scrap: 260 },
+                year: { devices: 1248, inbound: 8500, outbound: 5200, scrap: 980 }
+            };
+            
+            const data = mockData[period];
+            if (data) {
+                document.getElementById('totalDevices').textContent = data.devices.toLocaleString();
+                document.getElementById('inboundCount').textContent = data.inbound.toLocaleString();
+                document.getElementById('outboundCount').textContent = data.outbound.toLocaleString();
+                document.getElementById('scrapCount').textContent = data.scrap.toLocaleString();
+            }
+        }
+        
+        // 切换图表类型
+        function toggleChartType(chartName) {
+            console.log('切换图表类型:', chartName);
+            alert('图表类型切换功能开发中...');
+        }
+        
+        // 预览报表
+        function previewReport(reportType) {
+            console.log('预览报表:', reportType);
+            alert('报表预览功能开发中...');
+        }
+        
+        // 下载报表
+        function downloadReport(reportType) {
+            console.log('下载报表:', reportType);
+            alert('报表下载功能开发中...');
+        }
+        
+        // 导出报表
+        function exportReport() {
+            alert('报表导出功能开发中...');
+        }
+        
+        // 刷新数据
+        function refreshData() {
+            console.log('刷新数据');
+            
+            // 显示加载状态
+            const refreshBtn = document.querySelector('.header-btn .fa-sync-alt');
+            refreshBtn.style.animation = 'spin 1s linear infinite';
+            
+            // 模拟数据刷新
+            setTimeout(() => {
+                refreshBtn.style.animation = '';
+                
+                // 更新图表数据
+                if (inventoryChart) {
+                    const newData = inventoryChart.data.datasets[0].data.map(value => 
+                        value + Math.floor(Math.random() * 20) - 10
+                    );
+                    inventoryChart.data.datasets[0].data = newData;
+                    inventoryChart.update();
+                }
+                
+                console.log('数据刷新完成');
+            }, 1500);
+        }
+        
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('移动端报表统计页面加载完成');
+            
+            // 延迟初始化图表，确保DOM完全加载
+            setTimeout(() => {
+                initCharts();
+            }, 100);
+        });
+
+        // 抽屉菜单控制函数
+        function openDrawer() {
+            document.querySelector('.drawer-overlay').classList.add('active');
+            document.querySelector('.drawer').classList.add('active');
+        }
+
+        function closeDrawer() {
+            document.querySelector('.drawer-overlay').classList.remove('active');
+            document.querySelector('.drawer').classList.remove('active');
+        }
+    </script>
+</body>
+</html>

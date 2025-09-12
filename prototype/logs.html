@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>操作日志 - 通信设备WMS管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            height: 100vh;
+            position: fixed;
+            overflow-y: auto;
+        }
+        
+        .logo {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .logo h2 {
+            font-size: 22px;
+            margin-top: 10px;
+        }
+        
+        .menu {
+            padding: 15px 0;
+        }
+        
+        .menu-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: white;
+        }
+        
+        .menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .menu-item.active {
+            background-color: #4a72df;
+        }
+        
+        .menu-item i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+        
+        /* 主内容区域样式 */
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #1e3c72;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        /* 筛选区域样式 */
+        .filter-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .form-control {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .form-select {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            min-width: 120px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: #1e3c72;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        /* 日志卡片样式 */
+        .logs-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        
+        .logs-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logs-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .logs-body {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        /* 日志条目样式 */
+        .log-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            transition: background-color 0.3s;
+        }
+        
+        .log-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .log-item:last-child {
+            border-bottom: none;
+        }
+        
+        .log-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: white;
+            flex-shrink: 0;
+        }
+        
+        .log-icon.create {
+            background-color: #28a745;
+        }
+        
+        .log-icon.update {
+            background-color: #ffc107;
+        }
+        
+        .log-icon.delete {
+            background-color: #dc3545;
+        }
+        
+        .log-icon.login {
+            background-color: #17a2b8;
+        }
+        
+        .log-icon.export {
+            background-color: #6f42c1;
+        }
+        
+        .log-content {
+            flex: 1;
+        }
+        
+        .log-action {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .log-details {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .log-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .log-time {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .log-user {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .log-ip {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        /* 分页样式 */
+        .pagination {
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            border-top: 1px solid #eee;
+        }
+        
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            color: #333;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .pagination button:hover {
+            background: #f8f9fa;
+        }
+        
+        .pagination button.active {
+            background: #1e3c72;
+            color: white;
+            border-color: #1e3c72;
+        }
+        
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* 统计信息样式 */
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e3c72;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 侧边栏 -->
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fas fa-warehouse" style="font-size: 32px;"></i>
+                <h2>通信设备WMS</h2>
+            </div>
+            <div class="menu">
+                <a href="index.html" class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span>首页</span>
+                </a>
+                <a href="dashboard.html" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>仪表板</span>
+                </a>
+                <a href="warehouse.html" class="menu-item">
+                    <i class="fas fa-warehouse"></i>
+                    <span>仓库管理</span>
+                </a>
+                <a href="devices.html" class="menu-item">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span>设备登记</span>
+                </a>
+                <a href="inbound.html" class="menu-item">
+                    <i class="fas fa-arrow-down"></i>
+                    <span>入库管理</span>
+                </a>
+                <a href="outbound.html" class="menu-item">
+                    <i class="fas fa-arrow-up"></i>
+                    <span>出库管理</span>
+                </a>
+                <a href="scrap.html" class="menu-item">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>报废管理</span>
+                </a>
+                <a href="reports.html" class="menu-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>报表统计</span>
+                </a>
+                <a href="logs.html" class="menu-item active">
+                    <i class="fas fa-history"></i>
+                    <span>操作日志</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <div class="header">
+                <div>
+                    <h1 class="page-title">操作日志</h1>
+                    <div class="breadcrumb">系统管理 > 操作日志</div>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar">管</div>
+                    <span>管理员</span>
+                </div>
+            </div>
+
+            <!-- 统计卡片 -->
+            <div class="stats-cards">
+                <div class="stat-card">
+                    <div class="stat-number">1,234</div>
+                    <div class="stat-label">今日操作</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">45,678</div>
+                    <div class="stat-label">本月操作</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">156</div>
+                    <div class="stat-label">异常操作</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">23</div>
+                    <div class="stat-label">在线用户</div>
+                </div>
+            </div>
+
+            <!-- 筛选区域 -->
+            <div class="filter-section">
+                <input type="text" class="form-control" placeholder="搜索用户或操作..." style="width: 250px;">
+                <select class="form-select" id="actionType">
+                    <option value="">全部操作</option>
+                    <option value="create">新增</option>
+                    <option value="update">修改</option>
+                    <option value="delete">删除</option>
+                    <option value="login">登录</option>
+                    <option value="export">导出</option>
+                </select>
+                <select class="form-select" id="timeRange">
+                    <option value="today">今天</option>
+                    <option value="week">最近7天</option>
+                    <option value="month">最近30天</option>
+                    <option value="custom">自定义</option>
+                </select>
+                <input type="date" class="form-control" id="startDate" style="display: none;">
+                <input type="date" class="form-control" id="endDate" style="display: none;">
+                <button class="btn btn-primary" onclick="searchLogs()">搜索</button>
+                <button class="btn btn-danger" onclick="clearLogs()">清理日志</button>
+            </div>
+
+            <!-- 日志列表 -->
+            <div class="logs-container">
+                <div class="logs-header">
+                    <h3 class="logs-title">操作记录</h3>
+                    <div>
+                        <span style="color: #666; font-size: 14px;">共 1,234 条记录</span>
+                    </div>
+                </div>
+                <div class="logs-body">
+                    <div class="log-item">
+                        <div class="log-icon create">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="log-content">
+                            <div class="log-action">新增设备</div>
+                            <div class="log-details">添加了华为5G基站设备，序列号：HW5G20240115001</div>
+                            <div class="log-meta">
+                                <div class="log-time">
+                                    <i class="fas fa-clock"></i>
+                                    <span>2024-01-15 14:30:25</span>
+                                </div>
+                                <div class="log-user">
+                                    <i class="fas fa-user"></i>
+                                    <span>张三</span>
+                                </div>
+                                <div class="log-ip">
+                                    <i class="fas fa-globe"></i>
+                                    <span>192.168.1.100</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="log-item">
+                        <div class="log-icon update">
+                            <i class="fas fa-edit"></i>
+                        </div>
+                        <div class="log-content">
+                            <div class="log-action">修改库存</div>
+                            <div class="log-details">更新了中兴光纤设备的库存数量，从 150 调整为 145</div>
+                            <div class="log-meta">
+                                <div class="log-time">
+                                    <i class="fas fa-clock"></i>
+                                    <span>2024-01-15 14:25:18</span>
+                                </div>
+                                <div class="log-user">
+                                    <i class="fas fa-user"></i>
+                                    <span>李四</span>
+                                </div>
+                                <div class="log-ip">
+                                    <i class="fas fa-globe"></i>
+                                    <span>192.168.1.101</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="log-item">
+                        <div class="log-icon login">
+                            <i class="fas fa-sign-in-alt"></i>
+                        </div>
+                        <div class="log-content">
+                            <div class="log-action">用户登录</div>
+                            <div class="log-details">管理员登录系统</div>
+                            <div class="log-meta">
+                                <div class="log-time">
+                                    <i class="fas fa-clock"></i>
+                                    <span>2024-01-15 14:20:45</span>
+                                </div>
+                                <div class="log-user">
+                                    <i class="fas fa-user"></i>
+                                    <span>管理员</span>
+                                </div>
+                                <div class="log-ip">
+                                    <i class="fas fa-globe"></i>
+                                    <span>192.168.1.102</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="log-item">
+                        <div class="log-icon export">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <div class="log-content">
+                            <div class="log-action">导出报表</div>
+                            <div class="log-details">导出了库存统计报表（2024年1月）</div>
+                            <div class="log-meta">
+                                <div class="log-time">
+                                    <i class="fas fa-clock"></i>
+                                    <span>2024-01-15 14:15:32</span>
+                                </div>
+                                <div class="log-user">
+                                    <i class="fas fa-user"></i>
+                                    <span>王五</span>
+                                </div>
+                                <div class="log-ip">
+                                    <i class="fas fa-globe"></i>
+                                    <span>192.168.1.103</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="log-item">
+                        <div class="log-icon delete">
+                            <i class="fas fa-trash"></i>
+                        </div>
+                        <div class="log-content">
+                            <div class="log-action">删除设备</div>
+                            <div class="log-details">删除了报废的爱立信基站控制器，序列号：ERI20240110001</div>
+                            <div class="log-meta">
+                                <div class="log-time">
+                                    <i class="fas fa-clock"></i>
+                                    <span>2024-01-15 14:10:15</span>
+                                </div>
+                                <div class="log-user">
+                                    <i class="fas fa-user"></i>
+                                    <span>赵六</span>
+                                </div>
+                                <div class="log-ip">
+                                    <i class="fas fa-globe"></i>
+                                    <span>192.168.1.104</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="log-item">
+                        <div class="log-icon create">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="log-content">
+                            <div class="log-action">创建入库单</div>
+                            <div class="log-details">创建了入库单 IN202401150001，包含 25 台华为5G基站</div>
+                            <div class="log-meta">
+                                <div class="log-time">
+                                    <i class="fas fa-clock"></i>
+                                    <span>2024-01-15 14:05:28</span>
+                                </div>
+                                <div class="log-user">
+                                    <i class="fas fa-user"></i>
+                                    <span>孙七</span>
+                                </div>
+                                <div class="log-ip">
+                                    <i class="fas fa-globe"></i>
+                                    <span>192.168.1.105</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 分页 -->
+                <div class="pagination">
+                    <button disabled><i class="fas fa-chevron-left"></i></button>
+                    <button class="active">1</button>
+                    <button>2</button>
+                    <button>3</button>
+                    <button>4</button>
+                    <button>5</button>
+                    <span>...</span>
+                    <button>25</button>
+                    <button><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 时间范围选择
+        document.getElementById('timeRange').addEventListener('change', function() {
+            const startDate = document.getElementById('startDate');
+            const endDate = document.getElementById('endDate');
+            
+            if (this.value === 'custom') {
+                startDate.style.display = 'block';
+                endDate.style.display = 'block';
+            } else {
+                startDate.style.display = 'none';
+                endDate.style.display = 'none';
+            }
+        });
+
+        // 搜索日志
+        function searchLogs() {
+            const searchText = document.querySelector('.filter-section input[type="text"]').value;
+            const actionType = document.getElementById('actionType').value;
+            const timeRange = document.getElementById('timeRange').value;
+            
+            console.log('搜索条件：', { searchText, actionType, timeRange });
+            alert('搜索功能开发中...');
+        }
+
+        // 清理日志
+        function clearLogs() {
+            if (confirm('确认要清理历史日志吗？此操作不可恢复！')) {
+                alert('日志清理功能开发中...');
+            }
+        }
+
+        // 实时更新时间
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleString('zh-CN');
+            // 这里可以添加实时时间显示逻辑
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTime();
+            setInterval(updateTime, 1000); // 每秒更新时间
+        });
+    </script>
+</body>
+</html>

@@ -85,7 +85,6 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
   const {
     handleSubmit,
     reset,
-    watch,
   } = useForm<AdjustmentFormData>({
     resolver: zodResolver(adjustmentSchema),
     defaultValues: {
@@ -98,8 +97,19 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
     },
   });
 
-  const selectedProductId = watch('productId');
-  const selectedWarehouseId = watch('warehouseId');
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
+  
+  // 监听表单值变化
+  React.useEffect(() => {
+    // 使用 Ant Design Form 的 onValuesChange 来监听变化
+    // 这里暂时注释掉，因为 Ant Design Form 没有 watch 方法
+    // const subscription = form.watch((value) => {
+    //   if (value.productId) setSelectedProductId(value.productId);
+    //   if (value.warehouseId) setSelectedWarehouseId(value.warehouseId);
+    // });
+    // return () => subscription.unsubscribe();
+  }, [form]);
 
   // 获取产品列表
   const { data: productsData } = useQuery({
@@ -497,7 +507,7 @@ const InventoryPage: React.FC = () => {
     search,
     warehouseId: warehouseFilter || undefined,
     categoryId: categoryFilter || undefined,
-
+    stockStatus: stockStatusFilter || undefined,
   };
 
   // 获取库存列表

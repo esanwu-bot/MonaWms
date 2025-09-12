@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>设备登记 - 通信设备WMS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* 顶部导航栏 */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+        }
+        
+        .back-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: #1e3c72;
+            margin-right: 15px;
+            padding: 5px;
+            cursor: pointer;
+        }
+        
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .header-btn {
+            background: none;
+            border: none;
+            font-size: 16px;
+            color: #1e3c72;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background-color 0.3s;
+        }
+        
+        .header-btn:active {
+            background-color: rgba(30, 60, 114, 0.1);
+        }
+        
+        /* 抽屉菜单样式 */
+        .drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 998;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .drawer-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .drawer {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 280px;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 999;
+            transition: left 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .drawer.active {
+            left: 0;
+        }
+
+        .drawer-header {
+            padding: 30px 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .drawer-title {
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .drawer-subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+
+        .drawer-menu {
+            padding: 20px 0;
+        }
+
+        .menu-section {
+            margin-bottom: 30px;
+        }
+
+        .menu-section-title {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0 20px 10px;
+            margin-bottom: 10px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .menu-item.active {
+            background: rgba(255, 255, 255, 0.15);
+            border-left-color: #fff;
+            color: white;
+        }
+
+        .menu-item i {
+            width: 20px;
+            margin-right: 15px;
+            font-size: 16px;
+        }
+
+        .menu-item-text {
+            font-size: 14px;
+        }
+        
+        /* 主内容区域 */
+        .main-content {
+            padding: 80px 20px 100px;
+        }
+        
+        /* 搜索和筛选栏 */
+        .search-filter-bar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .search-input {
+            width: 100%;
+            border: none;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            padding: 12px 15px;
+            font-size: 14px;
+            outline: none;
+            margin-bottom: 10px;
+        }
+        
+        .search-input::placeholder {
+            color: #999;
+        }
+        
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        
+        .filter-tab {
+            background: rgba(0, 0, 0, 0.05);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s;
+        }
+        
+        .filter-tab.active {
+            background: #1e3c72;
+            color: white;
+        }
+        
+        /* 设备卡片 */
+        .device-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .device-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .device-card:active {
+            transform: scale(0.98);
+        }
+        
+        .device-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .device-info {
+            flex: 1;
+        }
+        
+        .device-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e3c72;
+            margin-bottom: 4px;
+        }
+        
+        .device-model {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .device-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+        
+        .status-available {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-in-use {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-maintenance {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .device-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+        
+        .device-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .detail-label {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+        
+        .detail-value {
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .device-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .action-btn {
+            flex: 1;
+            background: rgba(30, 60, 114, 0.1);
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 12px;
+            color: #1e3c72;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .action-btn:active {
+            background: rgba(30, 60, 114, 0.2);
+        }
+        
+        .action-btn.primary {
+            background: #1e3c72;
+            color: white;
+        }
+        
+        .action-btn.primary:active {
+            background: #163056;
+        }
+        
+        /* 浮动操作按钮 */
+        .fab {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .fab:active {
+            transform: scale(0.9);
+        }
+        
+        /* 底部导航 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 10px 0;
+            box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-items {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #666;
+            padding: 5px;
+            transition: color 0.3s ease;
+        }
+        
+        .nav-item.active {
+            color: #667eea;
+        }
+        
+        .nav-item i {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+        
+        .nav-item span {
+            font-size: 10px;
+        }
+        
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #666;
+            cursor: pointer;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .form-input, .form-select {
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .form-input:focus, .form-select:focus {
+            border-color: #667eea;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background: #1e3c72;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #666;
+        }
+        
+        /* 触摸反馈 */
+        .touchable {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- 左侧抽屉菜单 -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+    <div class="drawer" id="drawer">
+        <div class="drawer-header">
+            <div class="drawer-title">通信设备WMS</div>
+            <div class="drawer-subtitle">仓库管理系统</div>
+        </div>
+        <div class="drawer-menu">
+            <div class="menu-section">
+                <div class="menu-section-title">主要功能</div>
+                <a href="dashboard.html" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span class="menu-item-text">仪表板</span>
+                </a>
+                <a href="warehouse.html" class="menu-item">
+                    <i class="fas fa-warehouse"></i>
+                    <span class="menu-item-text">仓库管理</span>
+                </a>
+                <a href="devices.html" class="menu-item active">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span class="menu-item-text">设备登记</span>
+                </a>
+            </div>
+            <div class="menu-section">
+                <div class="menu-section-title">库存管理</div>
+                <a href="inbound.html" class="menu-item">
+                    <i class="fas fa-arrow-down"></i>
+                    <span class="menu-item-text">入库管理</span>
+                </a>
+                <a href="outbound.html" class="menu-item">
+                    <i class="fas fa-arrow-up"></i>
+                    <span class="menu-item-text">出库管理</span>
+                </a>
+                <a href="scrap.html" class="menu-item">
+                    <i class="fas fa-trash-alt"></i>
+                    <span class="menu-item-text">报废管理</span>
+                </a>
+            </div>
+            <div class="menu-section">
+                <div class="menu-section-title">系统功能</div>
+                <a href="reports.html" class="menu-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span class="menu-item-text">报表统计</span>
+                </a>
+                <a href="logs.html" class="menu-item">
+                    <i class="fas fa-history"></i>
+                    <span class="menu-item-text">操作日志</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 顶部导航栏 -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <button class="menu-btn" onclick="openDrawer()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="page-title">设备登记</h1>
+            </div>
+            <div class="header-actions">
+                <button class="header-btn" onclick="scanQRCode()">
+                    <i class="fas fa-qrcode"></i>
+                </button>
+                <button class="header-btn" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区域 -->
+    <main class="main-content">
+        <!-- 搜索和筛选栏 -->
+        <div class="search-filter-bar">
+            <input type="text" class="search-input" placeholder="搜索设备名称、型号或序列号..." id="searchInput">
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-status="all">全部</button>
+                <button class="filter-tab" data-status="available">可用</button>
+                <button class="filter-tab" data-status="in-use">使用中</button>
+                <button class="filter-tab" data-status="maintenance">维护中</button>
+            </div>
+        </div>
+
+        <!-- 设备列表 -->
+        <div class="device-list" id="deviceList">
+            <div class="device-card touchable" data-status="available">
+                <div class="device-header">
+                    <div class="device-info">
+                        <div class="device-name">华为路由器 AR2220</div>
+                        <div class="device-model">型号: AR2220-S</div>
+                        <span class="device-status status-available">可用</span>
+                    </div>
+                    <div class="device-icon">
+                        <i class="fas fa-router"></i>
+                    </div>
+                </div>
+                
+                <div class="device-details">
+                    <div class="detail-item">
+                        <div class="detail-label">序列号</div>
+                        <div class="detail-value">HW2220001</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">位置</div>
+                        <div class="detail-value">A区-01-05</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">入库日期</div>
+                        <div class="detail-value">2024-01-15</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">供应商</div>
+                        <div class="detail-value">华为技术</div>
+                    </div>
+                </div>
+                
+                <div class="device-actions">
+                    <button class="action-btn" onclick="viewDevice('HW2220001')">
+                        <i class="fas fa-eye"></i> 查看详情
+                    </button>
+                    <button class="action-btn primary" onclick="editDevice('HW2220001')">
+                        <i class="fas fa-edit"></i> 编辑
+                    </button>
+                </div>
+            </div>
+            
+            <div class="device-card touchable" data-status="in-use">
+                <div class="device-header">
+                    <div class="device-info">
+                        <div class="device-name">中兴交换机 ZXR10</div>
+                        <div class="device-model">型号: ZXR10-5960</div>
+                        <span class="device-status status-in-use">使用中</span>
+                    </div>
+                    <div class="device-icon">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                </div>
+                
+                <div class="device-details">
+                    <div class="detail-item">
+                        <div class="detail-label">序列号</div>
+                        <div class="detail-value">ZTE5960002</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">位置</div>
+                        <div class="detail-value">B区-02-10</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">使用部门</div>
+                        <div class="detail-value">网络部</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">出库日期</div>
+                        <div class="detail-value">2024-01-20</div>
+                    </div>
+                </div>
+                
+                <div class="device-actions">
+                    <button class="action-btn" onclick="viewDevice('ZTE5960002')">
+                        <i class="fas fa-eye"></i> 查看详情
+                    </button>
+                    <button class="action-btn" onclick="returnDevice('ZTE5960002')">
+                        <i class="fas fa-undo"></i> 归还
+                    </button>
+                </div>
+            </div>
+            
+            <div class="device-card touchable" data-status="maintenance">
+                <div class="device-header">
+                    <div class="device-info">
+                        <div class="device-name">思科防火墙 ASA5506</div>
+                        <div class="device-model">型号: ASA5506-X</div>
+                        <span class="device-status status-maintenance">维护中</span>
+                    </div>
+                    <div class="device-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                </div>
+                
+                <div class="device-details">
+                    <div class="detail-item">
+                        <div class="detail-label">序列号</div>
+                        <div class="detail-value">CISCO5506003</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">位置</div>
+                        <div class="detail-value">维修区-01</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">维护原因</div>
+                        <div class="detail-value">端口故障</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">预计完成</div>
+                        <div class="detail-value">2024-02-05</div>
+                    </div>
+                </div>
+                
+                <div class="device-actions">
+                    <button class="action-btn" onclick="viewDevice('CISCO5506003')">
+                        <i class="fas fa-eye"></i> 查看详情
+                    </button>
+                    <button class="action-btn" onclick="updateMaintenance('CISCO5506003')">
+                        <i class="fas fa-wrench"></i> 维护记录
+                    </button>
+                </div>
+            </div>
+            
+            <div class="device-card touchable" data-status="available">
+                <div class="device-header">
+                    <div class="device-info">
+                        <div class="device-name">TP-Link 无线AP</div>
+                        <div class="device-model">型号: EAP245</div>
+                        <span class="device-status status-available">可用</span>
+                    </div>
+                    <div class="device-icon">
+                        <i class="fas fa-wifi"></i>
+                    </div>
+                </div>
+                
+                <div class="device-details">
+                    <div class="detail-item">
+                        <div class="detail-label">序列号</div>
+                        <div class="detail-value">TPLINK245004</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">位置</div>
+                        <div class="detail-value">C区-03-15</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">入库日期</div>
+                        <div class="detail-value">2024-01-25</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">供应商</div>
+                        <div class="detail-value">TP-Link</div>
+                    </div>
+                </div>
+                
+                <div class="device-actions">
+                    <button class="action-btn" onclick="viewDevice('TPLINK245004')">
+                        <i class="fas fa-eye"></i> 查看详情
+                    </button>
+                    <button class="action-btn primary" onclick="editDevice('TPLINK245004')">
+                        <i class="fas fa-edit"></i> 编辑
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 浮动操作按钮 -->
+    <button class="fab" onclick="showAddDeviceModal()">
+        <i class="fas fa-plus"></i>
+    </button>
+
+    <!-- 底部导航 -->
+    <nav class="bottom-nav">
+        <div class="nav-items">
+            <a href="dashboard.html" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>仪表板</span>
+            </a>
+            <a href="warehouse.html" class="nav-item">
+                <i class="fas fa-warehouse"></i>
+                <span>仓库</span>
+            </a>
+            <a href="devices.html" class="nav-item active">
+                <i class="fas fa-mobile-alt"></i>
+                <span>设备</span>
+            </a>
+            <a href="inbound.html" class="nav-item">
+                <i class="fas fa-arrow-down"></i>
+                <span>入库</span>
+            </a>
+            <a href="outbound.html" class="nav-item">
+                <i class="fas fa-arrow-up"></i>
+                <span>出库</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- 新增设备模态框 -->
+    <div class="modal" id="addDeviceModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">新增设备</h2>
+                <button class="close-btn" onclick="closeModal('addDeviceModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="addDeviceForm">
+                <div class="form-group">
+                    <label class="form-label">设备名称</label>
+                    <input type="text" class="form-input" placeholder="请输入设备名称" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">设备型号</label>
+                    <input type="text" class="form-input" placeholder="请输入设备型号" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">序列号</label>
+                    <input type="text" class="form-input" placeholder="请输入序列号" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">设备类型</label>
+                    <select class="form-select" required>
+                        <option value="">请选择设备类型</option>
+                        <option value="router">路由器</option>
+                        <option value="switch">交换机</option>
+                        <option value="firewall">防火墙</option>
+                        <option value="ap">无线AP</option>
+                        <option value="server">服务器</option>
+                        <option value="other">其他</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">供应商</label>
+                    <input type="text" class="form-input" placeholder="请输入供应商" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">存放位置</label>
+                    <input type="text" class="form-input" placeholder="请输入存放位置" required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addDeviceModal')">取消</button>
+                    <button type="submit" class="btn btn-primary">确认添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 搜索功能
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const deviceCards = document.querySelectorAll('.device-card');
+            
+            deviceCards.forEach(card => {
+                const name = card.querySelector('.device-name').textContent.toLowerCase();
+                const model = card.querySelector('.device-model').textContent.toLowerCase();
+                const serial = card.querySelector('.detail-value').textContent.toLowerCase();
+                
+                if (name.includes(searchTerm) || model.includes(searchTerm) || serial.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        // 筛选功能
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // 更新活跃状态
+                document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                const status = this.dataset.status;
+                const deviceCards = document.querySelectorAll('.device-card');
+                
+                deviceCards.forEach(card => {
+                    if (status === 'all' || card.dataset.status === status) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // 查看设备详情
+        function viewDevice(serialNumber) {
+            console.log('查看设备详情:', serialNumber);
+            alert('查看设备详情功能开发中...');
+        }
+
+        // 编辑设备
+        function editDevice(serialNumber) {
+            console.log('编辑设备:', serialNumber);
+            alert('编辑设备功能开发中...');
+        }
+
+        // 归还设备
+        function returnDevice(serialNumber) {
+            console.log('归还设备:', serialNumber);
+            alert('归还设备功能开发中...');
+        }
+
+        // 更新维护记录
+        function updateMaintenance(serialNumber) {
+            console.log('更新维护记录:', serialNumber);
+            alert('维护记录功能开发中...');
+        }
+
+        // 显示新增设备模态框
+        function showAddDeviceModal() {
+            document.getElementById('addDeviceModal').style.display = 'flex';
+        }
+
+        // 关闭模态框
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // 扫描二维码
+        function scanQRCode() {
+            alert('二维码扫描功能开发中...');
+        }
+
+        // 刷新数据
+        function refreshData() {
+            console.log('刷新数据');
+            // 模拟刷新动画
+            const refreshBtn = document.querySelector('.header-btn .fa-sync-alt');
+            refreshBtn.style.animation = 'spin 1s linear';
+            setTimeout(() => {
+                refreshBtn.style.animation = '';
+            }, 1000);
+        }
+
+        // 新增设备表单提交
+        document.getElementById('addDeviceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('新增设备功能开发中...');
+            closeModal('addDeviceModal');
+        });
+
+        // 添加触摸反馈
+        document.querySelectorAll('.touchable').forEach(element => {
+            element.addEventListener('touchstart', function() {
+                this.style.opacity = '0.7';
+            });
+            
+            element.addEventListener('touchend', function() {
+                this.style.opacity = '1';
+            });
+        });
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('移动端设备登记页面加载完成');
+        });
+
+        // 添加旋转动画
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // 抽屉菜单控制
+        function openDrawer() {
+            document.getElementById('drawer').classList.add('active');
+            document.getElementById('drawerOverlay').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeDrawer() {
+            document.getElementById('drawer').classList.remove('active');
+            document.getElementById('drawerOverlay').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+    </script>
+</body>
+</html>
