@@ -677,7 +677,7 @@ const ProjectsPage: React.FC = () => {
             rules={[{ required: true, message: '请选择产品' }]}
           >
             <Select placeholder="请选择产品">
-              {productData?.data?.map((product: any) => (
+              {productData?.map((product: any) => (
                 <Option key={product.id} value={product.id}>
                   {product.name} ({product.sku})
                 </Option>

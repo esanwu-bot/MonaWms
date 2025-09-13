@@ -18,7 +18,6 @@ import {
   ToolOutlined,
   UnorderedListOutlined,
   ProjectOutlined,
-  BookOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 
@@ -52,11 +51,6 @@ const menuItems = [
     key: '/categories',
     icon: <AppstoreOutlined />,
     label: '分类管理',
-  },
-  {
-    key: '/dictionary',
-    icon: <BookOutlined />,
-    label: '数据字典',
   },
   {
     key: '/inventory',

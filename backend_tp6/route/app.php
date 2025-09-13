@@ -144,6 +144,17 @@ Route::group('api', function () {
             Route::delete(':id', 'CustomerController/delete');      // 删除客户
         });
         
+        // BOM管理
+        Route::group('bom', function () {
+            Route::get('', 'BOMController/index');                 // BOM列表
+            Route::post('', 'BOMController/save');                 // 创建BOM
+            Route::get(':id', 'BOMController/read');               // BOM详情
+            Route::put(':id', 'BOMController/update');             // 更新BOM
+            Route::delete(':id', 'BOMController/delete');          // 删除BOM
+            Route::post(':id/copy', 'BOMController/copy');         // 复制BOM
+            Route::post(':id/explode', 'BOMController/explode');   // 展开BOM
+        });
+        
         // 产品分类管理
         Route::group('categories', function () {
             Route::get('', 'CategoryController/index');             // 分类列表
@@ -192,6 +203,7 @@ Route::group('api', function () {
             Route::put(':id', 'WirelessSparePartController/update');    // 更新无线备件
             Route::delete(':id', 'WirelessSparePartController/delete'); // 删除无线备件
             Route::post('batch-delete', 'WirelessSparePartController/batchDelete'); // 批量删除
+            Route::get('stats', 'WirelessSparePartController/stats');   // 统计数据
         });
         
         // 序列号管理

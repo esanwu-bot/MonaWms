@@ -32,7 +32,6 @@ import ProfilePage from './pages/ProfilePage';
 import WirelessSparePartsPage from './pages/WirelessSparePartsPage';
 import BOMPage from './pages/BOMPage';
 import ProjectsPage from './pages/ProjectsPage';
-import DictionaryPage from './pages/DictionaryPage';
 
 // 路由保护组件
 interface ProtectedRouteProps {
@@ -141,9 +140,6 @@ function App() {
                 
                 {/* 项目管理 */}
                 <Route path="projects" element={<ProjectsPage />} />
-                
-                {/* 数据字典 */}
-                <Route path="dictionary" element={<DictionaryPage />} />
                 
                 {/* 报表分析页面已删除 */}
                 

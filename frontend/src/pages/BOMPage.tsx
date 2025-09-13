@@ -90,6 +90,12 @@ const BOMPage: React.FC = () => {
   const { data: productData } = useQuery({
     queryKey: ['products'],
     queryFn: () => productService.getProducts(),
+    select: (data) => {
+      if (Array.isArray(data)) return data;
+      if (data?.data?.list && Array.isArray(data.data.list)) return data.data.list;
+      if (data?.data && Array.isArray(data.data)) return data.data;
+      return [];
+    },
   });
 
   // 创建BOM
@@ -382,7 +388,7 @@ const BOMPage: React.FC = () => {
                 setSearchParams(prev => ({ ...prev, product_id: value }))
               }
             >
-              {productData?.data?.map((product: any) => (
+              {productData?.map((product: any) => (
                 <Option key={product.id} value={product.id}>
                   {product.name}
                 </Option>
@@ -469,7 +475,7 @@ const BOMPage: React.FC = () => {
                 rules={[{ required: true, message: '请选择主产品' }]}
               >
                 <Select placeholder="请选择主产品">
-                  {productData?.data?.map((product: any) => (
+                  {productData?.map((product: any) => (
                     <Option key={product.id} value={product.id}>
                       {product.name} ({product.sku})
                     </Option>
@@ -524,7 +530,7 @@ const BOMPage: React.FC = () => {
                         rules={[{ required: true, message: '请选择产品' }]}
                       >
                         <Select placeholder="选择产品">
-                          {productData?.data?.map((product: any) => (
+                          {productData?.map((product: any) => (
                             <Option key={product.id} value={product.id}>
                               {product.name}
                             </Option>
