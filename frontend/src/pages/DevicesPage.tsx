@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Table,
@@ -27,6 +27,7 @@ import {
   ToolOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import dictionaryService from '../services/dictionaryService';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Search } = Input;
@@ -136,6 +137,63 @@ const DevicesPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('list');
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
+  
+  // 获取数据字典数据
+  const { data: deviceTypesData } = useQuery({
+    queryKey: ['dictionary-items-device-type'],
+    queryFn: async () => {
+      // 查找设备类型字典
+      const typesResponse = await dictionaryService.getDictionaryTypes();
+      const deviceTypeDict = typesResponse.data.find(type => type.code === 'device_type');
+      if (deviceTypeDict) {
+        const itemsResponse = await dictionaryService.getDictionaryItems(deviceTypeDict.id);
+        return itemsResponse.data;
+      }
+      return [];
+    },
+  });
+  
+  const { data: deviceModelsData } = useQuery({
+    queryKey: ['dictionary-items-device-model'],
+    queryFn: async () => {
+      // 查找设备型号字典
+      const typesResponse = await dictionaryService.getDictionaryTypes();
+      const deviceModelDict = typesResponse.data.find(type => type.code === 'device_model');
+      if (deviceModelDict) {
+        const itemsResponse = await dictionaryService.getDictionaryItems(deviceModelDict.id);
+        return itemsResponse.data;
+      }
+      return [];
+    },
+  });
+  
+  const { data: deviceBrandsData } = useQuery({
+    queryKey: ['dictionary-items-device-brand'],
+    queryFn: async () => {
+      // 查找设备品牌字典
+      const typesResponse = await dictionaryService.getDictionaryTypes();
+      const deviceBrandDict = typesResponse.data.find(type => type.code === 'device_brand');
+      if (deviceBrandDict) {
+        const itemsResponse = await dictionaryService.getDictionaryItems(deviceBrandDict.id);
+        return itemsResponse.data;
+      }
+      return [];
+    },
+  });
+  
+  const { data: deviceStatusData } = useQuery({
+    queryKey: ['dictionary-items-device-status'],
+    queryFn: async () => {
+      // 查找设备状态字典
+      const typesResponse = await dictionaryService.getDictionaryTypes();
+      const deviceStatusDict = typesResponse.data.find(type => type.code === 'device_status');
+      if (deviceStatusDict) {
+        const itemsResponse = await dictionaryService.getDictionaryItems(deviceStatusDict.id);
+        return itemsResponse.data;
+      }
+      return [];
+    },
+  });
 
   // 获取设备列表
   const { data: devicesData, isLoading } = useQuery({
@@ -454,11 +512,9 @@ const DevicesPage: React.FC = () => {
                   style={{ width: '100%' }}
                   onChange={(value) => handleSearch('device_type', value)}
                 >
-                  <Option value="基站设备">基站设备</Option>
-                  <Option value="网络设备">网络设备</Option>
-                  <Option value="传输设备">传输设备</Option>
-                  <Option value="电源设备">电源设备</Option>
-                  <Option value="监控设备">监控设备</Option>
+                  {deviceTypesData?.map(item => (
+                    <Option key={item.id} value={item.code}>{item.name}</Option>
+                  ))}
                 </Select>
               </Col>
               <Col span={3}>
@@ -468,9 +524,9 @@ const DevicesPage: React.FC = () => {
                   style={{ width: '100%' }}
                   onChange={(value) => handleSearch('status', value)}
                 >
-                  <Option value="active">正常运行</Option>
-                  <Option value="maintenance">维护中</Option>
-                  <Option value="inactive">停用</Option>
+                  {deviceStatusData?.map(item => (
+                    <Option key={item.id} value={item.code}>{item.name}</Option>
+                  ))}
                 </Select>
               </Col>
               <Col span={4}>
@@ -563,11 +619,9 @@ const DevicesPage: React.FC = () => {
                 rules={[{ required: true, message: '请选择设备类型' }]}
               >
                 <Select placeholder="请选择设备类型">
-                  <Option value="基站设备">基站设备</Option>
-                  <Option value="网络设备">网络设备</Option>
-                  <Option value="传输设备">传输设备</Option>
-                  <Option value="电源设备">电源设备</Option>
-                  <Option value="监控设备">监控设备</Option>
+                  {deviceTypesData?.map(item => (
+                    <Option key={item.id} value={item.code}>{item.name}</Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>
@@ -575,18 +629,26 @@ const DevicesPage: React.FC = () => {
               <Form.Item
                 label="型号"
                 name="model"
-                rules={[{ required: true, message: '请输入型号' }]}
+                rules={[{ required: true, message: '请选择型号' }]}
               >
-                <Input placeholder="请输入型号" />
+                <Select placeholder="请选择型号">
+                  {deviceModelsData?.map(item => (
+                    <Option key={item.id} value={item.code}>{item.name}</Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
             <Col span={8}>
               <Form.Item
                 label="品牌"
                 name="brand"
-                rules={[{ required: true, message: '请输入品牌' }]}
+                rules={[{ required: true, message: '请选择品牌' }]}
               >
-                <Input placeholder="请输入品牌" />
+                <Select placeholder="请选择品牌">
+                  {deviceBrandsData?.map(item => (
+                    <Option key={item.id} value={item.code}>{item.name}</Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
           </Row>
@@ -608,9 +670,9 @@ const DevicesPage: React.FC = () => {
                 rules={[{ required: true, message: '请选择状态' }]}
               >
                 <Select placeholder="请选择状态">
-                  <Option value="active">正常运行</Option>
-                  <Option value="maintenance">维护中</Option>
-                  <Option value="inactive">停用</Option>
+                  {deviceStatusData?.map(item => (
+                    <Option key={item.id} value={item.code}>{item.name}</Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>

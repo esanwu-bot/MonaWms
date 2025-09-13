@@ -30,6 +30,22 @@ Route::group('api', function () {
             Route::post('logout', 'AuthController/logout');         // 用户登出
         });
         
+        // 数据字典管理
+        Route::group('dictionary', function () {
+            // 字典类型
+            Route::get('types', 'DictionaryController/getTypes');           // 获取所有字典类型
+            Route::post('types', 'DictionaryController/createType');        // 创建字典类型
+            Route::put('types/:id', 'DictionaryController/updateType');     // 更新字典类型
+            Route::delete('types/:id', 'DictionaryController/deleteType');  // 删除字典类型
+            
+            // 字典项
+            Route::get('items/:typeId', 'DictionaryController/getItems');           // 获取指定类型的字典项
+            Route::get('items/type/:typeCode', 'DictionaryController/getItemsByTypeCode'); // 根据类型编码获取字典项
+            Route::post('items', 'DictionaryController/createItem');                // 创建字典项
+            Route::put('items/:id', 'DictionaryController/updateItem');             // 更新字典项
+            Route::delete('items/:id', 'DictionaryController/deleteItem');          // 删除字典项
+        });
+        
         // 仓库管理
         Route::group('warehouses', function () {
             Route::get('', 'WarehouseController/index');            // 仓库列表
