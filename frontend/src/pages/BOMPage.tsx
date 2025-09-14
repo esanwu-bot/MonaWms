@@ -388,11 +388,11 @@ const BOMPage: React.FC = () => {
                 setSearchParams(prev => ({ ...prev, product_id: value }))
               }
             >
-              {productData?.map((product: any) => (
+              {Array.isArray(productData?.list) ? productData.list.map((product: any) => (
                 <Option key={product.id} value={product.id}>
                   {product.name}
                 </Option>
-              ))}
+              )) : []}
             </Select>
           </Col>
           <Col span={4}>
@@ -475,11 +475,11 @@ const BOMPage: React.FC = () => {
                 rules={[{ required: true, message: '请选择主产品' }]}
               >
                 <Select placeholder="请选择主产品">
-                  {productData?.map((product: any) => (
+                  {Array.isArray(productData?.list) ? productData.list.map((product: any) => (
                     <Option key={product.id} value={product.id}>
                       {product.name} ({product.sku})
                     </Option>
-                  ))}
+                  )) : []}
                 </Select>
               </Form.Item>
             </Col>
@@ -530,11 +530,11 @@ const BOMPage: React.FC = () => {
                         rules={[{ required: true, message: '请选择产品' }]}
                       >
                         <Select placeholder="选择产品">
-                          {productData?.map((product: any) => (
+                          {Array.isArray(productData?.list) ? productData.list.map((product: any) => (
                             <Option key={product.id} value={product.id}>
                               {product.name}
                             </Option>
-                          ))}
+                          )) : []}
                         </Select>
                       </Form.Item>
                     </Col>

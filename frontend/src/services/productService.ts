@@ -11,7 +11,7 @@ export const productService = {
   // 获取产品列表
   getProducts: async (params?: QueryParams): Promise<any> => {
     const response = await api.get<Product[]>('/products', { params });
-    return response.data;
+    return response.data.data;
   },
   
   // 根据ID获取产品

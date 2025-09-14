@@ -677,11 +677,11 @@ const ProjectsPage: React.FC = () => {
             rules={[{ required: true, message: '请选择产品' }]}
           >
             <Select placeholder="请选择产品">
-              {productData?.map((product: any) => (
+              {Array.isArray(productData?.list) ? productData.list.map((product: any) => (
                 <Option key={product.id} value={product.id}>
                   {product.name} ({product.sku})
                 </Option>
-              ))}
+              )) : []}
             </Select>
           </Form.Item>
 

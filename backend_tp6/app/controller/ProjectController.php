@@ -27,7 +27,7 @@ class ProjectController extends BaseController
             $page = $params['page'] ?? 1;
             $limit = $params['limit'] ?? 15;
             
-            $query = Project::query();
+            $query = Project::where('id', '>', 0);
             
             // 搜索条件
             if (!empty($params['project_code'])) {

@@ -419,11 +419,11 @@ const SerialNumbersPage: React.FC = () => {
                 style={{ width: '100%' }}
                 onChange={(value) => handleSearch(value || '', 'product_id')}
               >
-                {productsData?.data?.list?.map((product) => (
+                {Array.isArray(productsData?.list) ? productsData.list.map((product) => (
                   <Option key={product.id} value={product.id}>
                     {product.name} ({product.sku})
                   </Option>
-                )) || []}
+                )) : []}
               </Select>
             </Col>
             <Col xs={24} sm={12} md={8} lg={6}>
@@ -568,11 +568,11 @@ const SerialNumbersPage: React.FC = () => {
                   showSearch
                   optionFilterProp="children"
                 >
-                  {productsData?.data?.list?.map((product) => (
+                  {Array.isArray(productsData?.list) ? productsData.list.map((product) => (
                   <Option key={product.id} value={product.id}>
                     {product.name} ({product.sku})
                   </Option>
-                )) || []}
+                )) : []}
                 </Select>
               </Form.Item>
             </Col>

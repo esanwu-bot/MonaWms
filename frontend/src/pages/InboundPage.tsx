@@ -253,14 +253,14 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                     placeholder="请选择仓库"
                     disabled={loading}
                   >
-                    {warehousesData?.map((warehouse) => (
+                    {Array.isArray(warehousesData) ? warehousesData.map((warehouse) => (
                       <Option key={warehouse.id} value={warehouse.id}>
                         <Space>
                           {warehouse.name}
                           <Tag>{warehouse.code}</Tag>
                         </Space>
                       </Option>
-                    ))}
+                    )) : []}
                   </Select>
                 )}
               />
@@ -281,14 +281,14 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                     placeholder="请选择供应商"
                     disabled={loading}
                   >
-                    {suppliersData?.map((supplier) => (
+                    {Array.isArray(suppliersData) ? suppliersData.map((supplier) => (
                       <Option key={supplier.id} value={supplier.id}>
                         <Space>
                           {supplier.name}
                           <Tag>{supplier.code}</Tag>
                         </Space>
                       </Option>
-                    ))}
+                    )) : []}
                   </Select>
                 )}
               />
@@ -343,14 +343,14 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                         placeholder="请选择产品"
                         disabled={loading}
                       >
-                        {productsData?.map((product) => (
+                        {Array.isArray(productsData) ? productsData.map((product) => (
                           <Option key={product.id} value={product.id}>
                             <div>
                               <div>{product.name}</div>
                               <Text type="secondary">SKU: {product.sku}</Text>
                             </div>
                           </Option>
-                        ))}
+                        )) : []}
                       </Select>
                     )}
                   />
@@ -636,7 +636,7 @@ const InboundPage: React.FC = () => {
   const { data: warehousesData } = useQuery({
     queryKey: queryKeys.warehouses.all,
     queryFn: async () => {
-        const response = await api.get('/products');
+        const response = await api.get('/warehouses');
         return response.data.data;
       },
   });
@@ -788,11 +788,11 @@ const InboundPage: React.FC = () => {
               onChange={setWarehouseFilter}
               allowClear
             >
-              {warehousesData?.map((warehouse) => (
+              {Array.isArray(warehousesData) ? warehousesData.map((warehouse) => (
                 <Option key={warehouse.id} value={warehouse.id}>
                   {warehouse.name}
                 </Option>
-              ))}
+              )) : []}
             </Select>
           </Col>
           <Col xs={24} sm={12} md={8} lg={6}>

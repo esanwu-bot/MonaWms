@@ -320,11 +320,11 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                       (option?.children as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
                     }
                   >
-                    {warehousesData?.map((warehouse) => (
+                    {Array.isArray(warehousesData) ? warehousesData.map((warehouse) => (
                       <Option key={warehouse.id} value={warehouse.id}>
                         {warehouse.name} (编码: {warehouse.code})
                       </Option>
-                    ))}
+                    )) : []}
                   </Select>
                 )}
               />
@@ -351,11 +351,11 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                       (option?.children as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
                     }
                   >
-                    {customersData?.map((customer) => (
+                    {Array.isArray(customersData) ? customersData.map((customer) => (
                       <Option key={customer.id} value={customer.id}>
                         {customer.name} (编码: {customer.code})
                       </Option>
-                    ))}
+                    )) : []}
                   </Select>
                 )}
               />
@@ -485,11 +485,11 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                           (option?.children as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
                         }
                       >
-                        {productsData?.map((product) => (
+                        {Array.isArray(productsData) ? productsData.map((product) => (
                           <Option key={product.id} value={product.id}>
                             {product.name} (SKU: {product.sku})
                           </Option>
-                        ))}
+                        )) : []}
                       </Select>
                     )}
                   />
@@ -1131,11 +1131,11 @@ const OutboundPage: React.FC = () => {
               style={{ width: '100%' }}
             >
               <Option value="">全部仓库</Option>
-              {warehousesData?.map((warehouse) => (
+              {Array.isArray(warehousesData) ? warehousesData.map((warehouse) => (
                 <Option key={warehouse.id} value={warehouse.id}>
                   {warehouse.name}
                 </Option>
-              ))}
+              )) : []}
             </Select>
           </Col>
           <Col xs={24} sm={12} md={4}>

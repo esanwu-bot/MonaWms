@@ -34,6 +34,7 @@ import {
   ImportOutlined,
   ExportOutlined,
   BarChartOutlined,
+  CameraOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
@@ -80,6 +81,7 @@ const WirelessSparePartsPage: React.FC = () => {
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<WirelessSparePart | null>(null);
   const [activeTab, setActiveTab] = useState('list');
+  const [barcodeUploading, setBarcodeUploading] = useState(false);
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
 
@@ -360,6 +362,44 @@ const WirelessSparePartsPage: React.FC = () => {
     });
   };
 
+  // 条码上传处理
+  const handleBarcodeUpload = async (file: File) => {
+    setBarcodeUploading(true);
+    const formData = new FormData();
+    formData.append('barcode_image', file);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/barcode/recognize`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data.barcode) {
+          // 自动填充识别到的条码到序列号输入框
+          form.setFieldsValue({
+            serialNumber: result.data.barcode
+          });
+          message.success('条码识别成功，已自动填充序列号');
+        } else {
+          message.error('未能识别到有效条码');
+        }
+      } else {
+        message.error('条码识别失败');
+      }
+    } catch (error) {
+      message.error('条码上传失败');
+    } finally {
+      setBarcodeUploading(false);
+    }
+    
+    return false; // 阻止默认上传行为
+  };
+
   const handleSubmit = (values: WirelessSparePartFormData) => {
     const data: CreateWirelessSparePartRequest = {
       part_name: values.partName,
@@ -470,29 +510,30 @@ const WirelessSparePartsPage: React.FC = () => {
             {renderStatsCards()}
 
             {/* 搜索和操作区域 */}
-            <Row gutter={16} style={{ marginBottom: 16 }}>
-              <Col span={4}>
+            {/* 第一行：搜索字段 */}
+            <Row gutter={16} style={{ marginBottom: 12 }}>
+              <Col span={5}>
                 <Search
                   placeholder="搜索备件名称"
                   allowClear
                   onSearch={(value) => handleSearch('part_name', value)}
                 />
               </Col>
-              <Col span={4}>
+              <Col span={5}>
                 <Input
                   placeholder="搜索型号"
                   allowClear
                   onChange={(e) => handleSearch('model', e.target.value)}
                 />
               </Col>
-              <Col span={4}>
+              <Col span={5}>
                 <Input
                   placeholder="搜索序列号"
                   allowClear
                   onChange={(e) => handleSearch('serial_number', e.target.value)}
                 />
               </Col>
-              <Col span={3}>
+              <Col span={4}>
                 <Select
                   placeholder="类型"
                   allowClear
@@ -506,7 +547,7 @@ const WirelessSparePartsPage: React.FC = () => {
                   <Option value="其他">其他</Option>
                 </Select>
               </Col>
-              <Col span={3}>
+              <Col span={5}>
                 <Select
                   placeholder="状态"
                   allowClear
@@ -519,7 +560,11 @@ const WirelessSparePartsPage: React.FC = () => {
                   <Option value="盘点">盘点</Option>
                 </Select>
               </Col>
-              <Col span={6}>
+            </Row>
+            
+            {/* 第二行：操作按钮 */}
+            <Row gutter={16} style={{ marginBottom: 16 }}>
+              <Col span={24}>
                 <Space>
                   <Button
                     type="primary"
@@ -651,7 +696,25 @@ const WirelessSparePartsPage: React.FC = () => {
                 name="serialNumber"
                 rules={[{ required: true, message: '请输入序列号' }]}
               >
-                <Input placeholder="请输入序列号" />
+                <Input.Group compact>
+                  <Input 
+                    placeholder="请输入序列号或上传条码图片" 
+                    style={{ width: 'calc(100% - 40px)' }}
+                  />
+                  <Upload
+                    accept="image/*"
+                    showUploadList={false}
+                    beforeUpload={handleBarcodeUpload}
+                    disabled={barcodeUploading}
+                  >
+                    <Button 
+                      icon={<CameraOutlined />} 
+                      loading={barcodeUploading}
+                      style={{ width: '40px' }}
+                      title="上传条码图片"
+                    />
+                  </Upload>
+                </Input.Group>
               </Form.Item>
             </Col>
             <Col span={12}>

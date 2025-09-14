@@ -226,6 +226,18 @@ Route::group('api', function () {
             Route::get('supported-types', 'BarcodeController/getSupportedTypes'); // 获取支持的条码类型
         });
         
+        // 项目管理
+        Route::group('projects', function () {
+            Route::get('', 'ProjectController/index');                   // 项目列表
+            Route::post('', 'ProjectController/save');                   // 创建项目
+            Route::get(':id', 'ProjectController/read');                // 项目详情
+            Route::put(':id', 'ProjectController/update');              // 更新项目
+            Route::delete(':id', 'ProjectController/delete');           // 删除项目
+            Route::get(':id/inventory', 'ProjectController/getProjectInventory'); // 获取项目库存
+            Route::post('reserve-inventory', 'ProjectController/reserveInventory'); // 预留库存
+            Route::post('cancel-reservation', 'ProjectController/cancelReservation'); // 取消预留
+        });
+        
     })->middleware(['auth']); // 需要认证的路由组
     
 })->middleware(['cors']); // API路由组，添加CORS中间件

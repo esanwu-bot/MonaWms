@@ -158,22 +158,33 @@ export interface Product {
   sku: string;
   name: string;
   description?: string;
-  deviceType?: string;       // 设备类型(如：基站、路由器、光模块)
-  modelNumber?: string;      // 具体型号(如：HUAWEI MA5683T)
-  frequencyProtocol?: string; // 频段/协议(如：5G 700MHz, WiFi 6)
-  firmwareVersion?: string;  // 固件版本
-  categoryId: string;
+  device_type?: string;       // 设备类型(如：基站、路由器、光模块)
+  model_number?: string;      // 具体型号(如：HUAWEI MA5683T)
+  frequency_protocol?: string; // 频段/协议(如：5G 700MHz, WiFi 6)
+  firmware_version?: string;  // 固件版本
+  category_id: string;
   category?: Category;
   unit: string;
-  unitPrice: number;
-  minStock: number;
-  maxStock: number;
+  price: number;              // API返回的是price字段
+  unitPrice?: number;         // 保持兼容性
+  min_stock: number;
+  max_stock: number;
   barcode?: string;
-  projectId?: string;        // 所属项目ID
+  project_id?: string;        // 所属项目ID
   project?: Project;         // 所属项目
   specifications?: Record<string, any>;
-  isActive: boolean;
-  status_text: 'ACTIVE' | 'INACTIVE';
+  status: 'active' | 'inactive';  // API返回的状态字段
+  status_text?: string;       // API返回的状态文本
+  category_name?: string;     // API返回的分类名称
+  total_stock?: number;       // API返回的总库存
+  available_stock?: number;   // API返回的可用库存
+  stock_status?: string;      // API返回的库存状态
+  stock_status_text?: string; // API返回的库存状态文本
+  weight?: number;
+  volume?: number;
+  length?: number;
+  width?: number;
+  height?: number;
   created_at: string;
   updated_at: string;
 }

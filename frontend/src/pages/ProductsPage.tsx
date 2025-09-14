@@ -84,11 +84,11 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
       sku: product?.sku || '',
       name: product?.name || '',
       description: product?.description || '',
-      categoryId: product?.categoryId || '',
+      categoryId: product?.category_id || '',
       unit: product?.unit || '',
-      unitPrice: product?.unitPrice || 0,
-      minStock: product?.minStock || 0,
-      maxStock: product?.maxStock || 0,
+      unitPrice: product?.price || 0,
+      minStock: product?.min_stock || 0,
+      maxStock: product?.max_stock || 0,
       barcode: product?.barcode || '',
     },
   });
@@ -120,17 +120,17 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
         sku: product?.sku || '',
         name: product?.name || '',
         description: product?.description || '',
-        deviceType: product?.deviceType || '',
-        modelNumber: product?.modelNumber || '',
-        frequencyProtocol: product?.frequencyProtocol || '',
-        firmwareVersion: product?.firmwareVersion || '',
-        categoryId: product?.categoryId || '',
+        deviceType: product?.device_type || '',
+        modelNumber: product?.model_number || '',
+        frequencyProtocol: product?.frequency_protocol || '',
+        firmwareVersion: product?.firmware_version || '',
+        categoryId: product?.category_id || '',
         unit: product?.unit || '',
-        unitPrice: product?.unitPrice || 0,
-        minStock: product?.minStock || 0,
-        maxStock: product?.maxStock || 0,
+        unitPrice: product?.price || 0,
+        minStock: product?.min_stock || 0,
+        maxStock: product?.max_stock || 0,
         barcode: product?.barcode || '',
-        projectId: product?.projectId || '',
+        projectId: product?.project_id || '',
       });
     }
   }, [open, product, reset]);
@@ -335,14 +335,14 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
                       placeholder="请选择分类"
                       disabled={loading}
                     >
-                      {categoriesData?.map((category) => (
+                      {Array.isArray(categoriesData) ? categoriesData.map((category) => (
                         <Option key={category.id} value={category.id}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <FilterOutlined />
                             {category.name}
                           </div>
                         </Option>
-                      ))}
+                      )) : []}
                     </Select>
                   )}
                 />
@@ -408,11 +408,11 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
                       allowClear
                     >
                       <Option value="">无</Option>
-                      {projectsData?.map((project) => (
+                      {Array.isArray(projectsData) ? projectsData.map((project) => (
                         <Option key={project.id} value={project.id}>
                           {project.name} ({project.projectCode})
                         </Option>
-                      ))}
+                      )) : []}
                     </Select>
                   )}
                 />
@@ -550,8 +550,8 @@ const ProductsPage: React.FC = () => {
     },
     {
       title: '分类',
-      dataIndex: 'categoryName',
-      key: 'categoryName',
+      dataIndex: 'category_name',
+      key: 'category_name',
       width: 120,
     },
     {
@@ -562,8 +562,8 @@ const ProductsPage: React.FC = () => {
     },
     {
       title: '单价',
-      dataIndex: 'unitPrice',
-      key: 'unitPrice',
+      dataIndex: 'price',
+      key: 'price',
       width: 100,
       render: (price: number) => `¥${(price || 0).toFixed(2)}`,
     },
@@ -571,7 +571,7 @@ const ProductsPage: React.FC = () => {
       title: '库存范围',
       key: 'stockRange',
       width: 120,
-      render: (_: any, record: Product) => `${record.minStock}-${record.maxStock}`,
+      render: (_: any, record: Product) => `${record.min_stock}-${record.max_stock}`,
     },
     {
       title: '状态',
@@ -668,7 +668,7 @@ const ProductsPage: React.FC = () => {
 
         <Table
           columns={columns}
-          dataSource={Array.isArray(productsData?.data) ? productsData.data : []}
+          dataSource={Array.isArray(productsData?.list) ? productsData.list : []}
           rowKey="id"
           loading={isLoading}
           pagination={false}

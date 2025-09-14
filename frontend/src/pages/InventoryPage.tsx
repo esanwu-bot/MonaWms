@@ -190,14 +190,14 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
           rules={[{ required: true, message: '请选择产品' }]}
         >
           <Select placeholder="请选择产品" loading={loading}>
-            {productsData?.map((product) => (
+            {Array.isArray(productsData) ? productsData.map((product) => (
               <Option key={product.id} value={product.id}>
                 <Space>
                   {product.name}
                   <Tag>{product.sku}</Tag>
                 </Space>
               </Option>
-            ))}
+            )) : []}
           </Select>
         </Form.Item>
 
@@ -207,7 +207,7 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
           rules={[{ required: true, message: '请选择仓库' }]}
         >
           <Select placeholder="请选择仓库" loading={loading}>
-            {warehousesData?.map((warehouse) => (
+            {Array.isArray(warehousesData) ? warehousesData.map((warehouse) => (
               <Option key={warehouse.id} value={warehouse.id}>
                 <Space>
                   <DatabaseOutlined />
@@ -215,7 +215,7 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
                   <Tag>{warehouse.code}</Tag>
                 </Space>
               </Option>
-            ))}
+            )) : []}
           </Select>
         </Form.Item>
 
@@ -353,9 +353,9 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
 
 
   // 过滤目标仓库（不能选择源仓库）
-  const availableToWarehouses = warehousesData?.filter(
+  const availableToWarehouses = Array.isArray(warehousesData) ? warehousesData.filter(
     (warehouse) => warehouse.id !== selectedFromWarehouseId
-  ) || [];
+  ) : [];
 
   return (
     <Modal
@@ -396,14 +396,14 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
           rules={[{ required: true, message: '请选择产品' }]}
         >
           <Select placeholder="请选择产品" loading={loading}>
-            {productsData?.map((product) => (
+            {Array.isArray(productsData) ? productsData.map((product) => (
               <Option key={product.id} value={product.id}>
                 <Space>
                   {product.name}
                   <Tag>{product.sku}</Tag>
                 </Space>
               </Option>
-            ))}
+            )) : []}
           </Select>
         </Form.Item>
 
@@ -413,7 +413,7 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
           rules={[{ required: true, message: '请选择源仓库' }]}
         >
           <Select placeholder="请选择源仓库" loading={loading}>
-            {warehousesData?.map((warehouse) => (
+            {Array.isArray(warehousesData) ? warehousesData.map((warehouse) => (
               <Option key={warehouse.id} value={warehouse.id}>
                 <Space>
                   <DatabaseOutlined />
@@ -421,7 +421,7 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
                   <Tag>{warehouse.code}</Tag>
                 </Space>
               </Option>
-            ))}
+            )) : []}
           </Select>
         </Form.Item>
 
@@ -431,7 +431,7 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
           rules={[{ required: true, message: '请选择目标仓库' }]}
         >
           <Select placeholder="请选择目标仓库" loading={loading}>
-            {availableToWarehouses.map((warehouse) => (
+            {Array.isArray(availableToWarehouses) ? availableToWarehouses.map((warehouse) => (
               <Option key={warehouse.id} value={warehouse.id}>
                 <Space>
                   <DatabaseOutlined />
@@ -439,7 +439,7 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
                   <Tag>{warehouse.code}</Tag>
                 </Space>
               </Option>
-            ))}
+            )) : []}
           </Select>
         </Form.Item>
 
@@ -678,11 +678,11 @@ const InventoryPage: React.FC = () => {
                   style={{ width: 200 }}
                 >
                   <Option value="">全部仓库</Option>
-                  {warehousesData?.map((warehouse) => (
+                  {Array.isArray(warehousesData) ? warehousesData.map((warehouse) => (
                     <Option key={warehouse.id} value={warehouse.id}>
                       {warehouse.name}
                     </Option>
-                  ))}
+                  )) : []}
                 </Select>
                 <Select
                   placeholder="库存状态"
