@@ -21,6 +21,7 @@ import {
   Progress,
   Badge,
 } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import {
   PlusOutlined,
   EditOutlined,
@@ -430,6 +431,7 @@ const WarehousesPage: React.FC = () => {
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | undefined>();
 
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // 获取仓库列表
   const { data: warehousesData, isLoading } = useQuery({
@@ -559,13 +561,17 @@ const WarehousesPage: React.FC = () => {
     transferMutation.mutate(data);
   };
 
+  const handleManageDevices = (warehouse: Warehouse) => {
+    navigate(`/devices?warehouseId=${warehouse.id}&warehouseName=${encodeURIComponent(warehouse.name)}`);
+  };
+
   const handlePageChange = (newPage: number, newPageSize: number) => {
     setPage(newPage);
     setPageSize(newPageSize);
   };
 
-  const warehouses: Warehouse[] = warehousesData?.data?.data?.list || [];
-  const total = warehousesData?.data?.data?.pagination?.total || 0;
+  const warehouses: Warehouse[] = warehousesData?.data?.list || [];
+  const total = warehousesData?.data?.pagination?.total || 0;
 
   const columns = [
     {
@@ -591,24 +597,48 @@ const WarehousesPage: React.FC = () => {
       render: (text: string) => text || '-',
     },
     {
-      title: '联系人',
-      dataIndex: 'contactPerson',
-      key: 'contactPerson',
+      title: '管理员',
+      dataIndex: 'manager_name',
+      key: 'manager_name',
       render: (text: string) => text || '-',
     },
     {
-      title: '联系电话',
-      dataIndex: 'contactPhone',
-      key: 'contactPhone',
-      render: (text: string) => text || '-',
+      title: '库区数量',
+      dataIndex: ['statistics', 'zones_count'],
+      key: 'zones_count',
+      render: (count: number) => count || 0,
+    },
+    {
+      title: '商品数量',
+      dataIndex: ['statistics', 'products_count'],
+      key: 'products_count',
+      render: (count: number) => count || 0,
+    },
+    {
+      title: '库存数量',
+      dataIndex: ['statistics', 'inventory_count'],
+      key: 'inventory_count',
+      render: (count: number) => count || 0,
+    },
+    {
+      title: '入库订单',
+      dataIndex: ['statistics', 'inbound_orders_count'],
+      key: 'inbound_orders_count',
+      render: (count: number) => count || 0,
+    },
+    {
+      title: '出库订单',
+      dataIndex: ['statistics', 'outbound_orders_count'],
+      key: 'outbound_orders_count',
+      render: (count: number) => count || 0,
     },
     {
       title: '状态',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      render: (isActive: boolean) => (
-        <Tag color={isActive ? 'success' : 'default'}>
-          {isActive ? '启用' : '禁用'}
+      dataIndex: 'status_text',
+      key: 'status_text',
+      render: (text: string, record: any) => (
+        <Tag color={record.status === 'active' ? 'success' : 'default'}>
+          {text}
         </Tag>
       ),
     },
@@ -709,7 +739,7 @@ const WarehousesPage: React.FC = () => {
               progressStatus = 'active';
             }
             
-            if (!warehouse.isActive) {
+            if (warehouse.status !== 'active') {
               statusText = '维护中';
               statusType = 'warning';
             }
@@ -740,7 +770,7 @@ const WarehousesPage: React.FC = () => {
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Button type="primary" onClick={() => handleEdit(warehouse)}>查看详情</Button>
-                  <Button type="primary">管理设备</Button>
+                  <Button type="primary" onClick={() => handleManageDevices(warehouse)}>管理设备</Button>
                 </div>
               </Card>
             );
@@ -752,67 +782,22 @@ const WarehousesPage: React.FC = () => {
         )}
       </div>
       
-      {/* 最近调拨记录 */}
-      <Card title="最近调拨记录" style={{ marginBottom: '24px' }}>
+      {/* 仓库列表表格 */}
+      <Card title="仓库列表" style={{ marginBottom: '24px' }}>
         <Table
-          columns={[
-            { title: '调拨单号', dataIndex: 'transferId', key: 'transferId' },
-            { title: '设备编号', dataIndex: 'deviceId', key: 'deviceId' },
-            { title: '设备类型', dataIndex: 'deviceType', key: 'deviceType' },
-            { title: '源仓库', dataIndex: 'sourceWarehouse', key: 'sourceWarehouse' },
-            { title: '目标仓库', dataIndex: 'targetWarehouse', key: 'targetWarehouse' },
-            { title: '调拨时间', dataIndex: 'transferTime', key: 'transferTime' },
-            { 
-              title: '状态', 
-              dataIndex: 'status', 
-              key: 'status',
-              render: (status: string) => (
-                <Badge 
-                  status={status === '已完成' ? 'success' : status === '处理中' ? 'processing' : 'warning'} 
-                  text={status} 
-                />
-              )
-            },
-            {
-              title: '操作',
-              key: 'action',
-              render: () => <Button type="primary" size="small">查看</Button>
-            }
-          ]}
-          dataSource={[
-            {
-              key: '1',
-              transferId: 'TR20240901001',
-              deviceId: 'DEV2024010005',
-              deviceType: '5G基站',
-              sourceWarehouse: '主仓库A区',
-              targetWarehouse: '主仓库B区',
-              transferTime: '2024-09-01 09:15:22',
-              status: '已完成'
-            },
-            {
-              key: '2',
-              transferId: 'TR20240831002',
-              deviceId: 'DEV2024010012',
-              deviceType: '路由器',
-              sourceWarehouse: '备用仓库',
-              targetWarehouse: '主仓库A区',
-              transferTime: '2024-08-31 14:22:45',
-              status: '处理中'
-            },
-            {
-              key: '3',
-              transferId: 'TR20240830003',
-              deviceId: 'DEV2024010018',
-              deviceType: '交换机',
-              sourceWarehouse: '主仓库B区',
-              targetWarehouse: '备用仓库',
-              transferTime: '2024-08-30 11:05:37',
-              status: '已完成'
-            }
-          ]}
-          pagination={false}
-          size="small"
+          columns={columns}
+          dataSource={warehouses}
+          loading={isLoading}
+          rowKey="id"
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: total,
+            onChange: handlePageChange,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
+          }}
         />
       </Card>
 

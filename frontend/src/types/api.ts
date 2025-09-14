@@ -60,17 +60,33 @@ export interface LoginResponse {
 
 // 仓库相关类型
 export interface Warehouse {
-  id: string;
+  id: number;
   code: string;
   name: string;
   description?: string;
   address?: string;
-  contactPerson?: string;
-  contactPhone?: string;
-  isActive: boolean;
-  status_text: 'ACTIVE' | 'INACTIVE';
+  manager_id?: number | null;
+  manager_name?: string;
+  manager?: {
+    id: number;
+    username: string;
+    email: string;
+    role: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+  };
+  status: 'active' | 'inactive';
+  status_text: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
+  statistics?: {
+    zones_count: number;
+    products_count: number;
+    inventory_count: number;
+    inbound_orders_count: number;
+    outbound_orders_count: number;
+  };
 }
 
 export interface CreateWarehouseRequest {

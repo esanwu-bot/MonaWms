@@ -16,7 +16,9 @@ import {
   Col,
   Tabs,
   Statistic,
+  Alert,
 } from 'antd';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   PlusOutlined,
   SearchOutlined,
@@ -25,6 +27,7 @@ import {
   ReloadOutlined,
   EyeOutlined,
   ToolOutlined,
+  ArrowLeftOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import dictionaryService from '../services/dictionaryService';
@@ -126,17 +129,39 @@ const deviceService = {
 };
 
 const DevicesPage: React.FC = () => {
+  const [urlSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useState({
     device_name: '',
     device_type: '',
     status: '',
     location: '',
+    warehouseId: '',
   });
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
   const [activeTab, setActiveTab] = useState('list');
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
+
+  // 从URL参数获取仓库信息
+  const warehouseId = urlSearchParams.get('warehouseId');
+  const warehouseName = urlSearchParams.get('warehouseName');
+
+  // 初始化时设置仓库过滤
+  useEffect(() => {
+    if (warehouseId) {
+      setSearchParams(prev => ({
+        ...prev,
+        warehouseId: warehouseId
+      }));
+    }
+  }, [warehouseId]);
+
+  // 返回上一页
+  const handleGoBack = () => {
+    navigate(-1);
+  };
   
   // 获取数据字典数据
   const { data: deviceTypesData } = useQuery({
@@ -494,6 +519,33 @@ const DevicesPage: React.FC = () => {
       <Card>
         <Tabs activeKey={activeTab} onChange={setActiveTab}>
           <TabPane tab="设备列表" key="list">
+            {warehouseName && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <Button
+                    type="text"
+                    icon={<ArrowLeftOutlined />}
+                    onClick={handleGoBack}
+                    style={{ padding: '4px 8px' }}
+                  >
+                    返回
+                  </Button>
+                  <span style={{ color: '#666', fontSize: '14px' }}>仓库管理</span>
+                </div>
+                <Alert
+                  message={`当前筛选仓库: ${decodeURIComponent(warehouseName)}`}
+                  type="info"
+                  showIcon
+                  closable
+                  onClose={() => {
+                    // 清除URL参数并重置过滤
+                    window.history.replaceState({}, '', '/devices');
+                    setSearchParams(prev => ({ ...prev, warehouseId: '' }));
+                  }}
+                />
+              </div>
+            )}
+            
             {renderStatsCards()}
 
             {/* 搜索和操作区域 */}

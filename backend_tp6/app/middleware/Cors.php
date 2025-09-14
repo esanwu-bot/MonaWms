@@ -116,12 +116,8 @@ class Cors
         // 检查请求头是否允许
         $requestHeaders = $request->header('Access-Control-Request-Headers');
         if ($requestHeaders) {
-            $headers = array_map('trim', explode(',', $requestHeaders));
-            $allowedRequestHeaders = array_intersect($headers, $this->allowedHeaders);
-            
-            if (!empty($allowedRequestHeaders)) {
-                $response->header(['Access-Control-Allow-Headers' => implode(', ', $this->allowedHeaders)]);
-            }
+            // 直接返回所有允许的请求头，而不是只返回相交部分
+            $response->header(['Access-Control-Allow-Headers' => implode(', ', $this->allowedHeaders)]);
         }
         
         // 设置预检请求缓存时间（24小时）
