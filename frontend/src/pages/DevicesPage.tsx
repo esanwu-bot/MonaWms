@@ -18,6 +18,8 @@ import {
   Statistic,
   Alert,
   Upload,
+  Progress,
+  Divider,
 } from 'antd';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
@@ -30,6 +32,9 @@ import {
   ToolOutlined,
   ArrowLeftOutlined,
   CameraOutlined,
+  UploadOutlined,
+  DownloadOutlined,
+  FileExcelOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import dictionaryService from '../services/dictionaryService';
@@ -145,6 +150,13 @@ const DevicesPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('list');
   const [barcodeUploading, setBarcodeUploading] = useState(false);
   const [form] = Form.useForm();
+  
+  // 批量导入相关状态
+  const [isBatchImportVisible, setIsBatchImportVisible] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importStatus, setImportStatus] = useState<'idle' | 'uploading' | 'processing' | 'success' | 'error'>('idle');
+  const [importResult, setImportResult] = useState<any>(null);
   const queryClient = useQueryClient();
 
   // 从URL参数获取仓库信息
@@ -282,19 +294,31 @@ const DevicesPage: React.FC = () => {
 
   const columns: ColumnsType<Device> = [
     {
-      title: '设备编号',
+      title: (
+        <div style={{ textAlign: 'center', lineHeight: '1.2' }}>
+          设备<br />编号
+        </div>
+      ),
       dataIndex: 'device_code',
       key: 'device_code',
       width: 120,
     },
     {
-      title: '设备名称',
+      title: (
+        <div style={{ textAlign: 'center', lineHeight: '1.2' }}>
+          设备<br />名称
+        </div>
+      ),
       dataIndex: 'device_name',
       key: 'device_name',
       width: 150,
     },
     {
-      title: '设备类型',
+      title: (
+        <div style={{ textAlign: 'center', lineHeight: '1.2' }}>
+          设备<br />类型
+        </div>
+      ),
       dataIndex: 'device_type',
       key: 'device_type',
       width: 120,
@@ -347,7 +371,11 @@ const DevicesPage: React.FC = () => {
       width: 120,
     },
     {
-      title: '保修期至',
+      title: (
+        <div style={{ textAlign: 'center', lineHeight: '1.2' }}>
+          保修<br />期至
+        </div>
+      ),
       dataIndex: 'warranty_end_date',
       key: 'warranty_end_date',
       width: 120,
@@ -485,6 +513,116 @@ const DevicesPage: React.FC = () => {
     }
     
     return false; // 阻止默认上传行为
+  };
+
+  // 批量导入相关函数
+  const handleBatchImport = () => {
+    setIsBatchImportVisible(true);
+    setImportStatus('idle');
+    setImportProgress(0);
+    setImportResult(null);
+    setImportFile(null);
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/devices/download-template`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '设备导入模板.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        message.success('模板下载成功');
+      } else {
+        message.error('模板下载失败');
+      }
+    } catch (error) {
+      message.error('模板下载失败');
+    }
+  };
+
+  const handleFileUpload = (file: File) => {
+    const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+                   file.type === 'application/vnd.ms-excel';
+    if (!isExcel) {
+      message.error('只能上传Excel文件！');
+      return false;
+    }
+    
+    const isLt10M = file.size / 1024 / 1024 < 10;
+    if (!isLt10M) {
+      message.error('文件大小不能超过10MB！');
+      return false;
+    }
+    
+    setImportFile(file);
+    return false;
+  };
+
+  const handleImportSubmit = async () => {
+    if (!importFile) {
+      message.error('请选择要导入的文件');
+      return;
+    }
+
+    setImportStatus('uploading');
+    setImportProgress(30);
+
+    const formData = new FormData();
+    formData.append('file', importFile);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/devices/batch-import`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      setImportProgress(70);
+      setImportStatus('processing');
+
+      const result = await response.json();
+      
+      setImportProgress(100);
+      
+      if (response.ok && result.success) {
+        setImportStatus('success');
+        setImportResult(result.data);
+        message.success(`导入成功！成功导入 ${result.data.success_count} 条记录`);
+        
+        // 刷新设备列表
+        queryClient.invalidateQueries({ queryKey: ['devices'] });
+      } else {
+        setImportStatus('error');
+        setImportResult(result);
+        message.error(result.message || '导入失败');
+      }
+    } catch (error) {
+      setImportStatus('error');
+      setImportResult({ message: '网络错误，请重试' });
+      message.error('导入失败，请重试');
+    }
+  };
+
+  const resetImportModal = () => {
+    setIsBatchImportVisible(false);
+    setImportFile(null);
+    setImportProgress(0);
+    setImportStatus('idle');
+    setImportResult(null);
   };
 
   const handleSubmit = (values: DeviceFormData) => {
@@ -637,6 +775,18 @@ const DevicesPage: React.FC = () => {
                     onClick={handleAdd}
                   >
                     新增设备
+                  </Button>
+                  <Button
+                    icon={<UploadOutlined />}
+                    onClick={handleBatchImport}
+                  >
+                    批量导入
+                  </Button>
+                  <Button
+                    icon={<DownloadOutlined />}
+                    onClick={handleDownloadTemplate}
+                  >
+                    下载模板
                   </Button>
                   <Button
                     icon={<ReloadOutlined />}
@@ -840,6 +990,149 @@ const DevicesPage: React.FC = () => {
             </Space>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 批量导入模态框 */}
+      <Modal
+        title="批量导入设备"
+        open={isBatchImportVisible}
+        onCancel={resetImportModal}
+        width={600}
+        footer={[
+          <Button key="cancel" onClick={resetImportModal}>
+            取消
+          </Button>,
+          <Button
+            key="download"
+            icon={<DownloadOutlined />}
+            onClick={handleDownloadTemplate}
+          >
+            下载模板
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            loading={importStatus === 'uploading' || importStatus === 'processing'}
+            disabled={!importFile || importStatus === 'success'}
+            onClick={handleImportSubmit}
+          >
+            开始导入
+          </Button>,
+        ]}
+      >
+        <div>
+          <Alert
+            message="导入说明"
+            description={
+              <div>
+                <p>1. 请先下载导入模板，按照模板格式填写设备信息</p>
+                <p>2. 支持的文件格式：.xlsx、.xls</p>
+                <p>3. 文件大小不能超过10MB</p>
+                <p>4. 设备编号和序列号不能重复</p>
+              </div>
+            }
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+
+          <div style={{ marginBottom: 16 }}>
+            <Upload.Dragger
+              accept=".xlsx,.xls"
+              beforeUpload={handleFileUpload}
+              showUploadList={false}
+              disabled={importStatus === 'uploading' || importStatus === 'processing'}
+            >
+              <p className="ant-upload-drag-icon">
+                <FileExcelOutlined style={{ fontSize: 48, color: '#1890ff' }} />
+              </p>
+              <p className="ant-upload-text">
+                {importFile ? importFile.name : '点击或拖拽Excel文件到此区域'}
+              </p>
+              <p className="ant-upload-hint">
+                支持单个文件上传，文件格式：.xlsx、.xls
+              </p>
+            </Upload.Dragger>
+          </div>
+
+          {/* 导入进度 */}
+          {importStatus !== 'idle' && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 8 }}>
+                <span>导入进度：</span>
+                {importStatus === 'uploading' && <span>上传文件中...</span>}
+                {importStatus === 'processing' && <span>处理数据中...</span>}
+                {importStatus === 'success' && <span style={{ color: '#52c41a' }}>导入完成</span>}
+                {importStatus === 'error' && <span style={{ color: '#ff4d4f' }}>导入失败</span>}
+              </div>
+              <Progress
+                percent={importProgress}
+                status={
+                  importStatus === 'success' ? 'success' :
+                  importStatus === 'error' ? 'exception' : 'active'
+                }
+              />
+            </div>
+          )}
+
+          {/* 导入结果 */}
+          {importResult && (
+            <div>
+              <Divider>导入结果</Divider>
+              {importStatus === 'success' && (
+                <div>
+                  <Row gutter={16}>
+                    <Col span={8}>
+                      <Statistic title="总记录数" value={importResult.total_count} />
+                    </Col>
+                    <Col span={8}>
+                      <Statistic 
+                        title="成功导入" 
+                        value={importResult.success_count} 
+                        valueStyle={{ color: '#3f8600' }}
+                      />
+                    </Col>
+                    <Col span={8}>
+                      <Statistic 
+                        title="失败记录" 
+                        value={importResult.error_count} 
+                        valueStyle={{ color: '#cf1322' }}
+                      />
+                    </Col>
+                  </Row>
+                  
+                  {importResult.errors && importResult.errors.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <Alert
+                        message="部分记录导入失败"
+                        description={
+                          <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                            {importResult.errors.map((error: any, index: number) => (
+                              <div key={index} style={{ marginBottom: 4 }}>
+                                第{error.row}行：{error.message}
+                              </div>
+                            ))}
+                          </div>
+                        }
+                        type="warning"
+                        showIcon
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {importStatus === 'error' && (
+                <Alert
+                  message="导入失败"
+                  description={importResult.message || '未知错误'}
+                  type="error"
+                  showIcon
+                />
+              )}
+            </div>
+          )}
+        </div>
       </Modal>
     </div>
   );

@@ -44,7 +44,9 @@ import {
   CarOutlined,
   CloseCircleOutlined,
   InfoCircleOutlined,
+  AppstoreAddOutlined,
 } from '@ant-design/icons';
+import BatchPickingDialog from '../components/BatchPickingDialog';
 import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
 import type {
@@ -904,6 +906,8 @@ const OutboundPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OutboundOrder | undefined>();
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [batchPickingDialogOpen, setBatchPickingDialogOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -1152,7 +1156,7 @@ const OutboundPage: React.FC = () => {
               重置
             </Button>
           </Col>
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} md={4}>
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -1162,12 +1166,38 @@ const OutboundPage: React.FC = () => {
               新增出库单
             </Button>
           </Col>
+          <Col xs={24} sm={12} md={4}>
+            <Button
+              type="default"
+              icon={<AppstoreAddOutlined />}
+              onClick={() => {
+                if (selectedRowKeys.length === 0) {
+                  message.warning('请先选择要拣货的出库单');
+                  return;
+                }
+                setBatchPickingDialogOpen(true);
+              }}
+              disabled={selectedRowKeys.length === 0}
+              style={{ width: '100%' }}
+            >
+              批量拣货 ({selectedRowKeys.length})
+            </Button>
+          </Col>
         </Row>
       </Card>
 
       {/* 出库单列表 */}
       <Card>
         <Table
+          rowSelection={{
+            selectedRowKeys,
+            onChange: (newSelectedRowKeys: React.Key[]) => {
+              setSelectedRowKeys(newSelectedRowKeys);
+            },
+            getCheckboxProps: (record: OutboundOrder) => ({
+              disabled: !['PENDING', 'IN_PROGRESS'].includes(record.status_text),
+            }),
+          }}
           columns={[
             { 
               title: '出库单号', 
@@ -1291,6 +1321,20 @@ const OutboundPage: React.FC = () => {
           pickMutation.isPending || 
           shipMutation.isPending
         }
+      />
+
+      {/* 批量拣货对话框 */}
+      <BatchPickingDialog
+        visible={batchPickingDialogOpen}
+        onClose={() => {
+          setBatchPickingDialogOpen(false);
+          setSelectedRowKeys([]);
+        }}
+        selectedOrders={orders.filter(order => selectedRowKeys.includes(order.id))}
+        onSuccess={() => {
+          setSelectedRowKeys([]);
+          setBatchPickingDialogOpen(false);
+        }}
       />
     </div>
   );

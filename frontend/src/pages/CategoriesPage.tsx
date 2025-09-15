@@ -124,7 +124,7 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
     return categories.filter(cat => !isDescendant(cat, currentCategoryId));
   };
 
-  const availableParentCategories = getAvailableParentCategories(Array.isArray(categoriesData) ? categoriesData : [], category?.id);
+  const availableParentCategories = getAvailableParentCategories(categoriesData || [], category?.id);
 
   return (
     <Modal
@@ -404,11 +404,6 @@ const CategoriesPage: React.FC = () => {
 
   // 构建树形结构
   const buildCategoryTree = (categories: CategoryType[]): CategoryType[] => {
-    // 确保 categories 是数组
-    if (!Array.isArray(categories)) {
-      return [];
-    }
-
     const categoryMap = new Map<string, CategoryType>();
     const rootCategories: CategoryType[] = [];
 
@@ -436,8 +431,6 @@ const CategoriesPage: React.FC = () => {
 
   // 过滤分类
   const filterCategories = (categories: CategoryType[], searchTerm: string): CategoryType[] => {
-    // 确保 categories 是数组
-    if (!Array.isArray(categories)) return [];
     if (!searchTerm) return categories;
     
     const filtered: CategoryType[] = [];
@@ -468,7 +461,7 @@ const CategoriesPage: React.FC = () => {
     return filtered;
   };
 
-  const categories = Array.isArray(categoriesData) ? categoriesData : [];
+  const categories = categoriesData || [];
   const categoryTree = buildCategoryTree(categories);
   const filteredTree = filterCategories(categoryTree, search);
 

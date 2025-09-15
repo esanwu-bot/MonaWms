@@ -467,6 +467,241 @@ class OutboundOrderController extends BaseController
     }
     
     /**
+     * 批量拣货
+     */
+    public function batchPicking(Request $request)
+    {
+        $data = $request->post();
+        
+        // 验证参数
+        $validate = Validate::rule([
+            'order_ids' => 'require|array',
+            'order_ids.*' => 'integer|>:0'
+        ]);
+        
+        if (!$validate->check($data)) {
+            return Response::validateError($validate->getError());
+        }
+        
+        try {
+            Db::startTrans();
+            
+            $orderIds = $data['order_ids'];
+            $results = [];
+            $successCount = 0;
+            $failCount = 0;
+            
+            foreach ($orderIds as $orderId) {
+                try {
+                    $order = OutboundOrder::find($orderId);
+                    
+                    if (!$order) {
+                        $results[] = [
+                            'order_id' => $orderId,
+                            'order_number' => '',
+                            'success' => false,
+                            'message' => '出库单不存在'
+                        ];
+                        $failCount++;
+                        continue;
+                    }
+                    
+                    // 检查状态是否可以开始拣货
+                    if ($order->status !== OutboundOrder::STATUS_PENDING) {
+                        $results[] = [
+                            'order_id' => $orderId,
+                            'order_number' => $order->order_number,
+                            'success' => false,
+                            'message' => '出库单状态不正确，当前状态：' . $order->status_text
+                        ];
+                        $failCount++;
+                        continue;
+                    }
+                    
+                    // 检查库存是否充足
+                    $items = OutboundOrderItem::where('outbound_order_id', $orderId)->select();
+                    $stockCheckFailed = false;
+                    $stockMessage = '';
+                    
+                    foreach ($items as $item) {
+                        $product = Product::find($item->product_id);
+                        if (!$product) {
+                            $stockCheckFailed = true;
+                            $stockMessage = '商品不存在';
+                            break;
+                        }
+                        
+                        $availableStock = $product->getAvailableStock();
+                        if ($availableStock < $item->quantity) {
+                            $stockCheckFailed = true;
+                            $stockMessage = '商品 ' . $product->name . ' 库存不足，需要：' . $item->quantity . '，可用：' . $availableStock;
+                            break;
+                        }
+                    }
+                    
+                    if ($stockCheckFailed) {
+                        $results[] = [
+                            'order_id' => $orderId,
+                            'order_number' => $order->order_number,
+                            'success' => false,
+                            'message' => $stockMessage
+                        ];
+                        $failCount++;
+                        continue;
+                    }
+                    
+                    // 开始拣货
+                    $order->startPicking();
+                    
+                    $results[] = [
+                        'order_id' => $orderId,
+                        'order_number' => $order->order_number,
+                        'success' => true,
+                        'message' => '开始拣货成功',
+                        'status' => $order->status,
+                        'status_text' => $order->status_text
+                    ];
+                    $successCount++;
+                    
+                } catch (\Exception $e) {
+                    $results[] = [
+                        'order_id' => $orderId,
+                        'order_number' => $order->order_number ?? '',
+                        'success' => false,
+                        'message' => '操作失败：' . $e->getMessage()
+                    ];
+                    $failCount++;
+                }
+            }
+            
+            Db::commit();
+            
+            return Response::success([
+                'total' => count($orderIds),
+                'success_count' => $successCount,
+                'fail_count' => $failCount,
+                'results' => $results
+            ], "批量拣货完成，成功：{$successCount}个，失败：{$failCount}个");
+            
+        } catch (\Exception $e) {
+            Db::rollback();
+            return Response::serverError('批量拣货失败：' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * 批量完成拣货
+     */
+    public function batchCompletePicking(Request $request)
+    {
+        $data = $request->post();
+        
+        // 验证参数
+        $validate = Validate::rule([
+            'order_ids' => 'require|array',
+            'order_ids.*' => 'integer|>:0'
+        ]);
+        
+        if (!$validate->check($data)) {
+            return Response::validateError($validate->getError());
+        }
+        
+        try {
+            Db::startTrans();
+            
+            $orderIds = $data['order_ids'];
+            $results = [];
+            $successCount = 0;
+            $failCount = 0;
+            
+            foreach ($orderIds as $orderId) {
+                try {
+                    $order = OutboundOrder::find($orderId);
+                    
+                    if (!$order) {
+                        $results[] = [
+                            'order_id' => $orderId,
+                            'order_number' => '',
+                            'success' => false,
+                            'message' => '出库单不存在'
+                        ];
+                        $failCount++;
+                        continue;
+                    }
+                    
+                    // 检查状态是否可以完成拣货
+                    if ($order->status !== OutboundOrder::STATUS_PICKING) {
+                        $results[] = [
+                            'order_id' => $orderId,
+                            'order_number' => $order->order_number,
+                            'success' => false,
+                            'message' => '出库单状态不正确，当前状态：' . $order->status_text
+                        ];
+                        $failCount++;
+                        continue;
+                    }
+                    
+                    // 自动完成所有未拣货的商品
+                    $items = OutboundOrderItem::where('outbound_order_id', $orderId)
+                        ->where('picked_quantity', '<', 'quantity')
+                        ->select();
+                    
+                    foreach ($items as $item) {
+                        $remainingQuantity = $item->quantity - $item->picked_quantity;
+                        if ($remainingQuantity > 0) {
+                            // 获取商品的默认库位
+                            $product = Product::find($item->product_id);
+                            $location = Location::where('product_id', $item->product_id)
+                                ->where('quantity', '>', 0)
+                                ->order('quantity', 'desc')
+                                ->find();
+                            
+                            if ($location) {
+                                $item->pick($remainingQuantity, $location->id);
+                            }
+                        }
+                    }
+                    
+                    // 检查并打包
+                    $order->checkAndPack();
+                    
+                    $results[] = [
+                        'order_id' => $orderId,
+                        'order_number' => $order->order_number,
+                        'success' => true,
+                        'message' => '完成拣货成功',
+                        'status' => $order->status,
+                        'status_text' => $order->status_text
+                    ];
+                    $successCount++;
+                    
+                } catch (\Exception $e) {
+                    $results[] = [
+                        'order_id' => $orderId,
+                        'order_number' => $order->order_number ?? '',
+                        'success' => false,
+                        'message' => '操作失败：' . $e->getMessage()
+                    ];
+                    $failCount++;
+                }
+            }
+            
+            Db::commit();
+            
+            return Response::success([
+                'total' => count($orderIds),
+                'success_count' => $successCount,
+                'fail_count' => $failCount,
+                'results' => $results
+            ], "批量完成拣货，成功：{$successCount}个，失败：{$failCount}个");
+            
+        } catch (\Exception $e) {
+            Db::rollback();
+            return Response::serverError('批量完成拣货失败：' . $e->getMessage());
+        }
+    }
+    
+    /**
      * 确认送达
      */
     public function deliver(Request $request, $id)

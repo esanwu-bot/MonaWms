@@ -35,7 +35,11 @@ import {
   FileTextOutlined,
   HomeOutlined,
   ShoppingOutlined,
-  CalendarOutlined
+  CalendarOutlined,
+  ReloadOutlined,
+  CloseOutlined,
+  PlayCircleOutlined,
+  StopOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -51,6 +55,7 @@ import type {
   UpdateInboundOrderRequest,
   InboundOrderQueryParams,
 } from '../types/api';
+import BatchImportDialog from '../components/BatchImportDialog';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -602,6 +607,7 @@ const InboundPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<InboundOrder | undefined>();
+  const [batchImportOpen, setBatchImportOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -736,6 +742,32 @@ const InboundPage: React.FC = () => {
     setPageSize(newPageSize);
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await fetch('/api/inbound-orders/template');
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '入库单导入模板.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        message.success('模板下载成功');
+      } else {
+        message.error('模板下载失败');
+      }
+    } catch (error) {
+      message.error('模板下载失败');
+    }
+  };
+
+  const handleBatchImport = () => {
+    setBatchImportOpen(true);
+  };
+
   const getStatusTag = (status: string) => {
     switch (status) {
       case 'pending': return <Tag icon={<ClockCircleOutlined />} color="warning">待审核</Tag>;
@@ -757,7 +789,7 @@ const InboundPage: React.FC = () => {
 
       {/* 操作栏 */}
       <Card style={{ marginBottom: 24 }}>
-        <Row gutter={16} align="middle">
+        <Row gutter={[16, 15]} align="middle">
           <Col xs={24} sm={12} md={8} lg={6}>
             <Input
               placeholder="搜索入库单..."
@@ -816,6 +848,25 @@ const InboundPage: React.FC = () => {
               block
             >
               新增入库单
+            </Button>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6}>
+            <Button
+              icon={<FileTextOutlined />}
+              onClick={handleDownloadTemplate}
+              block
+            >
+              下载模板
+            </Button>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6}>
+            <Button
+              type="default"
+              icon={<ShoppingOutlined />}
+              onClick={handleBatchImport}
+              block
+            >
+              批量导入
             </Button>
           </Col>
         </Row>
@@ -918,6 +969,16 @@ const InboundPage: React.FC = () => {
         onReject={(id) => rejectMutation.mutate(id)}
         onReceive={(id) => receiveMutation.mutate(id)}
         loading={approveMutation.isPending || rejectMutation.isPending || receiveMutation.isPending}
+      />
+
+      {/* 批量导入对话框 */}
+      <BatchImportDialog
+        open={batchImportOpen}
+        onClose={() => setBatchImportOpen(false)}
+        onSuccess={() => {
+          setBatchImportOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['inbound-orders'] });
+        }}
       />
 
       {/* 悬浮按钮 */}

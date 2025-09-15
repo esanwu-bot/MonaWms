@@ -111,6 +111,74 @@ class InboundOrderController extends BaseController
             return Response::serverError('获取入库单详情失败：' . $e->getMessage());
         }
     }
+
+    /**
+     * 批量导入入库单
+     */
+    public function batchImport(Request $request)
+    {
+        try {
+            $file = $request->file('file');
+            if (!$file) {
+                return Response::badRequest('请上传Excel文件');
+            }
+
+            // 验证文件类型
+            $allowedTypes = ['xlsx', 'xls'];
+            $extension = $file->getOriginalExtension();
+            if (!in_array($extension, $allowedTypes)) {
+                return Response::badRequest('只支持Excel文件格式(.xlsx, .xls)');
+            }
+
+            // 保存上传文件
+            $savePath = $file->store('imports');
+            $filePath = app()->getRootPath() . 'public/storage/' . $savePath;
+
+            // 解析Excel文件
+            $data = $this->parseExcelFile($filePath);
+            
+            if (empty($data)) {
+                return Response::badRequest('Excel文件为空或格式不正确');
+            }
+
+            // 验证数据
+            $validationResult = $this->validateBatchData($data);
+            if (!$validationResult['success']) {
+                return Response::badRequest('数据验证失败', $validationResult['errors']);
+            }
+
+            // 批量创建入库单
+            $results = $this->createBatchInboundOrders($data);
+            
+            // 删除临时文件
+            @unlink($filePath);
+
+            return Response::success($results, '批量导入完成');
+
+        } catch (\Exception $e) {
+            return Response::serverError('批量导入失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 下载批量导入模板
+     */
+    public function downloadTemplate()
+    {
+        try {
+            $templatePath = app()->getRootPath() . 'public/templates/inbound_template.xlsx';
+            
+            if (!file_exists($templatePath)) {
+                // 创建模板文件
+                $this->createTemplate($templatePath);
+            }
+
+            return download($templatePath, '入库单导入模板.xlsx');
+
+        } catch (\Exception $e) {
+            return Response::serverError('下载模板失败：' . $e->getMessage());
+        }
+    }
     
     /**
      * 创建入库单
@@ -196,6 +264,330 @@ class InboundOrderController extends BaseController
         } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('创建入库单失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 解析Excel文件
+     */
+    private function parseExcelFile($filePath)
+    {
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($filePath);
+            $worksheet = $spreadsheet->getActiveSheet();
+            $highestRow = $worksheet->getHighestRow();
+            $data = [];
+            
+            // 从第2行开始读取数据（第1行为标题）
+            for ($row = 2; $row <= $highestRow; $row++) {
+                $orderNumber = $worksheet->getCell('A' . $row)->getCalculatedValue();
+                $supplierName = $worksheet->getCell('B' . $row)->getCalculatedValue();
+                $warehouseName = $worksheet->getCell('C' . $row)->getCalculatedValue();
+                $expectedDate = $worksheet->getCell('D' . $row)->getCalculatedValue();
+                $remark = $worksheet->getCell('E' . $row)->getCalculatedValue();
+                $productCode = $worksheet->getCell('F' . $row)->getCalculatedValue();
+                $productName = $worksheet->getCell('G' . $row)->getCalculatedValue();
+                $quantity = $worksheet->getCell('H' . $row)->getCalculatedValue();
+                $unit = $worksheet->getCell('I' . $row)->getCalculatedValue();
+                
+                // 跳过空行
+                if (empty($orderNumber) && empty($supplierName)) {
+                    continue;
+                }
+                
+                // 处理日期格式
+                if (is_numeric($expectedDate)) {
+                    $expectedDate = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($expectedDate)->format('Y-m-d');
+                }
+                
+                // 按入库单号分组
+                $key = $orderNumber ?: 'IN' . date('YmdHis') . sprintf('%03d', $row - 1);
+                
+                if (!isset($data[$key])) {
+                    $data[$key] = [
+                        'order_number' => $key,
+                        'supplier_name' => $supplierName,
+                        'warehouse_name' => $warehouseName,
+                        'expected_date' => $expectedDate,
+                        'remark' => $remark,
+                        'items' => []
+                    ];
+                }
+                
+                // 添加商品明细
+                if (!empty($productCode)) {
+                    $data[$key]['items'][] = [
+                        'product_code' => $productCode,
+                        'product_name' => $productName,
+                        'quantity' => (int)$quantity,
+                        'unit' => $unit ?: '件'
+                    ];
+                }
+            }
+            
+            return array_values($data);
+            
+        } catch (\Exception $e) {
+            throw new \Exception('Excel文件解析失败: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 验证批量数据
+     */
+    private function validateBatchData($data)
+    {
+        $errors = [];
+        $validData = [];
+        
+        foreach ($data as $index => $row) {
+            $rowErrors = [];
+            $rowIndex = $index + 2; // Excel行号（从第2行开始）
+            
+            // 验证必填字段
+            if (empty($row['order_number'])) {
+                $rowErrors[] = "第{$rowIndex}行：入库单号不能为空";
+            }
+            
+            if (empty($row['warehouse_code'])) {
+                $rowErrors[] = "第{$rowIndex}行：仓库编码不能为空";
+            }
+            
+            if (empty($row['product_code'])) {
+                $rowErrors[] = "第{$rowIndex}行：产品编码不能为空";
+            }
+            
+            if (empty($row['quantity']) || !is_numeric($row['quantity']) || $row['quantity'] <= 0) {
+                $rowErrors[] = "第{$rowIndex}行：数量必须为大于0的数字";
+            }
+            
+            if (!empty($row['unit_price']) && (!is_numeric($row['unit_price']) || $row['unit_price'] < 0)) {
+                $rowErrors[] = "第{$rowIndex}行：单价必须为非负数字";
+            }
+            
+            // 验证仓库是否存在
+            if (!empty($row['warehouse_code'])) {
+                $warehouse = Warehouse::where('code', $row['warehouse_code'])->find();
+                if (!$warehouse) {
+                    $rowErrors[] = "第{$rowIndex}行：仓库编码'{$row['warehouse_code']}'不存在";
+                } else {
+                    $row['warehouse_id'] = $warehouse->id;
+                }
+            }
+            
+            // 验证供应商是否存在
+            if (!empty($row['supplier_code'])) {
+                $supplier = Supplier::where('code', $row['supplier_code'])->find();
+                if (!$supplier) {
+                    $rowErrors[] = "第{$rowIndex}行：供应商编码'{$row['supplier_code']}'不存在";
+                } else {
+                    $row['supplier_id'] = $supplier->id;
+                }
+            }
+            
+            // 验证产品是否存在
+            if (!empty($row['product_code'])) {
+                $product = Product::where('code', $row['product_code'])->find();
+                if (!$product) {
+                    $rowErrors[] = "第{$rowIndex}行：产品编码'{$row['product_code']}'不存在";
+                } else {
+                    $row['product_id'] = $product->id;
+                }
+            }
+            
+            if (!empty($rowErrors)) {
+                $errors = array_merge($errors, $rowErrors);
+            } else {
+                $validData[] = $row;
+            }
+        }
+        
+        return [
+            'success' => empty($errors),
+            'errors' => $errors,
+            'data' => $validData
+        ];
+    }
+
+    /**
+     * 批量创建入库单
+     */
+    private function createBatchInboundOrders($data)
+    {
+        $results = [
+            'success_count' => 0,
+            'error_count' => 0,
+            'details' => []
+        ];
+        
+        // 按入库单号分组
+        $groupedData = [];
+        foreach ($data as $row) {
+            $orderNumber = $row['order_number'];
+            if (!isset($groupedData[$orderNumber])) {
+                $groupedData[$orderNumber] = [
+                    'order_info' => $row,
+                    'items' => []
+                ];
+            }
+            $groupedData[$orderNumber]['items'][] = $row;
+        }
+        
+        Db::startTrans();
+        try {
+            foreach ($groupedData as $orderNumber => $orderData) {
+                try {
+                    // 检查入库单是否已存在
+                    $existingOrder = InboundOrder::where('order_number', $orderNumber)->find();
+                    if ($existingOrder) {
+                        $results['error_count']++;
+                        $results['details'][] = [
+                            'order_number' => $orderNumber,
+                            'status' => 'error',
+                            'message' => '入库单号已存在'
+                        ];
+                        continue;
+                    }
+                    
+                    // 创建入库单
+                    $order = new InboundOrder();
+                    $order->order_number = $orderNumber;
+                    $order->warehouse_id = $orderData['order_info']['warehouse_id'];
+                    $order->supplier_id = $orderData['order_info']['supplier_id'] ?? null;
+                    $order->status = InboundOrder::STATUS_PENDING;
+                    $order->type = InboundOrder::TYPE_PURCHASE;
+                    $order->notes = $orderData['order_info']['notes'] ?? '';
+                    $order->operator_id = $this->request->user_id ?? 1;
+                    $order->save();
+                    
+                    // 创建入库单明细
+                    foreach ($orderData['items'] as $itemData) {
+                        $item = new InboundOrderItem();
+                        $item->inbound_order_id = $order->id;
+                        $item->product_id = $itemData['product_id'];
+                        $item->quantity = $itemData['quantity'];
+                        $item->received_quantity = 0;
+                        $item->unit_price = $itemData['unit_price'] ?? 0;
+                        $item->batch_number = $itemData['batch_number'] ?? '';
+                        $item->expiry_date = $itemData['expiry_date'] ?? null;
+                        $item->notes = $itemData['notes'] ?? '';
+                        $item->save();
+                    }
+                    
+                    $results['success_count']++;
+                    $results['details'][] = [
+                        'order_number' => $orderNumber,
+                        'status' => 'success',
+                        'message' => '创建成功',
+                        'id' => $order->id
+                    ];
+                    
+                } catch (\Exception $e) {
+                    $results['error_count']++;
+                    $results['details'][] = [
+                        'order_number' => $orderNumber,
+                        'status' => 'error',
+                        'message' => $e->getMessage()
+                    ];
+                }
+            }
+            
+            Db::commit();
+            return $results;
+            
+        } catch (\Exception $e) {
+            Db::rollback();
+            throw $e;
+        }
+    }
+
+    /**
+     * 创建Excel模板
+     */
+    private function createTemplate($templatePath)
+    {
+        try {
+            // 确保目录存在
+            $dir = dirname($templatePath);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            
+            // 设置标题行
+            $headers = [
+                'A1' => '入库单号',
+                'B1' => '供应商名称',
+                'C1' => '仓库名称',
+                'D1' => '预期到货日期',
+                'E1' => '备注',
+                'F1' => '商品代码',
+                'G1' => '商品名称',
+                'H1' => '数量',
+                'I1' => '单位'
+            ];
+            
+            foreach ($headers as $cell => $value) {
+                $sheet->setCellValue($cell, $value);
+            }
+            
+            // 添加示例数据
+            $sheet->setCellValue('A2', 'IN202401150001');
+            $sheet->setCellValue('B2', '供应商A');
+            $sheet->setCellValue('C2', '主仓库');
+            $sheet->setCellValue('D2', '2024-01-15');
+            $sheet->setCellValue('E2', '批量导入测试');
+            $sheet->setCellValue('F2', 'P001');
+            $sheet->setCellValue('G2', '商品1');
+            $sheet->setCellValue('H2', '100');
+            $sheet->setCellValue('I2', '件');
+            
+            $sheet->setCellValue('A3', 'IN202401150001');
+            $sheet->setCellValue('B3', '供应商A');
+            $sheet->setCellValue('C3', '主仓库');
+            $sheet->setCellValue('D3', '2024-01-15');
+            $sheet->setCellValue('E3', '批量导入测试');
+            $sheet->setCellValue('F3', 'P002');
+            $sheet->setCellValue('G3', '商品2');
+            $sheet->setCellValue('H3', '50');
+            $sheet->setCellValue('I3', '件');
+            
+            // 设置样式
+            $sheet->getStyle('A1:I1')->getFont()->setBold(true);
+            $sheet->getStyle('A1:I1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                  ->getStartColor()->setRGB('E6E6FA');
+            
+            // 设置边框
+            $sheet->getStyle('A1:I3')->getBorders()->getAllBorders()
+                  ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+            
+            // 设置列宽
+            $sheet->getColumnDimension('A')->setWidth(15);
+            $sheet->getColumnDimension('B')->setWidth(12);
+            $sheet->getColumnDimension('C')->setWidth(12);
+            $sheet->getColumnDimension('D')->setWidth(12);
+            $sheet->getColumnDimension('E')->setWidth(20);
+            $sheet->getColumnDimension('F')->setWidth(12);
+            $sheet->getColumnDimension('G')->setWidth(20);
+            $sheet->getColumnDimension('H')->setWidth(8);
+            $sheet->getColumnDimension('I')->setWidth(8);
+            
+            // 添加说明
+            $sheet->setCellValue('A5', '说明：');
+            $sheet->setCellValue('A6', '1. 入库单号可以为空，系统会自动生成');
+            $sheet->setCellValue('A7', '2. 相同入库单号的商品会归并到同一个入库单');
+            $sheet->setCellValue('A8', '3. 预期到货日期格式：YYYY-MM-DD');
+            $sheet->setCellValue('A9', '4. 数量必须为正整数');
+            
+            $sheet->getStyle('A5:A9')->getFont()->setSize(10)->setItalic(true);
+            
+            $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
+            $writer->save($templatePath);
+            
+        } catch (\Exception $e) {
+            throw new \Exception('创建模板失败：' . $e->getMessage());
         }
     }
     
