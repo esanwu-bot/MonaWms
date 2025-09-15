@@ -8,7 +8,7 @@ import {
   ReloadOutlined, SettingOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import dictionaryService, { DictionaryType, DictionaryItem } from '../services/dictionaryService';
+import dictionaryService, { type DictionaryType, type DictionaryItem } from '../services/dictionaryService';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;

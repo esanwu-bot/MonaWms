@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { Layout, Menu, Avatar, Dropdown, Badge, Typography, Divider } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Typography, Divider } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   MenuFoldOutlined,
@@ -18,6 +18,8 @@ import {
   ToolOutlined,
   UnorderedListOutlined,
   ProjectOutlined,
+  DeleteOutlined,
+  DatabaseOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 
@@ -88,6 +90,16 @@ const menuItems = [
     label: '项目管理',
   },
   {
+    key: '/scrap',
+    icon: <DeleteOutlined />,
+    label: '报废管理',
+  },
+  {
+    key: '/dictionary',
+    icon: <DatabaseOutlined />,
+    label: '数据字典',
+  },
+  {
     key: '/settings',
     icon: <SettingOutlined />,
     label: '系统设置',
@@ -114,16 +126,6 @@ const MainLayout: React.FC = () => {
     navigate('/profile');
   };
 
-  // 获取用户角色显示文本
-  const getRoleText = (role: string) => {
-    const roleMap: Record<string, string> = {
-      ADMIN: '管理员',
-      MANAGER: '经理',
-      OPERATOR: '操作员',
-      VIEWER: '查看者',
-    };
-    return roleMap[role] || role;
-  };
 
   // 用户下拉菜单项
   const userMenuItems: MenuProps['items'] = [

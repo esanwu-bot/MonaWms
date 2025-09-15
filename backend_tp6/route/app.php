@@ -238,6 +238,17 @@ Route::group('api', function () {
             Route::post('cancel-reservation', 'ProjectController/cancelReservation'); // 取消预留
         });
         
+        // 报废管理
+        Route::group('scrap', function () {
+            Route::get('', 'ScrapController/index');                    // 报废申请列表
+            Route::post('', 'ScrapController/save');                    // 创建报废申请
+            Route::get('statistics', 'ScrapController/statistics');     // 报废统计数据
+            Route::get('available-devices', 'ScrapController/getAvailableDevices'); // 获取可报废设备
+            Route::get(':id', 'ScrapController/read');                  // 报废申请详情
+            Route::post(':id/approve', 'ScrapController/approve');      // 审核报废申请
+            Route::post(':id/process', 'ScrapController/process');      // 处理报废申请
+        });
+        
     })->middleware(['auth']); // 需要认证的路由组
     
 })->middleware(['cors']); // API路由组，添加CORS中间件
