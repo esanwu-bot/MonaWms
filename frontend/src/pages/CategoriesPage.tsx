@@ -124,7 +124,7 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
     return categories.filter(cat => !isDescendant(cat, currentCategoryId));
   };
 
-  const availableParentCategories = getAvailableParentCategories(categoriesData || [], category?.id);
+  const availableParentCategories = getAvailableParentCategories(Array.isArray(categoriesData) ? categoriesData : [], category?.id);
 
   return (
     <Modal
@@ -461,7 +461,7 @@ const CategoriesPage: React.FC = () => {
     return filtered;
   };
 
-  const categories = categoriesData || [];
+  const categories = Array.isArray(categoriesData) ? categoriesData : [];
   const categoryTree = buildCategoryTree(categories);
   const filteredTree = filterCategories(categoryTree, search);
 

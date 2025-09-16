@@ -13,6 +13,10 @@ use app\common\library\Response;
 use think\Request;
 use think\facade\Validate;
 use think\facade\Db;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 /**
  * 入库单管理控制器
@@ -173,7 +177,26 @@ class InboundOrderController extends BaseController
                 $this->createTemplate($templatePath);
             }
 
-            return download($templatePath, '入库单导入模板.xlsx');
+            // 检查文件是否存在且可读
+            if (!file_exists($templatePath) || !is_readable($templatePath)) {
+                return Response::serverError('模板文件不存在或无法读取');
+            }
+
+            // 设置正确的文件名，使用URL编码处理中文
+            $filename = 'inbound_import_template.xlsx';
+            
+            // 设置响应头
+            $headers = [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"; filename*=UTF-8\'\'' . rawurlencode('入库单导入模板.xlsx'),
+                'Content-Length' => filesize($templatePath),
+                'Cache-Control' => 'max-age=0',
+                'Expires' => '0',
+                'Last-Modified' => gmdate('D, d M Y H:i:s') . ' GMT',
+                'Pragma' => 'public'
+            ];
+
+            return download($templatePath, $filename, $headers);
 
         } catch (\Exception $e) {
             return Response::serverError('下载模板失败：' . $e->getMessage());
@@ -273,7 +296,7 @@ class InboundOrderController extends BaseController
     private function parseExcelFile($filePath)
     {
         try {
-            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($filePath);
+            $spreadsheet = IOFactory::load($filePath);
             $worksheet = $spreadsheet->getActiveSheet();
             $highestRow = $worksheet->getHighestRow();
             $data = [];
@@ -513,7 +536,7 @@ class InboundOrderController extends BaseController
                 mkdir($dir, 0755, true);
             }
             
-            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
             
             // 设置标题行
@@ -556,12 +579,12 @@ class InboundOrderController extends BaseController
             
             // 设置样式
             $sheet->getStyle('A1:I1')->getFont()->setBold(true);
-            $sheet->getStyle('A1:I1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            $sheet->getStyle('A1:I1')->getFill()->setFillType(Fill::FILL_SOLID)
                   ->getStartColor()->setRGB('E6E6FA');
             
             // 设置边框
             $sheet->getStyle('A1:I3')->getBorders()->getAllBorders()
-                  ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+                  ->setBorderStyle(Border::BORDER_THIN);
             
             // 设置列宽
             $sheet->getColumnDimension('A')->setWidth(15);
@@ -583,7 +606,7 @@ class InboundOrderController extends BaseController
             
             $sheet->getStyle('A5:A9')->getFont()->setSize(10)->setItalic(true);
             
-            $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
+            $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
             $writer->save($templatePath);
             
         } catch (\Exception $e) {

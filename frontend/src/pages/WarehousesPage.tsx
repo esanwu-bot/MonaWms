@@ -519,6 +519,83 @@ const WarehousesPage: React.FC = () => {
     setTransferDialogOpen(true);
   };
 
+  const handlePrintReport = () => {
+    // 生成仓库报表数据
+    const reportData = warehouses.map(warehouse => ({
+      code: warehouse.code,
+      name: warehouse.name,
+      address: warehouse.address || '未设置',
+      status: warehouse.status === 'active' ? '正常运行' : '停用',
+      // 这里可以添加更多统计数据，如设备数量、容量使用率等
+      deviceCount: Math.floor(Math.random() * 500) + 50, // 模拟数据
+      capacityUsage: Math.floor(Math.random() * 100) + '%', // 模拟数据
+    }));
+
+    // 创建打印内容
+    const printContent = `
+      <html>
+        <head>
+          <title>仓库报表</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { text-align: center; color: #333; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .header-info { margin-bottom: 20px; }
+            .print-time { text-align: right; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <h1>仓库管理报表</h1>
+          <div class="header-info">
+            <div class="print-time">打印时间: ${new Date().toLocaleString()}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>仓库编码</th>
+                <th>仓库名称</th>
+                <th>地址</th>
+                <th>状态</th>
+                <th>设备数量</th>
+                <th>容量使用率</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${reportData.map(item => `
+                <tr>
+                  <td>${item.code}</td>
+                  <td>${item.name}</td>
+                  <td>${item.address}</td>
+                  <td>${item.status}</td>
+                  <td>${item.deviceCount}台</td>
+                  <td>${item.capacityUsage}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div style="margin-top: 30px; text-align: center; color: #666; font-size: 12px;">
+            共 ${reportData.length} 个仓库
+          </div>
+        </body>
+      </html>
+    `;
+
+    // 打开新窗口并打印
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+      message.success('报表已发送到打印机');
+    } else {
+      message.error('无法打开打印窗口，请检查浏览器设置');
+    }
+  };
+
   const handleEdit = (warehouse: Warehouse) => {
     setSelectedWarehouse(warehouse);
     setDialogOpen(true);
@@ -700,6 +777,7 @@ const WarehousesPage: React.FC = () => {
             <Button
               type="primary"
               icon={<PrinterOutlined />}
+              onClick={handlePrintReport}
             >
               打印仓库报表
             </Button>
