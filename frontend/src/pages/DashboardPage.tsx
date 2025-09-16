@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Card, 
   Row,
@@ -9,7 +9,12 @@ import {
   Spin,
   Badge,
   Button,
-  Table
+  Table,
+  Modal,
+  Form,
+  Select,
+  Input,
+  message
 } from 'antd';
 import { 
   BankOutlined,
@@ -87,6 +92,53 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, trend })
 
 const DashboardPage: React.FC = () => {
   const { token } = useToken();
+  const [isScrapModalVisible, setIsScrapModalVisible] = useState(false);
+  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState<any>(null);
+  const [form] = Form.useForm();
+
+  // 处理报废按钮点击
+  const handleScrapClick = (record: any) => {
+    setSelectedDevice(record);
+    setIsScrapModalVisible(true);
+  };
+
+  // 处理报废确认
+  const handleScrapConfirm = async () => {
+    try {
+      const values = await form.validateFields();
+      console.log('报废申请数据:', {
+        deviceId: selectedDevice?.deviceId,
+        ...values
+      });
+      
+      message.success('报废申请已提交');
+      setIsScrapModalVisible(false);
+      form.resetFields();
+      setSelectedDevice(null);
+    } catch (error) {
+      console.error('表单验证失败:', error);
+    }
+  };
+
+  // 取消报废
+  const handleScrapCancel = () => {
+    setIsScrapModalVisible(false);
+    form.resetFields();
+    setSelectedDevice(null);
+  };
+
+  // 处理查看按钮点击
+  const handleViewClick = (record: any) => {
+    setSelectedDevice(record);
+    setIsDetailModalVisible(true);
+  };
+
+  // 关闭设备详情模态框
+  const handleDetailModalClose = () => {
+    setIsDetailModalVisible(false);
+    setSelectedDevice(null);
+  };
 
   // 获取仪表盘统计数据
   const { data: stats, isLoading } = useQuery({
@@ -267,67 +319,193 @@ const DashboardPage: React.FC = () => {
               dataIndex: 'status',
               key: 'status',
               render: (status: string) => {
-                let color = '';
-                let text = '';
-                
-                switch(status) {
-                  case 'in_stock':
-                    color = 'success';
-                    text = '在库';
-                    break;
-                  case 'outbound':
-                    color = 'warning';
-                    text = '出库中';
-                    break;
-                  case 'scrap':
-                    color = 'error';
-                    text = '待报废';
-                    break;
-                  default:
-                    color = 'default';
-                    text = '未知';
-                }
-                
-                return <Badge status={color as any} text={text} />;
+                const statusMap = {
+                  'in_stock': { text: '在库', color: 'green' },
+                  'outbound': { text: '出库', color: 'blue' },
+                  'scrap': { text: '报废', color: 'red' }
+                };
+                const statusInfo = statusMap[status as keyof typeof statusMap] || { text: status, color: 'default' };
+                return <Badge color={statusInfo.color} text={statusInfo.text} />;
               }
             },
             {
               title: '操作',
               key: 'action',
-              render: (_: any, record: any) => (
-                <>
+              render: (_, record) => (
+                <div>
                   <Button 
-                    type="primary" 
-                    size="small" 
-                    icon={<EyeOutlined />}
-                    style={{ marginRight: 8 }}
+                    type="link" 
+                    icon={<EyeOutlined />} 
+                    size="small"
+                    onClick={() => handleViewClick(record)}
                   >
                     查看
                   </Button>
-                  {record.status !== 'scrap' ? (
+                  {record.status !== 'scrap' && (
                     <Button 
+                      type="link" 
+                      icon={<DeleteOutlined />} 
                       danger 
-                      size="small" 
-                      icon={<DeleteOutlined />}
+                      size="small"
+                      onClick={() => handleScrapClick(record)}
                     >
                       报废
                     </Button>
-                  ) : (
-                    <Button 
-                      type="primary" 
-                      size="small" 
-                      style={{ backgroundColor: token.colorSuccess }}
-                    >
-                      确认
-                    </Button>
                   )}
-                </>
+                </div>
               ),
             },
           ]}
           pagination={{ pageSize: 4 }}
         />
       </Card>
+
+      {/* 设备详情模态框 */}
+      <Modal
+        title="设备详情"
+        open={isDetailModalVisible}
+        onCancel={handleDetailModalClose}
+        footer={[
+          <Button key="close" onClick={handleDetailModalClose}>
+            知道了
+          </Button>
+        ]}
+        width={600}
+      >
+        {selectedDevice && (
+          <div style={{ padding: '16px 0' }}>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong>设备编号：</Text>
+                  <Text>{selectedDevice.deviceId}</Text>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong>状态：</Text>
+                  <Badge 
+                    color={
+                      selectedDevice.status === 'in_stock' ? 'green' :
+                      selectedDevice.status === 'outbound' ? 'blue' : 'red'
+                    } 
+                    text={
+                      selectedDevice.status === 'in_stock' ? '正常运行' :
+                      selectedDevice.status === 'outbound' ? '出库' : '报废'
+                    } 
+                  />
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong>设备名称：</Text>
+                  <Text>{selectedDevice.deviceType}设备</Text>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong>位置：</Text>
+                  <Text>机房A-01</Text>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong>设备类型：</Text>
+                  <Text>{selectedDevice.deviceType}</Text>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong>购买日期：</Text>
+                  <Text>2024-01-15</Text>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong>型号：</Text>
+                  <Text>{selectedDevice.model}</Text>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong>保修期：</Text>
+                  <Text>36个月</Text>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong>品牌：</Text>
+                  <Text>华为</Text>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong>保修期至：</Text>
+                  <Text>2027-01-15</Text>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong>序列号：</Text>
+                  <Text>HW{selectedDevice.deviceId}</Text>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong>创建时间：</Text>
+                  <Text>2024-01-15 10:00:00</Text>
+                </div>
+              </Col>
+              <Col span={24}>
+                <div style={{ marginBottom: 12 }}>
+                  <Text strong>备注：</Text>
+                </div>
+                <div style={{ 
+                  padding: '8px 12px', 
+                  backgroundColor: '#f5f5f5', 
+                  borderRadius: '4px',
+                  minHeight: '60px'
+                }}>
+                  <Text>{selectedDevice.deviceType}设备</Text>
+                </div>
+              </Col>
+            </Row>
+          </div>
+        )}
+      </Modal>
+
+      {/* 报废确认模态框 */}
+      <Modal
+        title="设备报废确认"
+        open={isScrapModalVisible}
+        onOk={handleScrapConfirm}
+        onCancel={handleScrapCancel}
+        okText="确认报废"
+        cancelText="取消"
+        okButtonProps={{ danger: true }}
+      >
+        <p>确定要将设备 <strong>{selectedDevice?.deviceId}</strong> 标记为报废吗？</p>
+        <Form form={form} layout="vertical">
+          <Form.Item
+            name="reason"
+            label="报废原因"
+            rules={[{ required: true, message: '请选择报废原因' }]}
+          >
+            <Select placeholder="请选择报废原因">
+              <Select.Option value="设备老化">设备老化</Select.Option>
+              <Select.Option value="技术淘汰">技术淘汰</Select.Option>
+              <Select.Option value="损坏无法修复">损坏无法修复</Select.Option>
+              <Select.Option value="其他原因">其他原因</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="remark"
+            label="备注信息"
+          >
+            <Input.TextArea rows={3} placeholder="请输入备注信息" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

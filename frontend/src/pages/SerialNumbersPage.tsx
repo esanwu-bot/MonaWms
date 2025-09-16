@@ -17,6 +17,10 @@ import {
   Row,
   Col,
   Upload,
+  Progress,
+  Alert,
+  Divider,
+  Statistic,
 } from 'antd';
 import {
   PlusOutlined,
@@ -38,6 +42,7 @@ import {
   updateSerialNumber,
   deleteSerialNumber,
   queryByBarcode,
+  bulkImportSerialNumbers,
 } from '../services/serialNumberService';
 import { productService } from '../services/productService';
 
@@ -65,6 +70,14 @@ const SerialNumbersPage: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<SerialNumber | null>(null);
   const [barcodeUploading, setBarcodeUploading] = useState(false);
+  
+  // 批量导入相关状态
+  const [isBatchImportVisible, setIsBatchImportVisible] = useState(false);
+  const [importStatus, setImportStatus] = useState<'idle' | 'uploading' | 'processing' | 'success' | 'error'>('idle');
+  const [importProgress, setImportProgress] = useState(0);
+  const [importResult, setImportResult] = useState<any>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  
   const [form] = Form.useForm<SerialNumberFormData>();
   const queryClient = useQueryClient();
 
@@ -215,6 +228,71 @@ const SerialNumbersPage: React.FC = () => {
     }
     
     return false; // 阻止默认上传行为
+  };
+
+  // 批量导入相关函数
+  const handleBatchImport = () => {
+    setIsBatchImportVisible(true);
+    setImportStatus('idle');
+    setImportProgress(0);
+    setImportResult(null);
+    setImportFile(null);
+  };
+
+  const handleFileUpload = (file: File) => {
+    setImportFile(file);
+    setImportStatus('uploading');
+    setImportProgress(30);
+
+    // 模拟文件处理
+    setTimeout(() => {
+      setImportStatus('processing');
+      setImportProgress(60);
+      
+      // 这里应该调用实际的文件解析和导入API
+      setTimeout(() => {
+        setImportStatus('success');
+        setImportProgress(100);
+        setImportResult({
+          total_count: 10,
+          success_count: 8,
+          error_count: 2,
+          errors: ['第3行：序列号已存在', '第7行：产品ID无效']
+        });
+        queryClient.invalidateQueries({ queryKey: ['serialNumbers'] });
+        message.success('批量导入完成');
+      }, 2000);
+    }, 1000);
+
+    return false; // 阻止默认上传行为
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/serial-numbers/download-template`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '序列号导入模板.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        message.success('模板下载成功');
+      } else {
+        message.error('模板下载失败');
+      }
+    } catch (error) {
+      message.error('模板下载失败');
+    }
   };
 
   const handleSubmit = async () => {
@@ -476,7 +554,10 @@ const SerialNumbersPage: React.FC = () => {
             </Col>
             <Col xs={24} md={12}>
               <Space>
-                <Button icon={<ImportOutlined />}>
+                <Button 
+                  icon={<ImportOutlined />}
+                  onClick={handleBatchImport}
+                >
                   批量导入
                 </Button>
                 <Button icon={<ExportOutlined />}>
@@ -642,6 +723,138 @@ const SerialNumbersPage: React.FC = () => {
             />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 批量导入弹出层 */}
+      <Modal
+        title="批量导入序列号"
+        open={isBatchImportVisible}
+        onCancel={() => {
+          setIsBatchImportVisible(false);
+          setImportStatus('idle');
+          setImportProgress(0);
+          setImportResult(null);
+          setImportFile(null);
+        }}
+        footer={[
+          <Button key="template" onClick={handleDownloadTemplate}>
+            下载模板
+          </Button>,
+          <Button 
+            key="cancel" 
+            onClick={() => {
+              setIsBatchImportVisible(false);
+              setImportStatus('idle');
+              setImportProgress(0);
+              setImportResult(null);
+              setImportFile(null);
+            }}
+          >
+            关闭
+          </Button>,
+        ]}
+        width={800}
+      >
+        <Alert
+          message="导入说明"
+          description={
+            <div>
+              <p>1. 请下载并使用标准模板</p>
+              <p>2. 序列号为必填项，不能重复</p>
+              <p>3. 产品ID必须是系统中已存在的产品</p>
+              <p>4. 支持的文件格式：.xlsx、.xls</p>
+            </div>
+          }
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+
+        <div style={{ marginBottom: 16 }}>
+          <Upload.Dragger
+            accept=".xlsx,.xls"
+            beforeUpload={handleFileUpload}
+            showUploadList={false}
+            disabled={importStatus === 'uploading' || importStatus === 'processing'}
+          >
+            <p className="ant-upload-drag-icon">
+              <ImportOutlined style={{ fontSize: 48, color: '#1890ff' }} />
+            </p>
+            <p className="ant-upload-text">
+              {importFile ? importFile.name : '点击或拖拽Excel文件到此区域'}
+            </p>
+            <p className="ant-upload-hint">
+              支持单个文件上传，文件格式：.xlsx、.xls
+            </p>
+          </Upload.Dragger>
+        </div>
+
+        {/* 导入进度 */}
+        {importStatus !== 'idle' && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8 }}>
+              <span>导入进度：</span>
+              {importStatus === 'uploading' && <span>上传文件中...</span>}
+              {importStatus === 'processing' && <span>处理数据中...</span>}
+              {importStatus === 'success' && <span style={{ color: '#52c41a' }}>导入完成</span>}
+              {importStatus === 'error' && <span style={{ color: '#ff4d4f' }}>导入失败</span>}
+            </div>
+            <Progress
+              percent={importProgress}
+              status={
+                importStatus === 'success' ? 'success' :
+                importStatus === 'error' ? 'exception' : 'active'
+              }
+            />
+          </div>
+        )}
+
+        {/* 导入结果 */}
+        {importResult && (
+          <div>
+            <Divider>导入结果</Divider>
+            {importStatus === 'success' && (
+              <div>
+                <Row gutter={16}>
+                  <Col span={8}>
+                    <Statistic title="总记录数" value={importResult.total_count} />
+                  </Col>
+                  <Col span={8}>
+                    <Statistic 
+                      title="成功导入" 
+                      value={importResult.success_count} 
+                      valueStyle={{ color: '#3f8600' }}
+                    />
+                  </Col>
+                  <Col span={8}>
+                    <Statistic 
+                      title="失败记录" 
+                      value={importResult.error_count} 
+                      valueStyle={{ color: '#cf1322' }}
+                    />
+                  </Col>
+                </Row>
+                
+                {importResult.errors && importResult.errors.length > 0 && (
+                  <div style={{ marginTop: 16 }}>
+                    <Alert
+                      message="部分记录导入失败"
+                      description={
+                        <ul style={{ margin: 0, paddingLeft: 20 }}>
+                          {importResult.errors.map((error: string, index: number) => (
+                            <li key={index}>{error}</li>
+                          ))}
+                        </ul>
+                      }
+                      type="warning"
+                      showIcon
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   );

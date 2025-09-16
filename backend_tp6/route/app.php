@@ -86,8 +86,6 @@ Route::group('api', function () {
             Route::get('', 'InboundOrderController/index');         // 入库订单列表
             Route::post('', 'InboundOrderController/save');         // 创建入库订单
             Route::get('statistics', 'InboundOrderController/statistics'); // 入库统计
-            Route::get('template', 'InboundOrderController/downloadTemplate'); // 下载导入模板
-            Route::post('batch-import', 'InboundOrderController/batchImport'); // 批量导入
             Route::get(':id', 'InboundOrderController/read');       // 入库订单详情
             Route::put(':id', 'InboundOrderController/update');     // 更新入库订单
             Route::delete(':id', 'InboundOrderController/delete');  // 删除入库订单
@@ -99,20 +97,18 @@ Route::group('api', function () {
         
         // 出库订单管理
         Route::group('outbound-orders', function () {
-    Route::get('', 'OutboundOrderController/index');        // 出库订单列表
-    Route::post('', 'OutboundOrderController/save');        // 创建出库订单
-    Route::get('statistics', 'OutboundOrderController/statistics'); // 出库统计
-    Route::get(':id', 'OutboundOrderController/read');      // 出库订单详情
-    Route::put(':id', 'OutboundOrderController/update');    // 更新出库订单
-    Route::delete(':id', 'OutboundOrderController/delete'); // 删除出库订单
-    Route::post(':id/start-picking', 'OutboundOrderController/startPicking'); // 开始拣货
-    Route::post(':id/pick', 'OutboundOrderController/pick'); // 拣货
-    Route::post(':id/pack', 'OutboundOrderController/pack'); // 打包
-    Route::post(':id/ship', 'OutboundOrderController/ship'); // 发货
-    Route::post(':id/deliver', 'OutboundOrderController/deliver'); // 确认送达
-    Route::post(':id/cancel', 'OutboundOrderController/cancel'); // 取消出库
-    Route::post('batch-picking', 'OutboundOrderController/batchPicking'); // 批量拣货
-    Route::post('batch-complete-picking', 'OutboundOrderController/batchCompletePicking'); // 批量完成拣货
+            Route::get('', 'OutboundOrderController/index');        // 出库订单列表
+            Route::post('', 'OutboundOrderController/save');        // 创建出库订单
+            Route::get('statistics', 'OutboundOrderController/statistics'); // 出库统计
+            Route::get(':id', 'OutboundOrderController/read');      // 出库订单详情
+            Route::put(':id', 'OutboundOrderController/update');    // 更新出库订单
+            Route::delete(':id', 'OutboundOrderController/delete'); // 删除出库订单
+            Route::post(':id/start-picking', 'OutboundOrderController/startPicking'); // 开始拣货
+            Route::post(':id/pick', 'OutboundOrderController/pick'); // 拣货
+            Route::post(':id/pack', 'OutboundOrderController/pack'); // 打包
+            Route::post(':id/ship', 'OutboundOrderController/ship'); // 发货
+            Route::post(':id/deliver', 'OutboundOrderController/deliver'); // 确认送达
+            Route::post(':id/cancel', 'OutboundOrderController/cancel'); // 取消出库
         });
         
         // 库存事务记录
@@ -240,19 +236,6 @@ Route::group('api', function () {
             Route::get(':id/inventory', 'ProjectController/getProjectInventory'); // 获取项目库存
             Route::post('reserve-inventory', 'ProjectController/reserveInventory'); // 预留库存
             Route::post('cancel-reservation', 'ProjectController/cancelReservation'); // 取消预留
-        });
-        
-        // 设备管理
-        Route::group('devices', function () {
-            Route::get('', 'DeviceController/index');                   // 设备列表
-            Route::post('', 'DeviceController/save');                   // 创建设备
-            Route::get(':id', 'DeviceController/read');                // 设备详情
-            Route::put(':id', 'DeviceController/update');              // 更新设备
-            Route::delete(':id', 'DeviceController/delete');           // 删除设备
-            Route::post('batch-delete', 'DeviceController/batchDelete'); // 批量删除
-            Route::post('batch-import', 'DeviceController/batchImport'); // 批量导入
-            Route::get('download-template', 'DeviceController/downloadTemplate'); // 下载导入模板
-            Route::get('stats', 'DeviceController/stats');             // 统计数据
         });
         
         // 报废管理
