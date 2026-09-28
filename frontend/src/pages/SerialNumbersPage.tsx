@@ -570,14 +570,14 @@ const SerialNumbersPage: React.FC = () => {
 
         <Table
           columns={columns}
-          dataSource={serialNumbersData?.data?.data || []}
+          dataSource={serialNumbersData?.list || []}
           rowKey="id"
           loading={isLoading}
           scroll={{ x: 1200 }}
           pagination={{
             current: searchParams.page,
             pageSize: searchParams.limit,
-            total: serialNumbersData?.data?.pagination?.total || 0,
+            total: serialNumbersData?.pagination?.total || 0,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total, range) =>

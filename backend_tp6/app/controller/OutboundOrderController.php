@@ -811,7 +811,46 @@ class OutboundOrderController extends BaseController
                 $query->where('created_at', '<=', $params['date_end'] . ' 23:59:59');
             }
             
-            $statistics = OutboundOrder::getStatistics($query);
+            // 按状态汇总
+            $statusRows = (clone $query)->field('status, COUNT(*) AS num')
+                                        ->group('status')
+                                        ->select()
+                                        ->toArray();
+
+            $byStatus = [];
+            $total = 0;
+            foreach ($statusRows as $row) {
+                $byStatus[$row['status']] = (int) $row['num'];
+                $total += (int) $row['num'];
+            }
+
+            // 汇总明细数量（拣货进度）
+            $orderIds = (clone $query)->column('id');
+            $quantityRow = $orderIds
+                ? Db::name('outbound_order_items')
+                    ->whereIn('outbound_order_id', $orderIds)
+                    ->field('SUM(quantity) AS quantity, SUM(picked_quantity) AS picked_quantity')
+                    ->find()
+                : null;
+
+            $totalQuantity = (int) ($quantityRow['quantity'] ?? 0);
+            $pickedQuantity = (int) ($quantityRow['picked_quantity'] ?? 0);
+
+            $statistics = [
+                'total' => $total,
+                'by_status' => $byStatus,
+                'pending' => $byStatus[OutboundOrder::STATUS_PENDING] ?? 0,
+                'picking' => $byStatus[OutboundOrder::STATUS_PICKING] ?? 0,
+                'packed' => $byStatus[OutboundOrder::STATUS_PACKED] ?? 0,
+                'shipped' => $byStatus[OutboundOrder::STATUS_SHIPPED] ?? 0,
+                'delivered' => $byStatus[OutboundOrder::STATUS_DELIVERED] ?? 0,
+                'cancelled' => $byStatus[OutboundOrder::STATUS_CANCELLED] ?? 0,
+                'total_quantity' => $totalQuantity,
+                'picked_quantity' => $pickedQuantity,
+                'completion_rate' => $totalQuantity > 0
+                    ? round($pickedQuantity / $totalQuantity * 100, 2)
+                    : 0
+            ];
             
             return Response::success($statistics);
             

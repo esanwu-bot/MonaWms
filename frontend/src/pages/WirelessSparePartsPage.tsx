@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PageHeader from '../components/ui/PageHeader';
 import {
   Card,
   Button,
@@ -57,7 +58,6 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 const { Search } = Input;
 const { TextArea } = Input;
-const { TabPane } = Tabs;
 
 interface WirelessSparePartFormData {
   partName: string;
@@ -469,7 +469,7 @@ const WirelessSparePartsPage: React.FC = () => {
             <Statistic
               title="入库记录"
               value={statsData.inbound_count}
-              valueStyle={{ color: '#3f8600' }}
+              valueStyle={{ color: 'var(--green)' }}
             />
           </Card>
         </Col>
@@ -478,7 +478,7 @@ const WirelessSparePartsPage: React.FC = () => {
             <Statistic
               title="出库记录"
               value={statsData.outbound_count}
-              valueStyle={{ color: '#cf1322' }}
+              valueStyle={{ color: 'var(--red)' }}
             />
           </Card>
         </Col>
@@ -487,7 +487,7 @@ const WirelessSparePartsPage: React.FC = () => {
             <Statistic
               title="类型数量"
               value={statsData.by_type?.length || 0}
-              valueStyle={{ color: '#1890ff' }}
+              valueStyle={{ color: 'var(--cyan)' }}
             />
           </Card>
         </Col>
@@ -497,16 +497,17 @@ const WirelessSparePartsPage: React.FC = () => {
 
   return (
     <div>
+      <PageHeader title="无线备件登记表" sub="无线备件出入库记录，支持序列号追踪与项目关联" />
       <Card>
-        <div style={{ marginBottom: 16 }}>
-          <Title level={3}>无线备件出入库登记表</Title>
-          <Text type="secondary">
-            管理通信设备的无线备件出入库记录，支持序列号追踪和项目关联
-          </Text>
-        </div>
-
-        <Tabs activeKey={activeTab} onChange={setActiveTab}>
-          <TabPane tab="记录列表" key="list">
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            {
+              key: 'list',
+              label: '记录列表',
+              children: (
+                <>
             {renderStatsCards()}
 
             {/* 搜索和操作区域 */}
@@ -598,23 +599,28 @@ const WirelessSparePartsPage: React.FC = () => {
             {/* 数据表格 */}
             <Table
               columns={columns}
-              dataSource={partsData?.data || []}
+              dataSource={partsData?.list || []}
               loading={isLoading}
               rowKey="id"
               scroll={{ x: 1200 }}
               pagination={{
                 current: searchParams.page,
                 pageSize: searchParams.limit,
-                total: partsData?.total || 0,
+                total: partsData?.pagination?.total || 0,
                 showSizeChanger: true,
                 showQuickJumper: true,
                 showTotal: (total) => `共 ${total} 条记录`,
               }}
               onChange={handleTableChange}
             />
-          </TabPane>
-
-          <TabPane tab="统计分析" key="stats">
+                </>
+              ),
+            },
+            {
+              key: 'stats',
+              label: '统计分析',
+              children: (
+                <>
             {statsData ? (
               <div>
                 {renderStatsCards()}
@@ -647,8 +653,11 @@ const WirelessSparePartsPage: React.FC = () => {
             ) : (
               <Empty description="暂无统计数据" />
             )}
-          </TabPane>
-        </Tabs>
+                </>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       {/* 新增/编辑模态框 */}

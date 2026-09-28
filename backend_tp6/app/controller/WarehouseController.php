@@ -5,6 +5,9 @@ namespace app\controller;
 use app\BaseController;
 use app\common\Grant;
 use app\model\Warehouse;
+use app\model\Zone;
+use app\model\Location;
+use app\model\Inventory;
 use app\model\User;
 use app\common\library\Response;
 use think\Request;
@@ -237,10 +240,25 @@ class WarehouseController extends BaseController
     
     /**
      * 获取仓库统计信息
+     * 不带 id 时返回全部仓库的汇总统计
      */
-    public function statistics(Request $request, $id)
+    public function statistics(Request $request, $id = null)
     {
         try {
+            if ($id === null || $id === '') {
+                $total = Warehouse::count();
+                $active = Warehouse::where('status', Warehouse::STATUS_ACTIVE)->count();
+
+                return Response::success([
+                    'total' => $total,
+                    'active' => $active,
+                    'inactive' => $total - $active,
+                    'zones_count' => Zone::count(),
+                    'locations_count' => Location::count(),
+                    'inventory_count' => (int) Inventory::sum('quantity')
+                ]);
+            }
+
             $warehouse = Warehouse::find($id);
             
             if (!$warehouse) {

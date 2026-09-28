@@ -52,10 +52,12 @@ export interface BOMListParams {
 }
 
 export interface BOMListResponse {
-  data: BOM[];
-  total: number;
-  page: number;
-  limit: number;
+  list: BOM[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+  };
 }
 
 // 获取BOM列表

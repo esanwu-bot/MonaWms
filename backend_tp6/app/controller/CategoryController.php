@@ -7,6 +7,7 @@ use app\common\Grant;
 use app\model\Category;
 use app\common\library\Response;
 use think\Request;
+use think\facade\Db;
 use think\facade\Validate;
 
 /**
@@ -236,6 +237,62 @@ class CategoryController extends BaseController
         }
     }
     
+    /**
+     * 获取分类统计信息
+     */
+    public function statistics()
+    {
+        try {
+            $categories = Category::field('id, parent_id')->select()->toArray();
+
+            $total = count($categories);
+            $rootCategories = 0;
+            $parentMap = [];
+            foreach ($categories as $category) {
+                $parentMap[$category['id']] = $category['parent_id'];
+                if (empty($category['parent_id'])) {
+                    $rootCategories++;
+                }
+            }
+
+            // 计算最大层级（防御性限制循环次数，避免脏数据造成死循环）
+            $maxLevel = 0;
+            foreach ($categories as $category) {
+                $level = 1;
+                $parentId = $category['parent_id'];
+                $guard = 0;
+                while (!empty($parentId) && isset($parentMap[$parentId]) && $guard < 50) {
+                    $level++;
+                    $parentId = $parentMap[$parentId];
+                    $guard++;
+                }
+                $maxLevel = max($maxLevel, $level);
+            }
+
+            // 各分类下的商品数量
+            $productsCount = [];
+            $rows = Db::name('products')
+                      ->whereNotNull('category_id')
+                      ->field('category_id, COUNT(*) AS num')
+                      ->group('category_id')
+                      ->select()
+                      ->toArray();
+            foreach ($rows as $row) {
+                $productsCount[(string) $row['category_id']] = (int) $row['num'];
+            }
+
+            return Response::success([
+                'total' => $total,
+                'rootCategories' => $rootCategories,
+                'maxLevel' => $maxLevel,
+                'productsCount' => $productsCount
+            ], '获取分类统计成功');
+
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
+            return Response::error('获取分类统计失败: ' . $e->getMessage());
+        }
+    }
+
     /**
      * 获取分类选项
      */

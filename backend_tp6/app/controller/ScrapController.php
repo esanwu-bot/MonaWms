@@ -392,12 +392,12 @@ class ScrapController extends BaseController
             if ($keyword) {
                 $query->where(function($q) use ($keyword) {
                     $q->where('name', 'like', '%' . $keyword . '%')
-                      ->whereOr('serial_number', 'like', '%' . $keyword . '%')
-                      ->whereOr('model', 'like', '%' . $keyword . '%');
+                      ->whereOr('sku', 'like', '%' . $keyword . '%')
+                      ->whereOr('model_number', 'like', '%' . $keyword . '%');
                 });
             }
 
-            $devices = $query->field('id, name, serial_number, model, category')
+            $devices = $query->field('id, sku, name, model_number, device_type')
                            ->limit(50)
                            ->select();
 
@@ -405,11 +405,11 @@ class ScrapController extends BaseController
             foreach ($devices as $device) {
                 $data[] = [
                     'value' => $device->id,
-                    'label' => $device->name . ' - ' . $device->serial_number,
+                    'label' => $device->name . ' - ' . $device->sku,
                     'name' => $device->name,
-                    'serial_number' => $device->serial_number,
-                    'model' => $device->model,
-                    'category' => $device->category,
+                    'serialNumber' => $device->sku,
+                    'model' => $device->model_number,
+                    'category' => $device->device_type,
                 ];
             }
 

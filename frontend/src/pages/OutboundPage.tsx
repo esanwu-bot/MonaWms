@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PageHeader from '../components/ui/PageHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -925,13 +926,11 @@ const OutboundPage: React.FC = () => {
     queryKey: ['outbound-orders', queryParams],
     queryFn: async () => {
       const response = await api.get<{
-        data: {
-          list: OutboundOrder[];
-          pagination: {
-            total: number;
-            page: number;
-            limit: number;
-          };
+        list: OutboundOrder[];
+        pagination: {
+          total: number;
+          page: number;
+          limit: number;
         };
       }>('/outbound-orders', { params: queryParams });
       return response.data.data;
@@ -1090,14 +1089,12 @@ const OutboundPage: React.FC = () => {
     }
   };
 
-  const orders = ordersData?.data?.list || [];
-  const total = ordersData?.data?.pagination?.total || 0;
+  const orders = ordersData?.list || [];
+  const total = ordersData?.pagination?.total || 0;
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={3} style={{ marginBottom: 24 }}>
-        出库管理
-      </Title>
+    <div>
+      <PageHeader title="出库管理" sub="部门领用申请、拣货与发放登记" />
 
       {/* 操作栏 */}
       <Card style={{ marginBottom: 24 }}>

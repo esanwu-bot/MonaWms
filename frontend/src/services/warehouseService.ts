@@ -55,7 +55,7 @@ export const warehouseService = {
     active: number;
     inactive: number;
   }> => {
-    const response = await api.get('/warehouses/stats');
+    const response = await api.get('/warehouses/statistics');
     return response.data.data;
   },
   

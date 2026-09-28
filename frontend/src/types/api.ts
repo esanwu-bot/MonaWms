@@ -576,10 +576,10 @@ export interface GrantCell {
 }
 
 export interface GrantMatrixUser {
-  id: number;
+  user_id: number;
   username: string;
-  role: string;
-  vendor_id?: number;
+  global_role: string;
+  vendor_id?: number | null;
 }
 
 export interface GrantMatrixWarehouse {
@@ -588,10 +588,22 @@ export interface GrantMatrixWarehouse {
   name: string;
 }
 
+export interface GrantMatrixCell {
+  warehouse_id: number;
+  grant_role: GrantRole | null;
+}
+
+export interface GrantMatrixRow {
+  user_id: number;
+  username: string;
+  global_role: string;
+  vendor_id: number | null;
+  cells: GrantMatrixCell[];
+}
+
 export interface GrantMatrix {
-  users: GrantMatrixUser[];
   warehouses: GrantMatrixWarehouse[];
-  matrix: Record<string, Record<string, GrantCell>>;
+  rows: GrantMatrixRow[];
 }
 
 // P7 操作日志类型

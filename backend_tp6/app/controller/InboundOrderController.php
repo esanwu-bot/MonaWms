@@ -915,7 +915,44 @@ class InboundOrderController extends BaseController
                 $query->where('created_at', '<=', $params['date_end'] . ' 23:59:59');
             }
             
-            $statistics = InboundOrder::getStatistics($query);
+            // 按状态汇总
+            $statusRows = (clone $query)->field('status, COUNT(*) AS num')
+                                        ->group('status')
+                                        ->select()
+                                        ->toArray();
+
+            $byStatus = [];
+            $total = 0;
+            foreach ($statusRows as $row) {
+                $byStatus[$row['status']] = (int) $row['num'];
+                $total += (int) $row['num'];
+            }
+
+            // 汇总明细数量（收货进度）
+            $orderIds = (clone $query)->column('id');
+            $quantityRow = $orderIds
+                ? Db::name('inbound_order_items')
+                    ->whereIn('inbound_order_id', $orderIds)
+                    ->field('SUM(quantity) AS quantity, SUM(received_quantity) AS received_quantity')
+                    ->find()
+                : null;
+
+            $totalQuantity = (int) ($quantityRow['quantity'] ?? 0);
+            $receivedQuantity = (int) ($quantityRow['received_quantity'] ?? 0);
+
+            $statistics = [
+                'total' => $total,
+                'by_status' => $byStatus,
+                'pending' => $byStatus[InboundOrder::STATUS_PENDING] ?? 0,
+                'receiving' => $byStatus[InboundOrder::STATUS_RECEIVING] ?? 0,
+                'completed' => $byStatus[InboundOrder::STATUS_COMPLETED] ?? 0,
+                'cancelled' => $byStatus[InboundOrder::STATUS_CANCELLED] ?? 0,
+                'total_quantity' => $totalQuantity,
+                'received_quantity' => $receivedQuantity,
+                'completion_rate' => $totalQuantity > 0
+                    ? round($receivedQuantity / $totalQuantity * 100, 2)
+                    : 0
+            ];
             
             return Response::success($statistics);
             

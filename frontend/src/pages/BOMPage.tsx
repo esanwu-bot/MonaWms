@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PageHeader from '../components/ui/PageHeader';
 import {
   Card,
   Table,
@@ -370,6 +371,7 @@ const BOMPage: React.FC = () => {
 
   return (
     <div>
+      <PageHeader title="BOM 管理" sub="成品与套件用料清单，支撑成套出入库" />
       <Card>
         <Row gutter={16} style={{ marginBottom: 16 }}>
           <Col span={6}>
@@ -429,11 +431,11 @@ const BOMPage: React.FC = () => {
 
         <Table
           columns={columns}
-          dataSource={bomData?.data || []}
+          dataSource={bomData?.list || []}
           loading={isLoading}
           rowKey="id"
           pagination={{
-            total: bomData?.total || 0,
+            total: bomData?.pagination?.total || 0,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total) => `共 ${total} 条记录`,

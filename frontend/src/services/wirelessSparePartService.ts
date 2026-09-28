@@ -47,10 +47,12 @@ export interface WirelessSparePartListParams {
 }
 
 export interface WirelessSparePartListResponse {
-  data: WirelessSparePart[];
-  total: number;
-  page: number;
-  limit: number;
+  list: WirelessSparePart[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+  };
 }
 
 // 获取无线备件列表

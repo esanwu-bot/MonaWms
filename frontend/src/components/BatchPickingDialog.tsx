@@ -70,7 +70,10 @@ const BatchPickingDialog: React.FC<BatchPickingDialogProps> = ({
 
   // 批量拣货 mutation
   const batchPickingMutation = useMutation({
-    mutationFn: (orderIds: string[]) => outboundApi.batchPicking({ order_ids: orderIds }),
+    mutationFn: async (orderIds: string[]) => {
+      const response = await outboundApi.batchPicking({ order_ids: orderIds });
+      return response.data.data;
+    },
     onSuccess: (data: BatchPickingResponse) => {
       setPickingResults(data.results);
       setProgress(100);
@@ -107,7 +110,10 @@ const BatchPickingDialog: React.FC<BatchPickingDialogProps> = ({
 
   // 批量完成拣货 mutation
   const batchCompletePickingMutation = useMutation({
-    mutationFn: (orderIds: string[]) => outboundApi.batchCompletePicking({ order_ids: orderIds }),
+    mutationFn: async (orderIds: string[]) => {
+      const response = await outboundApi.batchCompletePicking({ order_ids: orderIds });
+      return response.data.data;
+    },
     onSuccess: (data: BatchPickingResponse) => {
       setPickingResults(data.results);
       setProgress(100);

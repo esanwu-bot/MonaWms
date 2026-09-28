@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PageHeader from '../components/ui/PageHeader';
 import {
   Card, Table, Button, Space, Modal, Form, Input, Select, Tabs,
   Typography, Divider, message, Popconfirm, Tag, Row, Col
@@ -11,7 +12,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import dictionaryService, { type DictionaryType, type DictionaryItem } from '../services/dictionaryService';
 
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
 const { Option } = Select;
 
 // 模拟数据 - 仅在API未实现时使用
@@ -400,13 +400,18 @@ const DictionaryPage: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={3} style={{ marginBottom: 24 }}>
-        数据字典管理
-      </Title>
+    <div>
+      <PageHeader title="数据字典管理" sub="统一维护系统枚举与字典项" />
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
-        <TabPane tab="字典类型" key="types">
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          {
+            key: 'types',
+            label: '字典类型',
+            children: (
+              <>
           <Card>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
               <Input.Search
@@ -435,8 +440,14 @@ const DictionaryPage: React.FC = () => {
               }}
             />
           </Card>
-        </TabPane>
-        <TabPane tab="字典项" key="items">
+              </>
+            ),
+          },
+          {
+            key: 'items',
+            label: '字典项',
+            children: (
+              <>
           <Card>
             <div style={{ marginBottom: 16 }}>
               <Row gutter={16} align="middle">
@@ -482,8 +493,11 @@ const DictionaryPage: React.FC = () => {
               }}
             />
           </Card>
-        </TabPane>
-      </Tabs>
+              </>
+            ),
+          },
+        ]}
+      />
 
       {/* 字典类型表单模态框 */}
       <Modal

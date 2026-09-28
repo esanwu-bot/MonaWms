@@ -88,7 +88,7 @@ export const outboundApi = {
 
   // 获取出库统计
   getStats: (params?: any) => {
-    return api.get('/outbound-orders/stats', { params });
+    return api.get('/outbound-orders/statistics', { params });
   },
 };
 

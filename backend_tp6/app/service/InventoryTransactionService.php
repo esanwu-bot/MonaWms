@@ -26,10 +26,10 @@ class InventoryTransactionService
 
         // 搜索条件
         if (!empty($params['keyword'])) {
-            $query->where(function($q) use ($params) {
-                $q->whereLike('reason', '%' . $params['keyword'] . '%')
-                  ->whereOr('reference_type', '%' . $params['keyword'] . '%')
-                  ->whereOr('notes', '%' . $params['keyword'] . '%');
+            $keyword = '%' . $params['keyword'] . '%';
+            $query->where(function($q) use ($keyword) {
+                $q->whereLike('reason', $keyword)
+                  ->whereOr('reference_type', 'like', $keyword);
             });
         }
 
@@ -61,10 +61,6 @@ class InventoryTransactionService
             $query->where('reference_id', $params['reference_id']);
         }
 
-        if (!empty($params['batch_number'])) {
-            $query->where('batch_number', $params['batch_number']);
-        }
-
         // 数量范围
         if (isset($params['min_quantity'])) {
             $query->where('quantity', '>=', $params['min_quantity']);
@@ -76,15 +72,15 @@ class InventoryTransactionService
 
         // 日期范围
         if (!empty($params['start_date'])) {
-            $query->where('created_time', '>=', $params['start_date'] . ' 00:00:00');
+            $query->where('created_at', '>=', $params['start_date'] . ' 00:00:00');
         }
 
         if (!empty($params['end_date'])) {
-            $query->where('created_time', '<=', $params['end_date'] . ' 23:59:59');
+            $query->where('created_at', '<=', $params['end_date'] . ' 23:59:59');
         }
 
         // 排序
-        $order = $params['order'] ?? 'created_time';
+        $order = $params['order'] ?? 'created_at';
         $sort = $params['sort'] ?? 'desc';
         $query->order($order, $sort);
 
@@ -150,17 +146,14 @@ class InventoryTransactionService
         $transactionData = [
             'product_id' => $data['product_id'],
             'location_id' => $data['location_id'],
+            'inventory_id' => $data['inventory_id'] ?? null,
             'type' => $data['type'],
             'quantity' => $data['quantity'],
+            'balance_quantity' => $data['balance_quantity'] ?? 0,
             'operator_id' => $data['operator_id'] ?? 0,
             'reason' => $data['reason'] ?? '',
-            'reference_type' => $data['reference_type'] ?? null,
-            'reference_id' => $data['reference_id'] ?? null,
-            'batch_number' => $data['batch_number'] ?? null,
-            'expiry_date' => $data['expiry_date'] ?? null,
-            'unit_price' => $data['unit_price'] ?? 0,
-            'notes' => $data['notes'] ?? '',
-            'created_time' => date('Y-m-d H:i:s')
+            'reference_type' => $data['reference_type'] ?? 'manual',
+            'reference_id' => $data['reference_id'] ?? null
         ];
 
         return InventoryTransaction::create($transactionData);
@@ -209,67 +202,71 @@ class InventoryTransactionService
      */
     public function getStatistics(array $params = []): array
     {
-        $query = InventoryTransaction::where('id', '>', 0);
+        // 每次统计都重建查询，避免复用已执行的查询对象导致条件叠加
+        $build = function () use ($params) {
+            $query = InventoryTransaction::where('id', '>', 0);
 
-        // 筛选条件
-        if (isset($params['product_id'])) {
-            $query->where('product_id', $params['product_id']);
-        }
+            if (isset($params['product_id'])) {
+                $query->where('product_id', $params['product_id']);
+            }
 
-        if (isset($params['location_id'])) {
-            $query->where('location_id', $params['location_id']);
-        }
+            if (isset($params['location_id'])) {
+                $query->where('location_id', $params['location_id']);
+            }
 
-        if (isset($params['operator_id'])) {
-            $query->where('operator_id', $params['operator_id']);
-        }
+            if (isset($params['operator_id'])) {
+                $query->where('operator_id', $params['operator_id']);
+            }
 
-        if (!empty($params['start_date'])) {
-            $query->where('created_time', '>=', $params['start_date'] . ' 00:00:00');
-        }
+            if (!empty($params['start_date'])) {
+                $query->where('created_at', '>=', $params['start_date'] . ' 00:00:00');
+            }
 
-        if (!empty($params['end_date'])) {
-            $query->where('created_time', '<=', $params['end_date'] . ' 23:59:59');
-        }
+            if (!empty($params['end_date'])) {
+                $query->where('created_at', '<=', $params['end_date'] . ' 23:59:59');
+            }
+
+            return $query;
+        };
 
         // 类型统计
-        $typeStats = $query->field('type, COUNT(*) as count, SUM(quantity) as total_quantity')
+        $typeStats = $build()
+            ->fieldRaw('type, COUNT(*) as `count`, SUM(quantity) as total_quantity')
             ->group('type')
             ->select()
             ->toArray();
 
         // 原因统计
-        $reasonStats = $query->field('reason, COUNT(*) as count, SUM(quantity) as total_quantity')
+        $reasonStats = $build()
+            ->fieldRaw('reason, COUNT(*) as `count`, SUM(quantity) as total_quantity')
             ->group('reason')
             ->select()
             ->toArray();
 
         // 引用类型统计
-        $referenceStats = $query->field('reference_type, COUNT(*) as count, SUM(quantity) as total_quantity')
+        $referenceStats = $build()
+            ->fieldRaw('reference_type, COUNT(*) as `count`, SUM(quantity) as total_quantity')
             ->group('reference_type')
             ->select()
             ->toArray();
 
         // 总计统计
-        $totalStats = $query->field([
-            'COUNT(*) as total_transactions',
-            'SUM(CASE WHEN type = "in" THEN quantity ELSE 0 END) as total_in_quantity',
-            'SUM(CASE WHEN type = "out" THEN quantity ELSE 0 END) as total_out_quantity',
-            'SUM(CASE WHEN type = "adjust" THEN quantity ELSE 0 END) as total_adjust_quantity',
-            'SUM(CASE WHEN type = "in" THEN 1 ELSE 0 END) as in_transactions',
-            'SUM(CASE WHEN type = "out" THEN 1 ELSE 0 END) as out_transactions',
-            'SUM(CASE WHEN type = "adjust" THEN 1 ELSE 0 END) as adjust_transactions'
-        ])->find();
+        $totalRow = $build()->fieldRaw(
+            "COUNT(*) as total_transactions,
+             SUM(CASE WHEN type = 'in' THEN quantity ELSE 0 END) as total_in_quantity,
+             SUM(CASE WHEN type = 'out' THEN quantity ELSE 0 END) as total_out_quantity,
+             SUM(CASE WHEN type = 'adjust' THEN quantity ELSE 0 END) as total_adjust_quantity,
+             SUM(CASE WHEN type = 'in' THEN 1 ELSE 0 END) as in_transactions,
+             SUM(CASE WHEN type = 'out' THEN 1 ELSE 0 END) as out_transactions,
+             SUM(CASE WHEN type = 'adjust' THEN 1 ELSE 0 END) as adjust_transactions"
+        )->find();
+        $totalStats = $totalRow ? $totalRow->toArray() : [];
 
         // 按日期统计（最近30天）
-        $dailyStats = InventoryTransaction::field([
-            'DATE(created_time) as date',
-            'type',
-            'COUNT(*) as count',
-            'SUM(quantity) as total_quantity'
-        ])
-            ->where('created_time', '>=', date('Y-m-d H:i:s', strtotime('-30 days')))
-            ->group('DATE(created_time), type')
+        $dailyStats = $build()
+            ->fieldRaw('DATE(created_at) as date, type, COUNT(*) as `count`, SUM(quantity) as total_quantity')
+            ->where('created_at', '>=', date('Y-m-d H:i:s', strtotime('-30 days')))
+            ->group('DATE(created_at), type')
             ->order('date', 'desc')
             ->select()
             ->toArray();
@@ -302,11 +299,11 @@ class InventoryTransactionService
 
         // 日期范围
         if (!empty($params['start_date'])) {
-            $query->where('created_time', '>=', $params['start_date'] . ' 00:00:00');
+            $query->where('created_at', '>=', $params['start_date'] . ' 00:00:00');
         }
 
         if (!empty($params['end_date'])) {
-            $query->where('created_time', '<=', $params['end_date'] . ' 23:59:59');
+            $query->where('created_at', '<=', $params['end_date'] . ' 23:59:59');
         }
 
         // 库位筛选
@@ -319,7 +316,7 @@ class InventoryTransactionService
             $query->where('type', $params['type']);
         }
 
-        $query->order('created_time', 'desc');
+        $query->order('created_at', 'desc');
 
         // 分页
         $page = $params['page'] ?? 1;
@@ -338,7 +335,7 @@ class InventoryTransactionService
         if (!empty($items)) {
             $firstTransaction = $items[count($items) - 1];
             $runningTotal = InventoryTransaction::where('product_id', $productId)
-                ->where('created_time', '<', $firstTransaction->created_time)
+                ->where('created_at', '<', $firstTransaction->created_at)
                 ->sum('CASE WHEN type = "in" OR type = "adjust" AND quantity > 0 THEN quantity ELSE -quantity END');
         }
 
@@ -372,8 +369,8 @@ class InventoryTransactionService
         $endDate = date('Y-m-d');
 
         $query = InventoryTransaction::where('id', '>', 0)
-            ->where('created_time', '>=', $startDate . ' 00:00:00')
-            ->where('created_time', '<=', $endDate . ' 23:59:59');
+            ->where('created_at', '>=', $startDate . ' 00:00:00')
+            ->where('created_at', '<=', $endDate . ' 23:59:59');
 
         // 筛选条件
         if (isset($params['product_id'])) {
@@ -385,13 +382,9 @@ class InventoryTransactionService
         }
 
         // 按日期和类型分组统计
-        $trendData = $query->field([
-            'DATE(created_time) as date',
-            'type',
-            'COUNT(*) as transaction_count',
-            'SUM(quantity) as total_quantity'
-        ])
-            ->group('DATE(created_time), type')
+        $trendData = $query
+            ->fieldRaw('DATE(created_at) as date, type, COUNT(*) as transaction_count, SUM(quantity) as total_quantity')
+            ->group('DATE(created_at), type')
             ->order('date', 'asc')
             ->select()
             ->toArray();
@@ -479,7 +472,7 @@ class InventoryTransactionService
             $query->where('type', $params['type']);
         }
 
-        return $query->order('created_time', 'desc')
+        return $query->order('created_at', 'desc')
             ->limit($limit)
             ->select()
             ->toArray();

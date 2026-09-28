@@ -67,7 +67,7 @@ export const categoryService = {
     maxLevel: number;
     productsCount: Record<string, number>;
   }> => {
-    const response = await api.get('/categories/stats');
+    const response = await api.get('/categories/statistics');
     return response.data.data;
   },
   

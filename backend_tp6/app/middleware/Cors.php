@@ -53,7 +53,9 @@ class Cors
         'Access-Control-Request-Method',
         'Access-Control-Request-Headers',
         'X-Api-Key',
-        'X-Request-ID'
+        'X-Request-ID',
+        'X-Warehouse-Id',
+        'x-warehouse-id'
     ];
     
     /**

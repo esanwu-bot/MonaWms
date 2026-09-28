@@ -53,12 +53,11 @@ class User extends Model
     ];
     
     /**
-     * 角色枚举
+     * 角色枚举（全局角色：仅 admin / operator）
+     * 仓库级角色 manager / operator 在 user_warehouse_grant.grant_role 中定义
      */
     const ROLE_ADMIN = 'admin';
-    const ROLE_MANAGER = 'manager';
     const ROLE_OPERATOR = 'operator';
-    const ROLE_VIEWER = 'viewer';
     
     /**
      * 状态枚举
@@ -97,9 +96,7 @@ class User extends Model
     {
         $roles = [
             self::ROLE_ADMIN => '管理员',
-            self::ROLE_MANAGER => '经理',
-            self::ROLE_OPERATOR => '操作员',
-            self::ROLE_VIEWER => '查看者'
+            self::ROLE_OPERATOR => '录入员',
         ];
         
         return $roles[$data['role']] ?? '未知';
@@ -112,9 +109,7 @@ class User extends Model
     {
         $roles = [
             self::ROLE_ADMIN => '管理员',
-            self::ROLE_MANAGER => '经理',
-            self::ROLE_OPERATOR => '操作员',
-            self::ROLE_VIEWER => '查看员'
+            self::ROLE_OPERATOR => '录入员',
         ];
 
         return $roles[$this->role] ?? '未知';
@@ -205,67 +200,5 @@ class User extends Model
         return self::where('username', $usernameOrEmail)
             ->whereOr('email', $usernameOrEmail)
             ->find();
-    }
-    
-    /**
-     * 检查用户是否有权限
-     */
-    public function hasPermission($permission)
-    {
-        $permissions = [
-            self::ROLE_ADMIN => ['*'],
-            self::ROLE_MANAGER => [
-                'warehouse.*',
-                'product.*',
-                'inventory.*',
-                'inbound.*',
-                'outbound.*',
-                'report.*'
-            ],
-            self::ROLE_OPERATOR => [
-                'warehouse.index',
-                'warehouse.read',
-                'product.index',
-                'product.read',
-                'inventory.index',
-                'inventory.read',
-                'inbound.*',
-                'outbound.*'
-            ],
-            self::ROLE_VIEWER => [
-                'warehouse.index',
-                'warehouse.read',
-                'product.index',
-                'product.read',
-                'inventory.index',
-                'inventory.read',
-                'report.index',
-                'report.read'
-            ]
-        ];
-        
-        $rolePermissions = $permissions[$this->role] ?? [];
-        
-        // 检查是否有通配符权限
-        if (in_array('*', $rolePermissions)) {
-            return true;
-        }
-        
-        // 检查精确匹配
-        if (in_array($permission, $rolePermissions)) {
-            return true;
-        }
-        
-        // 检查通配符匹配
-        foreach ($rolePermissions as $rolePermission) {
-            if (str_ends_with($rolePermission, '.*')) {
-                $prefix = substr($rolePermission, 0, -2);
-                if (str_starts_with($permission, $prefix . '.')) {
-                    return true;
-                }
-            }
-        }
-        
-        return false;
     }
 }

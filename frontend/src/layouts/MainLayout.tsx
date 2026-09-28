@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { Layout, Menu, Avatar, Dropdown, Typography, Divider } from 'antd';
+import { Dropdown, Avatar, Input, Tooltip, Badge } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   MenuFoldOutlined,
@@ -22,209 +22,260 @@ import {
   DatabaseOutlined,
   SafetyOutlined,
   FileTextOutlined,
+  SearchOutlined,
+  BellOutlined,
+  GlobalOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { useWarehouseStore } from '../store/warehouseStore';
 import { usePermission } from '../hooks/usePermission';
 import WarehouseSwitcher from '../components/WarehouseSwitcher';
 
-const { Header, Sider, Content } = Layout;
+interface NavItem {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  badge?: string;
+}
 
-const drawerWidth = 240;
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: '主要功能',
+    items: [
+      { key: '/dashboard', label: '仪表板', icon: <DashboardOutlined /> },
+      { key: '/warehouses', label: '仓库管理', icon: <HomeOutlined /> },
+      { key: '/devices', label: '设备登记', icon: <ToolOutlined /> },
+      { key: '/products', label: '产品管理', icon: <ShoppingOutlined /> },
+    ],
+  },
+  {
+    label: '库存管理',
+    items: [
+      { key: '/inventory', label: '库存查询', icon: <ShoppingCartOutlined /> },
+      { key: '/inbound', label: '入库管理', icon: <CarOutlined /> },
+      { key: '/outbound', label: '出库管理', icon: <CarOutlined /> },
+      { key: '/scrap', label: '报废管理', icon: <DeleteOutlined /> },
+      { key: '/serial-numbers', label: '序列号管理', icon: <BarcodeOutlined /> },
+      { key: '/wireless-spare-parts', label: '无线备件登记', icon: <ShoppingOutlined /> },
+    ],
+  },
+  {
+    label: '系统功能',
+    items: [
+      { key: '/users', label: '会员管理', icon: <TeamOutlined /> },
+      { key: '/operation-logs', label: '操作日志', icon: <FileTextOutlined /> },
+      { key: '/grant-matrix', label: '仓库授权', icon: <SafetyOutlined /> },
+      { key: '/categories', label: '分类管理', icon: <AppstoreOutlined /> },
+      { key: '/bom', label: 'BOM 管理', icon: <UnorderedListOutlined /> },
+      { key: '/projects', label: '项目管理', icon: <ProjectOutlined /> },
+      { key: '/dictionary', label: '数据字典', icon: <DatabaseOutlined /> },
+      { key: '/settings', label: '系统设置', icon: <SettingOutlined /> },
+    ],
+  },
+];
+
+const PAGE_NAME: Record<string, string> = {
+  '/dashboard': '仪表板',
+  '/warehouses': '仓库管理',
+  '/devices': '设备登记',
+  '/products': '产品管理',
+  '/categories': '分类管理',
+  '/inventory': '库存查询',
+  '/inbound': '入库管理',
+  '/outbound': '出库管理',
+  '/scrap': '报废管理',
+  '/serial-numbers': '序列号管理',
+  '/wireless-spare-parts': '无线备件登记表',
+  '/bom': 'BOM 管理',
+  '/projects': '项目管理',
+  '/dictionary': '数据字典',
+  '/users': '会员管理',
+  '/operation-logs': '操作日志',
+  '/grant-matrix': '仓库授权',
+  '/settings': '系统设置',
+  '/profile': '个人资料',
+};
+
+/** 侧边栏 logo 标记：通信信号柱 */
+const LogoMark: React.FC = () => (
+  <div className="wm-logo-mark">
+    <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round">
+      <path d="M4 18v-6M8 18V8M12 18V4M16 18v-8M20 18v-4" />
+    </svg>
+  </div>
+);
 
 const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
   const { fetchWarehouses } = useWarehouseStore();
-  const { can } = usePermission();
+  const { can, globalRole } = usePermission();
+  const [collapsed, setCollapsed] = useState(false);
+  const [clock, setClock] = useState('');
+  const [keyword, setKeyword] = useState('');
 
-  // 登录后加载当前账号被授权的仓库列表
   useEffect(() => {
     if (user?.id) {
       fetchWarehouses(Number(user.id));
     }
   }, [user?.id, fetchWarehouses]);
 
-  const [collapsed, setCollapsed] = useState(false);
+  // 顶栏实时时钟（原型 .clock）
+  useEffect(() => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const tick = () => {
+      const d = new Date();
+      setClock(
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(
+          d.getMinutes()
+        )}:${pad(d.getSeconds())}`
+      );
+    };
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
-  // 导航菜单项（按权限过滤）
-  const menuItems = useMemo(() => {
-    const items = [
-      {
-        key: 'dashboard',
-        icon: <DashboardOutlined />,
-        label: '仪表盘',
-      },
-      {
-        key: 'warehouses',
-        icon: <HomeOutlined />,
-        label: '仓库管理',
-      },
-      {
-        key: 'devices',
-        icon: <ToolOutlined />,
-        label: '设备管理',
-      },
-      {
-        key: 'products',
-        icon: <ShoppingOutlined />,
-        label: '产品管理',
-      },
-      {
-        key: '/categories',
-        icon: <AppstoreOutlined />,
-        label: '分类管理',
-      },
-      {
-        key: '/inventory',
-        icon: <ShoppingCartOutlined />,
-        label: '库存管理',
-      },
-      {
-        key: '/inbound',
-        icon: <CarOutlined />,
-        label: '入库管理',
-      },
-      {
-        key: '/outbound',
-        icon: <CarOutlined />,
-        label: '出库管理',
-      },
-      {
-        key: '/wireless-spare-parts',
-        icon: <ShoppingOutlined />,
-        label: '无线备件登记表',
-      },
-      {
-        key: '/serial-numbers',
-        icon: <BarcodeOutlined />,
-        label: '序列号管理',
-      },
-      {
-        key: '/bom',
-        icon: <UnorderedListOutlined />,
-        label: 'BOM管理',
-      },
-      {
-        key: '/projects',
-        icon: <ProjectOutlined />,
-        label: '项目管理',
-      },
-      {
-        key: '/scrap',
-        icon: <DeleteOutlined />,
-        label: '报废管理',
-      },
-      {
-        key: '/dictionary',
-        icon: <DatabaseOutlined />,
-        label: '数据字典',
-      },
-      can('operation_log:view') && {
-        key: '/operation-logs',
-        icon: <FileTextOutlined />,
-        label: '操作日志',
-      },
-      can('grant:manage') && {
-        key: '/grant-matrix',
-        icon: <SafetyOutlined />,
-        label: '仓库授权',
-      },
-      {
-        key: '/settings',
-        icon: <SettingOutlined />,
-        label: '系统设置',
-      },
-    ];
-    return items.filter(Boolean) as MenuProps['items'];
-  }, [can]);
+  const visibleGroups = useMemo(
+    () =>
+      NAV_GROUPS.map((g) => ({
+        ...g,
+        items: g.items.filter((it) => {
+          if (it.key === '/users') return can('user:manage');
+          if (it.key === '/grant-matrix') return can('grant:manage');
+          if (it.key === '/operation-logs') return can('operation_log:view');
+          return true;
+        }),
+      })).filter((g) => g.items.length > 0),
+    [can]
+  );
 
-  const handleMenuClick = (key: string) => {
-    navigate(key);
-  };
+  const currentName = PAGE_NAME[location.pathname] || '控制面板';
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const handleProfile = () => {
-    navigate('/profile');
-  };
-
-
-  // 用户下拉菜单项
   const userMenuItems: MenuProps['items'] = [
     {
       key: 'profile',
       icon: <UserOutlined />,
       label: '个人资料',
-      onClick: handleProfile,
+      onClick: () => navigate('/profile'),
     },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: '退出登录',
-      onClick: handleLogout,
-    },
+    { type: 'divider' },
+    { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', onClick: handleLogout },
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider 
-        trigger={null} 
-        collapsible 
-        collapsed={collapsed}
-        width={drawerWidth}
-        breakpoint="lg"
-        onBreakpoint={(broken) => {
-          setCollapsed(broken);
-        }}
-      >
-        <div style={{ height: 64, padding: 16, display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start' }}>
-          <Typography.Title level={4} style={{ margin: 0, color: '#fff' }}>
-            {collapsed ? 'M' : 'MonaWMS'}
-          </Typography.Title>
-        </div>
-        <Divider style={{ margin: 0, borderColor: 'rgba(255,255,255,0.1)' }} />
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={menuItems}
-          onClick={({ key }) => handleMenuClick(key)}
-        />
-      </Sider>
-      <Layout>
-        <Header style={{ padding: 0, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ paddingLeft: 16, display: 'flex', alignItems: 'center', gap: 24 }}>
-            {React.createElement(collapsed ? MenuUnfoldOutlined : MenuFoldOutlined, {
-              className: 'trigger',
-              onClick: () => setCollapsed(!collapsed),
-              style: { fontSize: 18 }
-            })}
-            <span style={{ fontSize: 16 }}>仓库管理系统</span>
-            <WarehouseSwitcher />
+    <div className="wm-app">
+      <aside className={`wm-sidebar ${collapsed ? 'collapsed' : ''}`}>
+        <div className="wm-logo">
+          <LogoMark />
+          <div className="wm-logo-text">
+            <div className="t1">通信设备WMS</div>
+            <div className="t2">MONA WMS v3.2</div>
           </div>
-          {user && (
-            <div style={{ display: 'flex', alignItems: 'center', paddingRight: 16 }}>
-              <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                  <Avatar style={{ marginRight: 8 }}>
-                    {user.fullName?.charAt(0) || user.username?.charAt(0) || 'U'}
-                  </Avatar>
-                  <span>{user.fullName || user.username || '用户'}</span>
+        </div>
+
+        <nav className="wm-nav">
+          {visibleGroups.map((g) => (
+            <div key={g.label}>
+              <div className="wm-nav-label">{g.label}</div>
+              {g.items.map((it) => (
+                <div
+                  key={it.key}
+                  className={`wm-nav-item ${location.pathname.startsWith(it.key) ? 'active' : ''}`}
+                  onClick={() => navigate(it.key)}
+                >
+                  <span className="ico">{it.icon}</span>
+                  <span>{it.label}</span>
+                  {it.badge && <span className="badge">{it.badge}</span>}
                 </div>
-              </Dropdown>
+              ))}
             </div>
-          )}
-        </Header>
-        <Content style={{ margin: '24px 16px', padding: 24, background: '#fff', minHeight: 280 }}>
-          <Outlet />
-        </Content>
-      </Layout>
-    </Layout>
+          ))}
+        </nav>
+
+        <div className="wm-sidebar-foot">
+          <Dropdown menu={{ items: userMenuItems }} placement="topLeft" trigger={['click']}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer', minWidth: 0, flex: 1 }}>
+              <Avatar size={36} style={{ background: 'linear-gradient(135deg,#0e7490,#155e75)', flexShrink: 0 }}>
+                {user?.fullName?.charAt(0) || user?.username?.charAt(0) || 'U'}
+              </Avatar>
+              <div className="wm-user-meta">
+                <div className="nm">{user?.fullName || user?.username || '未登录用户'}</div>
+                <div className="rl">
+                  <span className="wm-dot-live" />
+                  在线 · {globalRole === 'admin' ? '管理员' : '录入员'}
+                </div>
+              </div>
+            </div>
+          </Dropdown>
+        </div>
+      </aside>
+
+      <div className="wm-main">
+        <header className="wm-topbar">
+          <Tooltip title={collapsed ? '展开菜单' : '收起菜单'}>
+            <div className="wm-icon-btn" onClick={() => setCollapsed(!collapsed)}>
+              {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            </div>
+          </Tooltip>
+
+          <div className="wm-crumb">
+            <span>通信设备WMS</span>
+            <span className="sep">/</span>
+            <b>{currentName}</b>
+          </div>
+
+          <div className="wm-search">
+            <span className="ico">
+              <SearchOutlined />
+            </span>
+            <Input
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="搜索设备、单号、序列号、供应商…"
+              allowClear
+              variant="outlined"
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <WarehouseSwitcher />
+            <div className="wm-clock">
+              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+              <span>{clock || '--:--:--'}</span>
+            </div>
+            <Tooltip title="通知">
+              <Badge dot>
+                <div className="wm-icon-btn">
+                  <BellOutlined />
+                </div>
+              </Badge>
+            </Tooltip>
+            <Tooltip title="仓库上下文">
+              <div className="wm-icon-btn">
+                <GlobalOutlined />
+              </div>
+            </Tooltip>
+          </div>
+        </header>
+
+        <main className="wm-content">
+          <div className="wm-page" key={location.pathname}>
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </div>
   );
 };
 

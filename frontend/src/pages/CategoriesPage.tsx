@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PageHeader from '../components/ui/PageHeader';
 import {
   Card,
   Button,
@@ -466,10 +467,8 @@ const CategoriesPage: React.FC = () => {
   const filteredTree = filterCategories(categoryTree, search);
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={3} style={{ marginBottom: 24 }}>
-        分类管理
-      </Title>
+    <div>
+      <PageHeader title="分类管理" sub="商品分类层级维护与快速检索" />
 
       {/* 操作栏 */}
       <Card style={{ marginBottom: 24 }}>

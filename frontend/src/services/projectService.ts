@@ -55,10 +55,12 @@ export interface ProjectListParams {
 }
 
 export interface ProjectListResponse {
-  data: Project[];
-  total: number;
-  page: number;
-  limit: number;
+  list: Project[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+  };
 }
 
 export interface ReserveInventoryRequest {

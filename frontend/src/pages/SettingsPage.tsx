@@ -532,12 +532,16 @@ const SettingsPage: React.FC = () => {
       </Typography.Title>
 
       <Card>
-        <Tabs activeKey={tabValue.toString()} onChange={handleTabChange}>
-          <Tabs.TabPane tab={<span><SettingOutlined />基本设置</span>} key="0" />
-          <Tabs.TabPane tab={<span><BellOutlined />通知设置</span>} key="1" />
-          <Tabs.TabPane tab={<span><PlusOutlined />用户管理</span>} key="2" />
-          <Tabs.TabPane tab={<span><DatabaseOutlined />安全设置</span>} key="3" />
-        </Tabs>
+        <Tabs
+          activeKey={tabValue.toString()}
+          onChange={handleTabChange}
+          items={[
+            { key: '0', label: <span><SettingOutlined />基本设置</span> },
+            { key: '1', label: <span><BellOutlined />通知设置</span> },
+            { key: '2', label: <span><PlusOutlined />用户管理</span> },
+            { key: '3', label: <span><DatabaseOutlined />安全设置</span> },
+          ]}
+        />
 
         {/* 基本设置 */}
         <TabPanel value={tabValue} index={0}>

@@ -52,7 +52,15 @@ class UserController extends BaseController
                               'page' => $page
                           ]);
             
-            return Response::success($result, '获取用户列表成功');
+            $list = [];
+            foreach ($result->items() as $user) {
+                $item = $user->toArray();
+                $item['role_text'] = $user->role_text;
+                $item['status_text'] = $user->status_text;
+                $list[] = $item;
+            }
+            
+            return Response::paginate($list, $result->total(), $page, $limit);
             
         } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取用户列表失败: ' . $e->getMessage());
@@ -75,20 +83,21 @@ class UserController extends BaseController
                 'password' => 'require|min:6|max:20',
                 'real_name' => 'require|max:50',
                 'phone' => 'max:20',
-                'role' => 'require|in:admin,manager,operator,viewer',
+                'role' => 'require|in:admin,operator',
             ]);
             
             if (!$validate->check($data)) {
                 return Response::error($validate->getError());
             }
             
-            // 密码加密
-            $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
+            // 密码通过模型修改器 setPasswordHashAttr 自动哈希
+            $data['password_hash'] = $data['password'];
+            unset($data['password']);
             
             $user = User::create($data);
             
             // 移除密码字段
-            unset($user['password']);
+            unset($user['password_hash']);
             
             return Response::success($user, '创建用户成功');
             
@@ -139,7 +148,7 @@ class UserController extends BaseController
                 'email' => 'require|email|max:100|unique:users,email,' . $id,
                 'real_name' => 'require|max:50',
                 'phone' => 'max:20',
-                'role' => 'require|in:admin,manager,operator,viewer',
+                'role' => 'require|in:admin,operator',
             ]);
             
             if (!$validate->check($data)) {
@@ -147,12 +156,12 @@ class UserController extends BaseController
             }
             
             // 移除密码字段（密码单独修改）
-            unset($data['password']);
+            unset($data['password'], $data['password_hash']);
             
             $user->save($data);
             
             // 移除密码字段
-            unset($user['password']);
+            unset($user['password_hash']);
             
             return Response::success($user, '更新用户成功');
             
@@ -251,10 +260,8 @@ class UserController extends BaseController
                 return Response::error($validate->getError());
             }
             
-            // 密码加密
-            $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
-            
-            $user->save(['password' => $hashedPassword]);
+            // 通过模型修改器 setPasswordHashAttr 自动哈希
+            $user->save(['password_hash' => $data['password']]);
             
             return Response::success(null, '修改密码成功');
             

@@ -3,39 +3,39 @@ import { api } from './api';
 // 报废申请接口类型定义
 export interface ScrapApplication {
   id: string;
-  scrapNumber: string;
-  deviceInfo: {
-    id: number;
+  scrap_number: string;
+  device_info: {
+    id: number | null;
     name: string;
-    serialNumber: string;
+    serial_number: string;
     model: string;
     category?: string;
   };
   reason: string;
-  reasonType: 'damage' | 'obsolete' | 'expired' | 'other';
+  reason_type: 'damage' | 'obsolete' | 'expired' | 'other';
   description: string;
   images?: string[];
-  estimatedLoss: number;
-  actualLoss?: number;
+  estimated_loss: number | null;
+  actual_loss?: number | null;
   applicant: {
-    id: number;
+    id: number | null;
     name: string;
   };
   approver?: {
     id: number;
     name: string;
-  };
+  } | null;
   processor?: {
     id: number;
     name: string;
-  };
+  } | null;
   status: 'pending' | 'approved' | 'rejected' | 'completed';
-  statusText: string;
-  createdAt: string;
-  approvedAt?: string;
-  processedAt?: string;
-  approvalNotes?: string;
-  processingNotes?: string;
+  status_text: string;
+  created_at: string;
+  approved_at?: string | null;
+  processed_at?: string | null;
+  approval_notes?: string;
+  processing_notes?: string;
 }
 
 export interface CreateScrapRequest {
@@ -124,7 +124,10 @@ export const scrapService = {
 
   // 处理报废申请
   processScrapApplication: (id: string, data: ProcessScrapRequest) => {
-    return api.post(`/scrap/${id}/process`, data);
+    return api.post(`/scrap/${id}/process`, {
+      actual_loss: data.actualLoss,
+      notes: data.notes,
+    });
   },
 
   // 获取报废统计数据

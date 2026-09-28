@@ -62,6 +62,7 @@ Route::group('api', function () {
             Route::get('', 'ProductController/index');              // 产品列表
             Route::post('', 'ProductController/save');              // 创建产品
             Route::get('options', 'ProductController/options');     // 产品选项
+            Route::get('statistics', 'ProductController/statistics'); // 产品统计（须在 :id 之前）
             Route::get('sku/:sku', 'ProductController/findBySku');  // 根据SKU查找
             Route::get('barcode/:barcode', 'ProductController/findByBarcode'); // 根据条码查找
             Route::get(':id', 'ProductController/read');            // 产品详情
@@ -161,6 +162,7 @@ Route::group('api', function () {
             Route::post('', 'CategoryController/save');             // 创建分类
             Route::get('tree', 'CategoryController/tree');          // 分类树
             Route::get('options', 'CategoryController/options');    // 分类选项
+            Route::get('statistics', 'CategoryController/statistics'); // 分类统计（须在 :id 之前）
             Route::get(':id', 'CategoryController/read');           // 分类详情
             Route::put(':id', 'CategoryController/update');         // 更新分类
             Route::delete(':id', 'CategoryController/delete');      // 删除分类
@@ -199,11 +201,11 @@ Route::group('api', function () {
         Route::group('wireless-spare-parts', function () {
             Route::get('', 'WirelessSparePartController/index');        // 无线备件列表
             Route::post('', 'WirelessSparePartController/save');        // 创建无线备件
+            Route::get('stats', 'WirelessSparePartController/stats');   // 统计数据（须在 :id 之前）
+            Route::post('batch-delete', 'WirelessSparePartController/batchDelete'); // 批量删除
             Route::get(':id', 'WirelessSparePartController/read');      // 无线备件详情
             Route::put(':id', 'WirelessSparePartController/update');    // 更新无线备件
             Route::delete(':id', 'WirelessSparePartController/delete'); // 删除无线备件
-            Route::post('batch-delete', 'WirelessSparePartController/batchDelete'); // 批量删除
-            Route::get('stats', 'WirelessSparePartController/stats');   // 统计数据
         });
         
         // 序列号管理

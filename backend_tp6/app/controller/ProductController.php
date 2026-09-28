@@ -8,6 +8,7 @@ use app\model\Product;
 use app\model\Category;
 use app\common\library\Response;
 use think\Request;
+use think\facade\Db;
 use think\facade\Validate;
 
 /**
@@ -15,6 +16,38 @@ use think\facade\Validate;
  */
 class ProductController extends BaseController
 {
+    /**
+     * 获取商品统计信息
+     */
+    public function statistics(Request $request)
+    {
+        try {
+            $total = Product::count();
+            $active = Product::where('status', Product::STATUS_ACTIVE)->count();
+            $inactive = $total - $active;
+
+            // 低库存：库存量小于等于安全库存下限
+            $lowStock = Product::whereRaw('stock_quantity <= IFNULL(min_stock_level, IFNULL(min_stock, 0))')
+                               ->count();
+
+            $categories = count(Db::name('products')
+                                  ->whereNotNull('category_id')
+                                  ->group('category_id')
+                                  ->column('category_id'));
+
+            return Response::success([
+                'total' => $total,
+                'active' => $active,
+                'inactive' => $inactive,
+                'lowStock' => $lowStock,
+                'categories' => $categories
+            ], '获取商品统计成功');
+
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
+            return Response::error('获取商品统计失败: ' . $e->getMessage());
+        }
+    }
+
     /**
      * 获取商品列表
      */

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PageHeader from '../components/ui/PageHeader';
 import {
   Card,
   Button,
@@ -751,10 +752,8 @@ const WarehousesPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={3} style={{ marginBottom: 24 }}>
-        仓库管理
-      </Title>
+    <div>
+      <PageHeader title="仓库管理" sub="分区库位总览与容量监控" />
 
       {/* 操作栏 */}
       <Card style={{ marginBottom: 24 }}>

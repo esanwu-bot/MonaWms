@@ -7,9 +7,11 @@ import 'dayjs/locale/zh-cn';
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import 'antd/dist/reset.css';
+import './styles/theme.css';
 
 import { queryClient } from './utils/queryClient';
 import { useAuthStore } from './store/authStore';
+import { antdTheme } from './theme/antdTheme';
 
 // 布局组件
 import MainLayout from './layouts/MainLayout';
@@ -36,6 +38,7 @@ import BOMPage from './pages/BOMPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ScrapPage from './pages/ScrapPage';
 import DictionaryPage from './pages/DictionaryPage';
+import UsersPage from './pages/UsersPage';
 
 // 路由保护组件
 interface ProtectedRouteProps {
@@ -83,11 +86,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ConfigProvider locale={zhCN} theme={{
-        token: {
-          colorPrimary: '#1890ff',
-        },
-      }}>
+      <ConfigProvider locale={zhCN} theme={antdTheme}>
         <Router>
             <Routes>
               {/* 公共路由 */}
@@ -150,6 +149,9 @@ function App() {
                 
                 {/* 数据字典 */}
                 <Route path="dictionary" element={<DictionaryPage />} />
+                
+                {/* 会员管理 */}
+                <Route path="users" element={<UsersPage />} />
                 
                 {/* 报表分析页面已删除 */}
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PageHeader from '../components/ui/PageHeader';
 import {
   Card,
   Table,
@@ -16,7 +17,6 @@ import {
   Tooltip,
   Row,
   Col,
-  Tabs,
   Divider,
 } from 'antd';
 import {
@@ -36,7 +36,6 @@ const { Search } = Input;
 const { Option } = Select;
 const { TextArea } = Input;
 const { RangePicker } = DatePicker;
-const { TabPane } = Tabs;
 
 
 
@@ -413,6 +412,7 @@ const ProjectsPage: React.FC = () => {
 
   return (
     <div>
+      <PageHeader title="项目管理" sub="工程/代维项目与库存预留跟踪" />
       <Card>
         <Row gutter={16} style={{ marginBottom: 16 }}>
           <Col span={5}>
@@ -476,11 +476,11 @@ const ProjectsPage: React.FC = () => {
 
         <Table
           columns={columns}
-          dataSource={projectData?.data || []}
+          dataSource={projectData?.list || []}
           loading={isLoading}
           rowKey="id"
           pagination={{
-            total: projectData?.total || 0,
+            total: projectData?.pagination?.total || 0,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total) => `共 ${total} 条记录`,

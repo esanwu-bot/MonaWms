@@ -72,7 +72,7 @@ export const productService = {
     lowStock: number;
     categories: number;
   }> => {
-    const response = await api.get('/products/stats');
+    const response = await api.get('/products/statistics');
     return response.data.data;
   },
   

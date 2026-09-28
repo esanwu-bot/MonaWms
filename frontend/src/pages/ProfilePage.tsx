@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PageHeader from '../components/ui/PageHeader';
 import {
   Card,
   Tabs,
@@ -63,7 +64,6 @@ import { useAuthStore } from '../store/authStore';
 import { api } from '../services/api';
 
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
 const { Option } = Select;
 const { Step } = Steps;
 
@@ -325,50 +325,52 @@ const ProfilePage: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={3} style={{ marginBottom: 24 }}>
-        个人资料
-      </Title>
+    <div>
+      <PageHeader title="个人资料" sub="账号信息、安全设置与偏好" />
 
       <Card>
-        <Tabs activeKey={activeTab} onChange={handleTabChange}>
-          <TabPane
-            tab={
-              <span>
-                <UserOutlined />
-                基本信息
-              </span>
-            }
-            key="1"
-          />
-          <TabPane
-            tab={
-              <span>
-                <SafetyOutlined />
-                安全设置
-              </span>
-            }
-            key="2"
-          />
-          <TabPane
-            tab={
-              <span>
-                <SkinOutlined />
-                偏好设置
-              </span>
-            }
-            key="3"
-          />
-          <TabPane
-            tab={
-              <span>
-                <HistoryOutlined />
-                登录历史
-              </span>
-            }
-            key="4"
-          />
-        </Tabs>
+        <Tabs
+          activeKey={activeTab}
+          onChange={handleTabChange}
+          items={[
+            {
+              key: '1',
+              label: (
+                <span>
+                  <UserOutlined />
+                  基本信息
+                </span>
+              ),
+            },
+            {
+              key: '2',
+              label: (
+                <span>
+                  <SafetyOutlined />
+                  安全设置
+                </span>
+              ),
+            },
+            {
+              key: '3',
+              label: (
+                <span>
+                  <SkinOutlined />
+                  偏好设置
+                </span>
+              ),
+            },
+            {
+              key: '4',
+              label: (
+                <span>
+                  <HistoryOutlined />
+                  登录历史
+                </span>
+              ),
+            },
+          ]}
+        />
 
         {/* 基本信息 */}
         {activeTab === '1' && (

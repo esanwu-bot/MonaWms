@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PageHeader from '../components/ui/PageHeader';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import {
   Card,
@@ -43,7 +44,6 @@ import type {
 
 const { Title, Text } = Typography;
 const { Option } = Select;
-const { TabPane } = Tabs;
 
 // 库存调整表单验证
 const adjustmentSchema = z.object({
@@ -515,10 +515,12 @@ const InventoryPage: React.FC = () => {
     queryKey: ['inventory', 'list', queryParams],
     queryFn: async () => {
       const response = await api.get<{
-        data: InventoryItem[];
-        total: number;
-        page: number;
-        limit: number;
+        list: InventoryItem[];
+        pagination: {
+          total: number;
+          page: number;
+          limit: number;
+        };
       }>('/inventory', { params: queryParams });
       return response.data.data;
     },
@@ -584,8 +586,8 @@ const InventoryPage: React.FC = () => {
 
 
 
-  const inventoryItems = inventoryData?.data || [];
-  const total = inventoryData?.total || 0;
+  const inventoryItems = inventoryData?.list || [];
+  const total = inventoryData?.pagination?.total || 0;
 
   const columns = [
     {
@@ -652,15 +654,20 @@ const InventoryPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={3} style={{ marginBottom: 24 }}>
-        库存管理
-      </Title>
+    <div>
+      <PageHeader title="库存管理" sub="实时库存查询、调整与移库" />
 
       {/* 标签页 */}
       <Card>
-        <Tabs activeKey={tabValue} onChange={handleTabChange}>
-          <TabPane tab="库存查询" key="1">
+        <Tabs
+          activeKey={tabValue}
+          onChange={handleTabChange}
+          items={[
+            {
+              key: '1',
+              label: '库存查询',
+              children: (
+                <>
             {/* 搜索和过滤 */}
             <div style={{ marginBottom: 16 }}>
               <Space size="large" wrap>
@@ -746,9 +753,14 @@ const InventoryPage: React.FC = () => {
                 )
               }}
             />
-          </TabPane>
-
-          <TabPane tab="库存调整" key="2">
+                </>
+              ),
+            },
+            {
+              key: '2',
+              label: '库存调整',
+              children: (
+                <>
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <DatabaseOutlined style={{ fontSize: 64, color: '#bfbfbf', marginBottom: 16 }} />
               <Title level={4}>库存调整</Title>
@@ -765,9 +777,14 @@ const InventoryPage: React.FC = () => {
                 开始调整
               </Button>
             </div>
-          </TabPane>
-
-          <TabPane tab="库存转移" key="3">
+                </>
+              ),
+            },
+            {
+              key: '3',
+              label: '库存转移',
+              children: (
+                <>
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <SwapOutlined style={{ fontSize: 64, color: '#bfbfbf', marginBottom: 16 }} />
               <Title level={4}>库存转移</Title>
@@ -784,8 +801,11 @@ const InventoryPage: React.FC = () => {
                 开始转移
               </Button>
             </div>
-          </TabPane>
-        </Tabs>
+                </>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       {/* 库存调整对话框 */}

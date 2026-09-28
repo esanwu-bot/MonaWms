@@ -15,8 +15,11 @@ export const getSerialNumbers = async (params?: {
   product_id?: string;
   status?: string;
 }) => {
-  const response = await api.get<PaginatedResponse<SerialNumber[]>>('/serial-numbers', { params });
-  return response.data;
+  const response = await api.get<{
+    list: SerialNumber[];
+    pagination: { total: number; page: number; limit: number };
+  }>('/serial-numbers', { params });
+  return response.data.data;
 };
 
 // 获取序列号详情

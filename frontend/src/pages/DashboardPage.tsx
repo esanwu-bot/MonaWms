@@ -1,146 +1,113 @@
 import React, { useState } from 'react';
-import { 
-  Card, 
-  Row,
-  Col,
-  Typography, 
-  Avatar, 
-  List, 
-  Spin,
-  Badge,
-  Button,
-  Table,
-  Modal,
-  Form,
-  Select,
-  Input,
-  message
-} from 'antd';
-import { 
-  BankOutlined,
-  ShoppingCartOutlined, 
-  RiseOutlined, 
-  ExclamationCircleOutlined,
-  ArrowUpOutlined,
-  ArrowDownOutlined,
-  HomeOutlined,
-  WarningOutlined,
-  ClockCircleOutlined,
+import { Button, Form, Input, Modal, Select, Spin, Table } from 'antd';
+import {
+  BarcodeOutlined,
+  DashboardOutlined,
+  DatabaseOutlined,
   DeleteOutlined,
-  EyeOutlined
+  EyeOutlined,
+  HomeOutlined,
+  ImportOutlined,
+  ExportOutlined,
+  LineChartOutlined,
+  PieChartOutlined,
+  PlusOutlined,
+  ProjectOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
 import type { DashboardStats } from '../types/api';
+import { CapacityBar, DonutChart, PageHeader, Panel, StatCard, TrendChart } from '../components/ui';
 
-const { Title, Text } = Typography;
-import { theme } from 'antd';
-const { useToken } = theme;
+/** 兜底演示数据：接口未返回时保持界面可读（原型口径） */
+const FALLBACK: DashboardStats = {
+  stats: {
+    total_warehouses: 6,
+    total_products: 1258,
+    total_inventory: 856,
+    low_stock_count: 24,
+    pending_inbound: 142,
+    pending_outbound: 98,
+  },
+  daily_orders: {
+    inbound_orders: 4,
+    outbound_orders: 4,
+    completed_inbound: 12,
+    completed_outbound: 7,
+  },
+  monthly_trends: [],
+  low_stock_products: [],
+  popular_products: [],
+  warehouse_utilization: [],
+  recent_transactions: [],
+};
 
-// 统计卡片组件
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  icon: React.ReactNode;
-  color: string;
-  trend?: {
-    value: number;
-    isPositive: boolean;
-    label?: string;
-  };
-}
+const TREND_FALLBACK_IN = [12, 18, 14, 22, 19, 26, 24, 30, 27, 34, 31, 38, 35, 42];
+const TREND_FALLBACK_OUT = [8, 11, 9, 14, 12, 16, 15, 19, 17, 22, 20, 24, 22, 26];
+const TREND_LABELS = Array.from({ length: 14 }, (_, i) => `${i + 17}日`);
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, trend }) => {
-  const { token } = useToken();
-  
-  return (
-    <Card style={{ height: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <Text type="secondary">{title}</Text>
-          <Title level={3} style={{ margin: '8px 0' }}>{value}</Title>
-          {trend && (
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
-              {trend.value > 0 && (
-                trend.isPositive ? (
-                  <ArrowUpOutlined style={{ color: token.colorSuccess, marginRight: 4 }} />
-                ) : (
-                  <ArrowDownOutlined style={{ color: token.colorError, marginRight: 4 }} />
-                )
-              )}
-              <Text style={{ color: trend.isPositive ? token.colorSuccess : token.colorError }}>
-                {trend.value > 0 ? `${trend.value}%` : ''}
-                {trend.label && ` ${trend.label}`}
-              </Text>
-            </div>
-          )}
-        </div>
-        <Avatar 
-          size="large" 
-          icon={icon} 
-          style={{ 
-            backgroundColor: color,
-            color: 'white',
-            fontSize: 24
-          }} 
-        />
-      </div>
-    </Card>
-  );
+const QUICK_ACTIONS = [
+  { key: '/inbound', label: '新增入库', icon: <ImportOutlined />, color: 'var(--cyan-dim)', fg: 'var(--cyan)' },
+  { key: '/outbound', label: '设备出库', icon: <ExportOutlined />, color: 'var(--amber-dim)', fg: 'var(--amber)' },
+  { key: '/devices', label: '查找设备', icon: <SearchOutlined />, color: 'var(--violet-dim)', fg: 'var(--violet)' },
+  { key: '/warehouses', label: '仓库管理', icon: <HomeOutlined />, color: 'var(--green-dim)', fg: 'var(--green)' },
+  { key: '/inventory', label: '库存查询', icon: <DashboardOutlined />, color: 'rgba(248,113,113,.12)', fg: '#f87171' },
+  { key: '/scrap', label: '报废申请', icon: <DeleteOutlined />, color: 'rgba(148,163,184,.1)', fg: '#94a3b8' },
+];
+
+const WAREHOUSE_COLORS = ['var(--cyan)', 'var(--green)', 'var(--violet)', 'var(--amber)', 'var(--red)'];
+
+const DEVICE_ROWS = [
+  {
+    key: '1',
+    deviceId: 'DEV2024010001',
+    deviceType: '5G基站',
+    model: 'AAU5613',
+    warehouse: '主仓库A区',
+    status: 'in_stock',
+  },
+  {
+    key: '2',
+    deviceId: 'DEV2024010002',
+    deviceType: '核心网设备',
+    model: 'NE9000',
+    warehouse: '主仓库B区',
+    status: 'outbound',
+  },
+  {
+    key: '3',
+    deviceId: 'DEV2024010003',
+    deviceType: '光传输设备',
+    model: 'OTN9800',
+    warehouse: '备用仓库',
+    status: 'in_stock',
+  },
+  {
+    key: '4',
+    deviceId: 'DEV2023120015',
+    deviceType: '路由器',
+    model: 'AR6100',
+    warehouse: '主仓库A区',
+    status: 'scrap',
+  },
+];
+
+const STATUS_MAP: Record<string, { tone: string; text: string }> = {
+  in_stock: { tone: 'done', text: '在库' },
+  outbound: { tone: 'processing', text: '出库' },
+  scrap: { tone: 'urgent', text: '报废' },
 };
 
 const DashboardPage: React.FC = () => {
-  const { token } = useToken();
+  const navigate = useNavigate();
   const [isScrapModalVisible, setIsScrapModalVisible] = useState(false);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<any>(null);
   const [form] = Form.useForm();
 
-  // 处理报废按钮点击
-  const handleScrapClick = (record: any) => {
-    setSelectedDevice(record);
-    setIsScrapModalVisible(true);
-  };
-
-  // 处理报废确认
-  const handleScrapConfirm = async () => {
-    try {
-      const values = await form.validateFields();
-      console.log('报废申请数据:', {
-        deviceId: selectedDevice?.deviceId,
-        ...values
-      });
-      
-      message.success('报废申请已提交');
-      setIsScrapModalVisible(false);
-      form.resetFields();
-      setSelectedDevice(null);
-    } catch (error) {
-      console.error('表单验证失败:', error);
-    }
-  };
-
-  // 取消报废
-  const handleScrapCancel = () => {
-    setIsScrapModalVisible(false);
-    form.resetFields();
-    setSelectedDevice(null);
-  };
-
-  // 处理查看按钮点击
-  const handleViewClick = (record: any) => {
-    setSelectedDevice(record);
-    setIsDetailModalVisible(true);
-  };
-
-  // 关闭设备详情模态框
-  const handleDetailModalClose = () => {
-    setIsDetailModalVisible(false);
-    setSelectedDevice(null);
-  };
-
-  // 获取仪表盘统计数据
   const { data: stats, isLoading } = useQuery({
     queryKey: queryKeys.reports.dashboard(),
     queryFn: async () => {
@@ -149,206 +116,232 @@ const DashboardPage: React.FC = () => {
     },
   });
 
+  const s = stats ?? FALLBACK;
+  const trends = stats?.monthly_trends?.length ? stats.monthly_trends : [];
+  const trendIn = trends.length ? trends.map((t) => Number(t.inbound) || 0) : TREND_FALLBACK_IN;
+  const trendOut = trends.length ? trends.map((t) => Number(t.outbound) || 0) : TREND_FALLBACK_OUT;
+  const trendLabels = trends.length ? trends.map((t) => t.month) : TREND_LABELS;
+
+  const utilization = Array.isArray(stats?.warehouse_utilization) ? stats.warehouse_utilization : [];
+
+  const handleScrapClick = (record: any) => {
+    setSelectedDevice(record);
+    setIsScrapModalVisible(true);
+  };
+
+  const handleScrapConfirm = async () => {
+    try {
+      const values = await form.validateFields();
+      console.log('报废申请数据:', { deviceId: selectedDevice?.deviceId, ...values });
+      setIsScrapModalVisible(false);
+      form.resetFields();
+      setSelectedDevice(null);
+    } catch {
+      /* 校验失败保持弹窗 */
+    }
+  };
+
+  const handleViewClick = (record: any) => {
+    setSelectedDevice(record);
+    setIsDetailModalVisible(true);
+  };
+
   if (isLoading) {
     return (
-      <div style={{ textAlign: 'center', padding: '24px 0' }}>
+      <div style={{ textAlign: 'center', padding: '120px 0' }}>
         <Spin size="large" />
       </div>
     );
   }
 
   return (
-    <div style={{ width: '100%', maxWidth: '100%' }}>
-      <Title level={3} style={{ marginBottom: 24 }}>
-        仪表盘
-      </Title>
+    <div>
+      <PageHeader
+        title="通信设备仓储中心"
+        sub="实时掌握库存动态 · 数据每 30 秒自动同步"
+        live
+      />
 
-      {/* 库存概览统计卡片 */}
-      <Card style={{ marginBottom: 24 }}>
-        <div style={{ marginBottom: 16 }}>
-          <Title level={4}>库存概览</Title>
-        </div>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12} md={6}>
-            <StatCard
-              title="总设备数"
-              value={stats?.stats?.total_products || 1258}
-              icon={<ShoppingCartOutlined />}
-              color={token.colorPrimary}
-              trend={{ value: 5, isPositive: true, label: "较上月" }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <StatCard
-              title="在库设备"
-              value={stats?.stats?.total_inventory || 856}
-              icon={<RiseOutlined />}
-              color={token.colorSuccess}
-              trend={{ value: 92, isPositive: true, label: "可用率" }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <StatCard
-              title="本月入库"
-              value={stats?.stats?.pending_inbound || 142}
-              icon={<ShoppingCartOutlined />}
-              color={token.colorInfo}
-              trend={{ value: 12, isPositive: true, label: "较上月" }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <StatCard
-              title="本月出库"
-              value={stats?.stats?.pending_outbound || 98}
-              icon={<ExclamationCircleOutlined />}
-              color={token.colorWarning}
-              trend={{ value: 3, isPositive: false, label: "较上月" }}
-            />
-          </Col>
-        </Row>
-      </Card>
-      
-      {/* 仓库状态统计卡片 */}
-      <Card style={{ marginBottom: 24 }}>
-        <div style={{ marginBottom: 16 }}>
-          <Title level={4}>仓库状态</Title>
-        </div>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12} md={6}>
-            <StatCard
-              title="总仓库数"
-              value={stats?.stats?.total_warehouses || 6}
-              icon={<HomeOutlined />}
-              color={token.colorPrimary}
-              trend={{ value: 0, isPositive: true, label: "正常运行" }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <StatCard
-              title="主仓库容量"
-              value="82%"
-              icon={<BankOutlined />}
-              color={token.colorWarning}
-              trend={{ value: 0, isPositive: false, label: "接近饱和" }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <StatCard
-              title="待处理事务"
-              value={stats?.stats?.pending_inbound + stats?.stats?.pending_outbound || 12}
-              icon={<ClockCircleOutlined />}
-              color={token.colorInfo}
-              trend={{ value: 0, isPositive: false, label: "需及时处理" }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <StatCard
-              title="报废设备"
-              value={stats?.stats?.low_stock_count || 24}
-              icon={<WarningOutlined />}
-              color={token.colorError}
-              trend={{ value: 0, isPositive: false, label: "待处理" }}
-            />
-          </Col>
-        </Row>
-      </Card>
+      {/* 统计卡 */}
+      <div className="wm-stat-grid">
+        <StatCard
+          label="总设备数"
+          value={(s.stats?.total_products ?? 0).toLocaleString()}
+          unit="台"
+          tone="cyan"
+          icon={<DatabaseOutlined />}
+          delta={{ value: '▲ +5%', up: true }}
+          vs="较上月"
+          spark={[30, 42, 38, 50, 45, 60, 55, 68, 62, 75]}
+        />
+        <StatCard
+          label="在库设备"
+          value={(s.stats?.total_inventory ?? 0).toLocaleString()}
+          unit="台"
+          tone="green"
+          icon={<HomeOutlined />}
+          delta={{ value: '92%', up: true }}
+          vs="库位占用率"
+          spark={[60, 55, 62, 58, 64, 60, 66, 63, 68, 65]}
+          delay={0.06}
+        />
+        <StatCard
+          label="本月入库"
+          value={(s.stats?.pending_inbound ?? 0).toLocaleString()}
+          unit="台"
+          tone="violet"
+          icon={<ImportOutlined />}
+          delta={{ value: '▲ +12%', up: true }}
+          vs="较上月"
+          spark={[20, 35, 28, 42, 38, 50, 46, 58, 52, 64]}
+          delay={0.12}
+        />
+        <StatCard
+          label="本月出库"
+          value={(s.stats?.pending_outbound ?? 0).toLocaleString()}
+          unit="台"
+          tone="amber"
+          icon={<ExportOutlined />}
+          delta={{ value: '▼ -3%', up: false }}
+          vs="较上月"
+          spark={[50, 45, 52, 48, 40, 44, 38, 42, 36, 40]}
+          delay={0.18}
+        />
+      </div>
 
-      {/* 设备列表表格 */}
-      <Card>
-        <div style={{ marginBottom: 16 }}>
-          <Title level={4}>设备列表</Title>
-        </div>
-        <Table 
-          dataSource={[
-            {
-              key: '1',
-              deviceId: 'DEV2024010001',
-              deviceType: '5G基站',
-              model: 'AAU5613',
-              warehouse: '主仓库A区',
-              status: 'in_stock'
-            },
-            {
-              key: '2',
-              deviceId: 'DEV2024010002',
-              deviceType: '核心网设备',
-              model: 'NE9000',
-              warehouse: '主仓库B区',
-              status: 'outbound'
-            },
-            {
-              key: '3',
-              deviceId: 'DEV2024010003',
-              deviceType: '光传输设备',
-              model: 'OTN9800',
-              warehouse: '备用仓库',
-              status: 'in_stock'
-            },
-            {
-              key: '4',
-              deviceId: 'DEV2023120015',
-              deviceType: '路由器',
-              model: 'AR6100',
-              warehouse: '主仓库A区',
-              status: 'scrap'
-            }
+      {/* 快捷操作 */}
+      <div className="wm-quick-grid">
+        {QUICK_ACTIONS.map((q) => (
+          <div key={q.key} className="wm-quick-item" onClick={() => navigate(q.key)}>
+            <div className="qi-icon" style={{ background: q.color, color: q.fg }}>
+              {q.icon}
+            </div>
+            <div className="qi-name">{q.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 趋势 + 容量 */}
+      <div className="wm-grid-dash">
+        <Panel
+          title="出入库趋势（近14天）"
+          icon={<LineChartOutlined />}
+          legend={[
+            { color: 'var(--cyan)', label: '入库' },
+            { color: 'var(--amber)', label: '出库' },
           ]}
+        >
+          <TrendChart
+            series={[
+              { name: '入库', color: '#22d3ee', data: trendIn },
+              { name: '出库', color: '#fbbf24', data: trendOut },
+            ]}
+            labels={trendLabels}
+          />
+        </Panel>
+
+        <Panel title="仓库容量" icon={<HomeOutlined />}>
+          {utilization.length > 0 ? (
+            utilization.slice(0, 6).map((w: any, i: number) => (
+              <CapacityBar
+                key={w.id ?? i}
+                label={w.name ?? w.warehouse_name ?? `仓库 ${i + 1}`}
+                percent={Number(w.utilization ?? w.rate ?? 0)}
+                color={WAREHOUSE_COLORS[i % WAREHOUSE_COLORS.length]}
+              />
+            ))
+          ) : (
+            <>
+              <CapacityBar label="A区 · 核心网络设备" percent={92} color="var(--cyan)" />
+              <CapacityBar label="B区 · 传输与接入" percent={78} color="var(--green)" />
+              <CapacityBar label="C区 · 无线与终端" percent={64} color="var(--violet)" />
+              <CapacityBar label="D区 · 备件耗材" percent={45} color="var(--amber)" />
+              <CapacityBar label="维修区" percent={30} color="var(--red)" />
+            </>
+          )}
+        </Panel>
+      </div>
+
+      {/* 活动 + 设备分布 */}
+      <div className="wm-grid-2">
+        <Panel
+          title="最近活动"
+          icon={<ProjectOutlined />}
+          extra={
+            <Button size="small" onClick={() => navigate('/operation-logs')}>
+              查看全部
+            </Button>
+          }
+        >
+          {DEVICE_ROWS.slice(0, 4).map((r, i) => (
+            <div className="wm-activity-item" key={r.key}>
+              <div
+                className="wm-act-dot"
+                style={{
+                  background: i % 2 === 0 ? 'var(--green-dim)' : 'var(--cyan-dim)',
+                  color: i % 2 === 0 ? 'var(--green)' : 'var(--cyan)',
+                }}
+              >
+                {i % 2 === 0 ? <PlusOutlined /> : <BarcodeOutlined />}
+              </div>
+              <div className="wm-act-body">
+                <div className="wm-act-title">
+                  {r.deviceType} {r.model} 库存变动
+                </div>
+                <div className="wm-act-time">
+                  {r.deviceId} · {r.warehouse}
+                </div>
+              </div>
+              <span className={`wm-status ${STATUS_MAP[r.status]?.tone ?? 'muted'}`}>
+                {STATUS_MAP[r.status]?.text ?? r.status}
+              </span>
+            </div>
+          ))}
+        </Panel>
+
+        <Panel title="设备类型分布" icon={<PieChartOutlined />}>
+          <DonutChart
+            centerLabel="设备总数"
+            data={[
+              { label: '路由器', value: 412, color: '#22d3ee' },
+              { label: '交换机', value: 356, color: '#34d399' },
+              { label: '基站设备', value: 218, color: '#a78bfa' },
+              { label: '防火墙', value: 145, color: '#fbbf24' },
+              { label: '无线AP', value: 127, color: '#f472b6' },
+            ]}
+          />
+        </Panel>
+      </div>
+
+      {/* 设备列表 */}
+      <Panel title="设备列表" icon={<DatabaseOutlined />}>
+        <Table
+          dataSource={DEVICE_ROWS}
           columns={[
-            {
-              title: '设备编号',
-              dataIndex: 'deviceId',
-              key: 'deviceId',
-            },
-            {
-              title: '设备类型',
-              dataIndex: 'deviceType',
-              key: 'deviceType',
-            },
-            {
-              title: '型号',
-              dataIndex: 'model',
-              key: 'model',
-            },
-            {
-              title: '所属仓库',
-              dataIndex: 'warehouse',
-              key: 'warehouse',
-            },
+            { title: '设备编号', dataIndex: 'deviceId', key: 'deviceId', render: (v: string) => <span className="wm-mono">{v}</span> },
+            { title: '设备类型', dataIndex: 'deviceType', key: 'deviceType' },
+            { title: '型号', dataIndex: 'model', key: 'model', render: (v: string) => <span className="wm-mono">{v}</span> },
+            { title: '所属仓库', dataIndex: 'warehouse', key: 'warehouse' },
             {
               title: '状态',
               dataIndex: 'status',
               key: 'status',
-              render: (status: string) => {
-                const statusMap = {
-                  'in_stock': { text: '在库', color: 'green' },
-                  'outbound': { text: '出库', color: 'blue' },
-                  'scrap': { text: '报废', color: 'red' }
-                };
-                const statusInfo = statusMap[status as keyof typeof statusMap] || { text: status, color: 'default' };
-                return <Badge color={statusInfo.color} text={statusInfo.text} />;
-              }
+              render: (status: string) => (
+                <span className={`wm-status ${STATUS_MAP[status]?.tone ?? 'muted'}`}>
+                  {STATUS_MAP[status]?.text ?? status}
+                </span>
+              ),
             },
             {
               title: '操作',
               key: 'action',
-              render: (_, record) => (
-                <div>
-                  <Button 
-                    type="link" 
-                    icon={<EyeOutlined />} 
-                    size="small"
-                    onClick={() => handleViewClick(record)}
-                  >
+              render: (_, record: any) => (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleViewClick(record)}>
                     查看
                   </Button>
                   {record.status !== 'scrap' && (
-                    <Button 
-                      type="link" 
-                      icon={<DeleteOutlined />} 
-                      danger 
-                      size="small"
-                      onClick={() => handleScrapClick(record)}
-                    >
+                    <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleScrapClick(record)}>
                       报废
                     </Button>
                   )}
@@ -356,152 +349,69 @@ const DashboardPage: React.FC = () => {
               ),
             },
           ]}
-          pagination={{ pageSize: 4 }}
+          pagination={{ pageSize: 4, size: 'small' }}
         />
-      </Card>
+      </Panel>
 
-      {/* 设备详情模态框 */}
       <Modal
         title="设备详情"
         open={isDetailModalVisible}
-        onCancel={handleDetailModalClose}
+        onCancel={() => {
+          setIsDetailModalVisible(false);
+          setSelectedDevice(null);
+        }}
         footer={[
-          <Button key="close" onClick={handleDetailModalClose}>
+          <Button key="close" onClick={() => setIsDetailModalVisible(false)}>
             知道了
-          </Button>
+          </Button>,
         ]}
         width={600}
       >
         {selectedDevice && (
-          <div style={{ padding: '16px 0' }}>
-            <Row gutter={[16, 16]}>
-              <Col span={12}>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>设备编号：</Text>
-                  <Text>{selectedDevice.deviceId}</Text>
+          <div>
+            <div className="wm-oc-meta">
+              {[
+                { k: '设备编号', v: selectedDevice.deviceId },
+                { k: '状态', v: STATUS_MAP[selectedDevice.status]?.text ?? selectedDevice.status },
+                { k: '设备类型', v: selectedDevice.deviceType },
+                { k: '型号', v: selectedDevice.model },
+                { k: '所属仓库', v: selectedDevice.warehouse },
+                { k: '序列号', v: `HW${selectedDevice.deviceId}` },
+              ].map((row) => (
+                <div className="m" key={row.k}>
+                  <div className="k">{row.k}</div>
+                  <div className="v">{row.v}</div>
                 </div>
-              </Col>
-              <Col span={12}>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>状态：</Text>
-                  <Badge 
-                    color={
-                      selectedDevice.status === 'in_stock' ? 'green' :
-                      selectedDevice.status === 'outbound' ? 'blue' : 'red'
-                    } 
-                    text={
-                      selectedDevice.status === 'in_stock' ? '正常运行' :
-                      selectedDevice.status === 'outbound' ? '出库' : '报废'
-                    } 
-                  />
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>设备名称：</Text>
-                  <Text>{selectedDevice.deviceType}设备</Text>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>位置：</Text>
-                  <Text>机房A-01</Text>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>设备类型：</Text>
-                  <Text>{selectedDevice.deviceType}</Text>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>购买日期：</Text>
-                  <Text>2024-01-15</Text>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>型号：</Text>
-                  <Text>{selectedDevice.model}</Text>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>保修期：</Text>
-                  <Text>36个月</Text>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>品牌：</Text>
-                  <Text>华为</Text>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>保修期至：</Text>
-                  <Text>2027-01-15</Text>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>序列号：</Text>
-                  <Text>HW{selectedDevice.deviceId}</Text>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>创建时间：</Text>
-                  <Text>2024-01-15 10:00:00</Text>
-                </div>
-              </Col>
-              <Col span={24}>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>备注：</Text>
-                </div>
-                <div style={{ 
-                  padding: '8px 12px', 
-                  backgroundColor: '#f5f5f5', 
-                  borderRadius: '4px',
-                  minHeight: '60px'
-                }}>
-                  <Text>{selectedDevice.deviceType}设备</Text>
-                </div>
-              </Col>
-            </Row>
+              ))}
+            </div>
           </div>
         )}
       </Modal>
 
-      {/* 报废确认模态框 */}
       <Modal
         title="设备报废确认"
         open={isScrapModalVisible}
         onOk={handleScrapConfirm}
-        onCancel={handleScrapCancel}
+        onCancel={() => {
+          setIsScrapModalVisible(false);
+          form.resetFields();
+          setSelectedDevice(null);
+        }}
         okText="确认报废"
         cancelText="取消"
         okButtonProps={{ danger: true }}
       >
-        <p>确定要将设备 <strong>{selectedDevice?.deviceId}</strong> 标记为报废吗？</p>
+        <p>
+          确定要将设备 <strong>{selectedDevice?.deviceId}</strong> 标记为报废吗？
+        </p>
         <Form form={form} layout="vertical">
-          <Form.Item
-            name="reason"
-            label="报废原因"
-            rules={[{ required: true, message: '请选择报废原因' }]}
-          >
-            <Select placeholder="请选择报废原因">
-              <Select.Option value="设备老化">设备老化</Select.Option>
-              <Select.Option value="技术淘汰">技术淘汰</Select.Option>
-              <Select.Option value="损坏无法修复">损坏无法修复</Select.Option>
-              <Select.Option value="其他原因">其他原因</Select.Option>
-            </Select>
+          <Form.Item name="reason" label="报废原因" rules={[{ required: true, message: '请选择报废原因' }]}>
+            <Select
+              placeholder="请选择报废原因"
+              options={['设备老化', '技术淘汰', '损坏无法修复', '其他原因'].map((v) => ({ label: v, value: v }))}
+            />
           </Form.Item>
-          <Form.Item
-            name="remark"
-            label="备注信息"
-          >
+          <Form.Item name="remark" label="备注信息">
             <Input.TextArea rows={3} placeholder="请输入备注信息" />
           </Form.Item>
         </Form>

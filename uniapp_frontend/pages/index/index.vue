@@ -1,95 +1,89 @@
 <template>
-	<view class="dashboard">
-		<!-- 顶部状态栏 -->
-		<view class="status-bar">
-			<view class="user-info">
-				<image class="avatar" :src="userInfo.avatar || '/static/logo.png'" mode="aspectFill"></image>
-				<view class="user-text">
-					<text class="greeting">{{ greeting }}</text>
-					<text class="username">{{ userInfo.real_name || userInfo.username }}</text>
-				</view>
+	<view class="home-page">
+		<!-- 顶部栏 -->
+		<view class="topbar">
+			<view class="topbar-left">
+				<text class="date">{{ currentDate }}</text>
+				<text class="greeting">{{ greeting }}，{{ displayName }} 👋</text>
 			</view>
-			<view class="actions">
-				<view class="action-btn" @click="showNotifications">
+			<view class="topbar-right">
+				<view class="ic-btn" @click="showNotifications">
 					<text class="iconfont icon-bell"></text>
-					<view class="badge" v-if="notificationCount > 0">{{ notificationCount > 99 ? '99+' : notificationCount }}</view>
+					<view class="dot" v-if="notificationCount > 0"></view>
 				</view>
+				<image class="avatar" :src="userInfo.avatar || '/static/logo.png'" mode="aspectFill"></image>
 			</view>
 		</view>
-		
+
 		<!-- 统计卡片 -->
-		<view class="stats-section">
-			<view class="stats-grid">
-				<view class="stat-card" v-for="(stat, index) in stats" :key="index" @click="goToDetail(stat.type)">
-					<view class="stat-icon" :style="{backgroundColor: stat.color}">
-						<text class="iconfont" :class="stat.icon"></text>
-					</view>
-					<view class="stat-info">
-						<text class="stat-value">{{ stat.value }}</text>
+		<view class="pad">
+			<view class="stats">
+				<view class="stat" v-for="(stat, index) in stats" :key="index" @click="goToDetail(stat.type)">
+					<view class="stat-line" :style="{background: stat.color}"></view>
+					<view class="stat-k">
+						<text class="iconfont" :class="stat.icon" :style="{color: stat.color}"></text>
 						<text class="stat-label">{{ stat.label }}</text>
 					</view>
+					<view class="stat-n">
+						<text class="stat-value">{{ stat.value }}</text>
+						<text class="stat-unit">{{ stat.unit }}</text>
+					</view>
+					<text class="stat-d" :class="stat.trend">{{ stat.delta }}</text>
+				</view>
+			</view>
+
+			<!-- 快捷操作 -->
+			<view class="sec-title">
+				<text class="bar"></text>
+				<text class="sec-h">快捷操作</text>
+			</view>
+			<view class="quick">
+				<view class="qk" v-for="(action, index) in quickActions" :key="index" @click="handleQuickAction(action.type)">
+					<view class="qi" :style="{background: action.bg}">
+						<text class="iconfont" :class="action.icon" :style="{color: action.color}"></text>
+					</view>
+					<text class="qn">{{ action.label }}</text>
 				</view>
 			</view>
 		</view>
-		
-		<!-- 快捷操作 -->
-		<view class="quick-actions">
-			<view class="section-title">
-				<text class="title-text">快捷操作</text>
-			</view>
-			<view class="action-grid">
-				<view class="action-item" v-for="(action, index) in quickActions" :key="index" @click="handleQuickAction(action.type)">
-					<view class="action-icon" :style="{backgroundColor: action.color}">
-						<text class="iconfont" :class="action.icon"></text>
-					</view>
-					<text class="action-label">{{ action.label }}</text>
-				</view>
-			</view>
+
+		<!-- 待办提醒（横滚） -->
+		<view class="sec-title pad">
+			<text class="bar"></text>
+			<text class="sec-h">待办提醒</text>
+			<text class="more-btn" @click="goToTodoList">全部 ›</text>
 		</view>
-		
-		<!-- 待办事项 -->
-		<view class="todo-section">
-			<view class="section-title">
-				<text class="title-text">待办事项</text>
-				<text class="more-btn" @click="goToTodoList">查看全部</text>
+		<scroll-view class="todos" scroll-x="true" show-scrollbar="false">
+			<view class="todo" v-for="(todo, index) in todoList" :key="index" @click="handleTodoClick(todo)">
+				<text class="tl">{{ todo.title }}</text>
+				<text class="tv">{{ todo.count }}</text>
+				<text class="tt">{{ todo.description }}</text>
 			</view>
-			<view class="todo-list">
-				<view class="todo-item" v-for="(todo, index) in todoList" :key="index" @click="handleTodoClick(todo)">
-					<view class="todo-icon" :style="{backgroundColor: todo.color}">
-						<text class="iconfont" :class="todo.icon"></text>
-					</view>
-					<view class="todo-content">
-						<text class="todo-title">{{ todo.title }}</text>
-						<text class="todo-desc">{{ todo.description }}</text>
-					</view>
-					<view class="todo-meta">
-						<text class="todo-count">{{ todo.count }}</text>
-						<text class="iconfont icon-arrow-right"></text>
-					</view>
-				</view>
-				<view class="empty-todo" v-if="todoList.length === 0">
-					<text class="empty-text">暂无待办事项</text>
-				</view>
+			<view class="todo empty-todo" v-if="todoList.length === 0">
+				<text class="tl">全部完成</text>
+				<text class="tv">0</text>
+				<text class="tt">暂无待办</text>
 			</view>
-		</view>
-		
+		</scroll-view>
+
 		<!-- 最近活动 -->
-		<view class="activity-section">
-			<view class="section-title">
-				<text class="title-text">最近活动</text>
-				<text class="more-btn" @click="goToActivityList">查看更多</text>
+		<view class="pad">
+			<view class="sec-title">
+				<text class="bar"></text>
+				<text class="sec-h">最近活动</text>
+				<text class="more-btn" @click="goToActivityList">全部 ›</text>
 			</view>
-			<view class="activity-list">
-				<view class="activity-item" v-for="(activity, index) in recentActivities" :key="index">
-					<view class="activity-time">
-						<text class="time-text">{{ formatTime(activity.created_at) }}</text>
+			<view class="act-list">
+				<view class="act-item" v-for="(activity, index) in recentActivities" :key="index">
+					<view class="act-ic">
+						<text class="iconfont icon-check"></text>
 					</view>
-					<view class="activity-content">
-						<text class="activity-title">{{ activity.title }}</text>
-						<text class="activity-desc">{{ activity.description }}</text>
+					<view class="act-body">
+						<text class="at">{{ activity.title }}</text>
+						<text class="am">{{ formatTime(activity.created_at) }} · {{ activity.description || '系统' }}</text>
 					</view>
 				</view>
-				<view class="empty-activity" v-if="recentActivities.length === 0">
+				<view class="empty-state" v-if="recentActivities.length === 0">
 					<text class="empty-text">暂无最近活动</text>
 				</view>
 			</view>
@@ -110,29 +104,41 @@ export default {
 				{
 					label: '库存总量',
 					value: '0',
+					unit: ' 台',
+					delta: '实时',
+					trend: 'up',
 					icon: 'icon-inventory',
-					color: '#007AFF',
+					color: '#22d3ee',
 					type: 'inventory'
 				},
 				{
 					label: '待入库',
 					value: '0',
+					unit: ' 单',
+					delta: '待收货',
+					trend: 'up',
 					icon: 'icon-inbound',
-					color: '#34C759',
+					color: '#34d399',
 					type: 'inbound'
 				},
 				{
 					label: '待出库',
 					value: '0',
+					unit: ' 单',
+					delta: '待拣货',
+					trend: 'up',
 					icon: 'icon-outbound',
-					color: '#FF9500',
+					color: '#fbbf24',
 					type: 'outbound'
 				},
 				{
 					label: '预警商品',
 					value: '0',
+					unit: ' 项',
+					delta: '需补货',
+					trend: 'down',
 					icon: 'icon-warning',
-					color: '#FF3B30',
+					color: '#f87171',
 					type: 'warning'
 				}
 			],
@@ -140,26 +146,44 @@ export default {
 				{
 					label: '扫码入库',
 					icon: 'icon-scan-in',
-					color: '#34C759',
+					color: '#22d3ee',
+					bg: 'rgba(34,211,238,.12)',
 					type: 'scan_inbound'
 				},
 				{
 					label: '扫码出库',
 					icon: 'icon-scan-out',
-					color: '#FF9500',
+					color: '#fbbf24',
+					bg: 'rgba(251,191,36,.12)',
 					type: 'scan_outbound'
-				},
-				{
-					label: '库存盘点',
-					icon: 'icon-check',
-					color: '#007AFF',
-					type: 'inventory_check'
 				},
 				{
 					label: '库存查询',
 					icon: 'icon-search',
-					color: '#5856D6',
+					color: '#a78bfa',
+					bg: 'rgba(167,139,250,.12)',
 					type: 'inventory_search'
+				},
+				{
+					label: '入库作业',
+					icon: 'icon-inbound',
+					color: '#34d399',
+					bg: 'rgba(52,211,153,.12)',
+					type: 'inbound_list'
+				},
+				{
+					label: '出库作业',
+					icon: 'icon-outbound',
+					color: '#f87171',
+					bg: 'rgba(248,113,113,.12)',
+					type: 'outbound_list'
+				},
+				{
+					label: '库存盘点',
+					icon: 'icon-check',
+					color: '#9aa5bb',
+					bg: 'rgba(148,163,184,.1)',
+					type: 'inventory_check'
 				}
 			],
 			todoList: [],
@@ -167,6 +191,14 @@ export default {
 		}
 	},
 	computed: {
+		displayName() {
+			return this.userInfo.real_name || this.userInfo.username || '管理员'
+		},
+		currentDate() {
+			const d = new Date()
+			const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+			return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} · ${week[d.getDay()]}`
+		},
 		greeting() {
 			const hour = new Date().getHours()
 			if (hour < 6) return '夜深了'
@@ -354,6 +386,12 @@ export default {
 					break
 				case 'inventory_search':
 					uni.switchTab({ url: '/pages/inventory/list' })
+					break
+				case 'inbound_list':
+					uni.navigateTo({ url: '/pages/inbound/list' })
+					break
+				case 'outbound_list':
+					uni.navigateTo({ url: '/pages/outbound/list' })
 					break
 			}
 		},

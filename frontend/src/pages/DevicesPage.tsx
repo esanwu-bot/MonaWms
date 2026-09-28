@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PageHeader from '../components/ui/PageHeader';
 import {
   Card,
   Table,
@@ -43,7 +44,6 @@ import type { ColumnsType } from 'antd/es/table';
 const { Search } = Input;
 const { Option } = Select;
 const { TextArea } = Input;
-const { TabPane } = Tabs;
 
 // 数据类型定义
 interface Device {
@@ -667,7 +667,7 @@ const DevicesPage: React.FC = () => {
             <Statistic
               title="正常运行"
               value={statsData.active}
-              valueStyle={{ color: '#3f8600' }}
+              valueStyle={{ color: 'var(--green)' }}
             />
           </Card>
         </Col>
@@ -676,7 +676,7 @@ const DevicesPage: React.FC = () => {
             <Statistic
               title="维护中"
               value={statsData.maintenance}
-              valueStyle={{ color: '#cf1322' }}
+              valueStyle={{ color: 'var(--amber)' }}
             />
           </Card>
         </Col>
@@ -685,7 +685,7 @@ const DevicesPage: React.FC = () => {
             <Statistic
               title="停用"
               value={statsData.inactive}
-              valueStyle={{ color: '#666' }}
+              valueStyle={{ color: 'var(--text-3)' }}
             />
           </Card>
         </Col>
@@ -695,9 +695,17 @@ const DevicesPage: React.FC = () => {
 
   return (
     <div>
+      <PageHeader title="设备登记" sub="设备台账、状态跟踪与维保管理" />
       <Card>
-        <Tabs activeKey={activeTab} onChange={setActiveTab}>
-          <TabPane tab="设备列表" key="list">
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            {
+              key: 'list',
+              label: '设备列表',
+              children: (
+                <>
             {warehouseName && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -812,8 +820,11 @@ const DevicesPage: React.FC = () => {
                 showTotal: (total) => `共 ${total} 条记录`,
               }}
             />
-          </TabPane>
-        </Tabs>
+                </>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       {/* 新增/编辑模态框 */}

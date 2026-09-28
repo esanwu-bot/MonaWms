@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PageHeader from '../components/ui/PageHeader';
 import {
   Card,
   Form,
@@ -625,13 +626,11 @@ const InboundPage: React.FC = () => {
     queryKey: ['inbound-orders', queryParams],
     queryFn: async () => {
       const response = await api.get<{
-        data: {
-          list: InboundOrder[];
-          pagination: {
-            total: number;
-            page: number;
-            limit: number;
-          };
+        list: InboundOrder[];
+        pagination: {
+          total: number;
+          page: number;
+          limit: number;
         };
       }>('/inbound-orders', { params: queryParams });
       return response.data.data;
@@ -778,14 +777,12 @@ const InboundPage: React.FC = () => {
     }
   };
 
-  const orders = ordersData?.data?.list || [];
-  const total = ordersData?.data?.pagination?.total || 0;
+  const orders = ordersData?.list || [];
+  const total = ordersData?.pagination?.total || 0;
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={3} style={{ marginBottom: 24 }}>
-        入库管理
-      </Title>
+    <div>
+      <PageHeader title="入库管理" sub="跟踪供应商到货、验收与上架全流程" />
 
       {/* 操作栏 */}
       <Card style={{ marginBottom: 24 }}>

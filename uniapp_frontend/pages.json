@@ -11,55 +11,111 @@
 			"path": "pages/index/index",
 			"style": {
 				"navigationBarTitleText": "MonaWMS",
-				"enablePullDownRefresh": true
+				"navigationBarBackgroundColor": "#0a0e16",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#0a0e16",
+				"enablePullDownRefresh": true,
+				"backgroundTextStyle": "light"
 			}
 		},
 		{
 			"path": "pages/inventory/list",
 			"style": {
-				"navigationBarTitleText": "库存查询"
+				"navigationBarTitleText": "库存查询",
+				"navigationBarBackgroundColor": "#0d1220",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#0a0e16",
+				"backgroundTextStyle": "light"
 			}
 		},
 		{
 			"path": "pages/inventory/detail",
 			"style": {
-				"navigationBarTitleText": "库存详情"
+				"navigationBarTitleText": "库存详情",
+				"navigationBarBackgroundColor": "#0d1220",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#0a0e16",
+				"backgroundTextStyle": "light"
 			}
 		},
 		{
 			"path": "pages/inbound/list",
 			"style": {
-				"navigationBarTitleText": "入库作业"
+				"navigationBarTitleText": "入库作业",
+				"navigationBarBackgroundColor": "#0d1220",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#0a0e16",
+				"backgroundTextStyle": "light"
 			}
 		},
 		{
 			"path": "pages/inbound/detail",
 			"style": {
-				"navigationBarTitleText": "入库详情"
+				"navigationBarTitleText": "入库详情",
+				"navigationBarBackgroundColor": "#0d1220",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#0a0e16",
+				"backgroundTextStyle": "light"
 			}
 		},
 		{
 			"path": "pages/inbound/receive",
 			"style": {
-				"navigationBarTitleText": "收货作业"
+				"navigationBarTitleText": "收货作业",
+				"navigationBarBackgroundColor": "#0d1220",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#0a0e16",
+				"backgroundTextStyle": "light"
 			}
 		},
 		{
 			"path": "pages/outbound/list",
 			"style": {
-				"navigationBarTitleText": "出库作业"
+				"navigationBarTitleText": "出库作业",
+				"navigationBarBackgroundColor": "#0d1220",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#0a0e16",
+				"backgroundTextStyle": "light"
 			}
 		},
 		{
 			"path": "pages/outbound/detail",
 			"style": {
-				"navigationBarTitleText": "出库详情"
+				"navigationBarTitleText": "出库详情",
+				"navigationBarBackgroundColor": "#0d1220",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#0a0e16",
+				"backgroundTextStyle": "light"
 			}
 		},
 		{
 			"path": "pages/outbound/pick",
 			"style": {
-				"navigationBarTitleText": "拣货作业"
+				"navigationBarTitleText": "拣货作业",
+				"navigationBarBackgroundColor": "#0d1220",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#0a0e16",
+				"backgroundTextStyle": "light"
+			}
+		},
+		{
+			"path": "pages/devices/list",
+			"style": {
+				"navigationBarTitleText": "设备台账",
+				"navigationBarBackgroundColor": "#0d1220",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#0a0e16",
+				"backgroundTextStyle": "light"
+			}
+		},
+		{
+			"path": "pages/warehouse/list",
+			"style": {
+				"navigationBarTitleText": "仓库管理",
+				"navigationBarBackgroundColor": "#0d1220",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#0a0e16",
+				"backgroundTextStyle": "light"
 			}
 		},
 		{
@@ -72,22 +128,26 @@
 		{
 			"path": "pages/profile/profile",
 			"style": {
-				"navigationBarTitleText": "个人中心"
+				"navigationBarTitleText": "个人中心",
+				"navigationBarBackgroundColor": "#0d1220",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#0a0e16",
+				"backgroundTextStyle": "light"
 			}
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "white",
 		"navigationBarTitleText": "MonaWMS",
-		"navigationBarBackgroundColor": "#007AFF",
-		"backgroundColor": "#F5F5F5",
-		"backgroundTextStyle": "dark"
+		"navigationBarBackgroundColor": "#0d1220",
+		"backgroundColor": "#0a0e16",
+		"backgroundTextStyle": "light"
 	},
 	"tabBar": {
-		"color": "#7A7E83",
-		"selectedColor": "#007AFF",
+		"color": "#5c677d",
+		"selectedColor": "#22d3ee",
 		"borderStyle": "black",
-		"backgroundColor": "#ffffff",
+		"backgroundColor": "#0d1220",
 		"list": [
 			{
 				"pagePath": "pages/index/index",

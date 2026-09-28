@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PageHeader from '../components/ui/PageHeader';
 import {
   Card,
   Table,
@@ -52,9 +53,10 @@ const scrapReasons = [
 ];
 
 // 状态标签配置
-const statusConfig = {
+const statusConfig: Record<string, { color: string; text: string }> = {
   pending: { color: 'warning', text: '待审核' },
   approved: { color: 'success', text: '已审核' },
+  rejected: { color: 'error', text: '已拒绝' },
   completed: { color: 'processing', text: '已处理' },
 };
 
@@ -86,21 +88,24 @@ const ScrapPage: React.FC = () => {
     queryFn: () => scrapService.getAvailableDevices(),
   });
 
-  const data = (scrapData?.data as any)?.list || [];
-  const stats = (statsData?.data as any) || {
+  // 服务层返回的是 axios 响应，业务数据在 response.data.data
+  const data = (scrapData?.data?.data as any)?.list || [];
+  const stats = (statsData?.data?.data as any) || {
     pending: 0,
     approved: 0,
     completed: 0,
-    totalEstimatedLoss: 0,
+    total_estimated_loss: 0,
   };
-  const devices = (devicesData?.data as any) || [];
+  const devices: AvailableDevice[] = Array.isArray(devicesData?.data?.data)
+    ? (devicesData?.data?.data as AvailableDevice[])
+    : [];
 
   // 表格列定义
   const columns: ColumnsType<ScrapApplication> = [
     {
       title: '申请编号',
-      dataIndex: 'scrapNumber',
-      key: 'scrapNumber',
+      dataIndex: 'scrap_number',
+      key: 'scrap_number',
       width: 140,
     },
     {
@@ -108,9 +113,9 @@ const ScrapPage: React.FC = () => {
       key: 'deviceInfo',
       render: (_, record) => (
         <div>
-          <div style={{ fontWeight: 'bold' }}>{record.deviceInfo.name}</div>
+          <div style={{ fontWeight: 'bold' }}>{record.device_info?.name ?? '-'}</div>
           <div style={{ color: '#666', fontSize: '12px' }}>
-            SN: {record.deviceInfo.serialNumber}
+            SN: {record.device_info?.serial_number ?? '-'}
           </div>
         </div>
       ),
@@ -125,20 +130,20 @@ const ScrapPage: React.FC = () => {
       title: '申请人',
       key: 'applicant',
       width: 100,
-      render: (_, record) => <span>{record.applicant.name}</span>,
+      render: (_, record) => <span>{record.applicant?.name ?? '-'}</span>,
     },
     {
       title: '申请时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
+      dataIndex: 'created_at',
+      key: 'created_at',
       width: 150,
     },
     {
       title: '预估损失',
-      dataIndex: 'estimatedLoss',
-      key: 'estimatedLoss',
+      dataIndex: 'estimated_loss',
+      key: 'estimated_loss',
       width: 120,
-      render: (value) => `¥${value.toLocaleString()}`,
+      render: (value) => `¥${Number(value ?? 0).toLocaleString()}`,
     },
     {
       title: '图片',
@@ -156,11 +161,10 @@ const ScrapPage: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (status) => (
-        <Tag color={statusConfig[status].color}>
-          {statusConfig[status].text}
-        </Tag>
-      ),
+      render: (status) => {
+        const cfg = statusConfig[status] ?? { color: 'default', text: status };
+        return <Tag color={cfg.color}>{cfg.text}</Tag>;
+      },
     },
     {
       title: '操作',
@@ -275,7 +279,7 @@ const ScrapPage: React.FC = () => {
     // 暂时使用预估损失作为实际损失
     const record = (data as ScrapApplication[]).find(item => item.id === id);
     if (record) {
-      processMutation.mutate({ id, actualLoss: record.estimatedLoss });
+      processMutation.mutate({ id, actualLoss: Number(record.estimated_loss ?? 0) });
     }
   };
 
@@ -305,7 +309,7 @@ const ScrapPage: React.FC = () => {
 
   return (
     <div>
-      <Title level={2}>报废管理</Title>
+      <PageHeader title="报废管理" sub="报废申请、审批与残值处置全流程留痕" />
       
       {/* 统计卡片 */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
@@ -314,8 +318,8 @@ const ScrapPage: React.FC = () => {
             <Statistic
               title="待审核报废"
               value={stats.pending}
-              prefix={<ExclamationCircleOutlined style={{ color: '#faad14' }} />}
-              valueStyle={{ color: '#faad14' }}
+              prefix={<ExclamationCircleOutlined style={{ color: 'var(--amber)' }} />}
+              valueStyle={{ color: 'var(--amber)' }}
             />
           </Card>
         </Col>
@@ -324,8 +328,8 @@ const ScrapPage: React.FC = () => {
             <Statistic
               title="已审核报废"
               value={stats.approved}
-              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-              valueStyle={{ color: '#52c41a' }}
+              prefix={<CheckCircleOutlined style={{ color: 'var(--green)' }} />}
+              valueStyle={{ color: 'var(--green)' }}
             />
           </Card>
         </Col>
@@ -334,8 +338,8 @@ const ScrapPage: React.FC = () => {
             <Statistic
               title="已处理报废"
               value={stats.completed}
-              prefix={<DeleteOutlined style={{ color: '#1890ff' }} />}
-              valueStyle={{ color: '#1890ff' }}
+              prefix={<DeleteOutlined style={{ color: 'var(--cyan)' }} />}
+              valueStyle={{ color: 'var(--cyan)' }}
             />
           </Card>
         </Col>
@@ -343,10 +347,10 @@ const ScrapPage: React.FC = () => {
           <Card>
             <Statistic
               title="报废损失金额"
-              value={stats.totalEstimatedLoss}
-              prefix={<DollarOutlined style={{ color: '#f5222d' }} />}
+              value={stats.total_estimated_loss}
+              prefix={<DollarOutlined style={{ color: 'var(--red)' }} />}
               formatter={(value) => `¥${Number(value).toLocaleString()}`}
-              valueStyle={{ color: '#f5222d' }}
+              valueStyle={{ color: 'var(--red)' }}
             />
           </Card>
         </Col>
@@ -501,18 +505,18 @@ const ScrapPage: React.FC = () => {
           <div>
             <Row gutter={16}>
               <Col span={12}>
-                <p><strong>申请编号：</strong>{selectedRecord.scrapNumber}</p>
+                <p><strong>申请编号：</strong>{selectedRecord.scrap_number}</p>
               </Col>
               <Col span={12}>
-                <p><strong>申请时间：</strong>{selectedRecord.createdAt}</p>
+                <p><strong>申请时间：</strong>{selectedRecord.created_at}</p>
               </Col>
             </Row>
             <Row gutter={16}>
               <Col span={12}>
-                <p><strong>设备名称：</strong>{selectedRecord.deviceInfo.name}</p>
+                <p><strong>设备名称：</strong>{selectedRecord.device_info?.name ?? '-'}</p>
               </Col>
               <Col span={12}>
-                <p><strong>序列号：</strong>{selectedRecord.deviceInfo.serialNumber}</p>
+                <p><strong>序列号：</strong>{selectedRecord.device_info?.serial_number ?? '-'}</p>
               </Col>
             </Row>
             <Row gutter={16}>
@@ -520,18 +524,19 @@ const ScrapPage: React.FC = () => {
                 <p><strong>报废原因：</strong>{selectedRecord.reason}</p>
               </Col>
               <Col span={12}>
-                <p><strong>申请人：</strong>{selectedRecord.applicant.name}</p>
+                <p><strong>申请人：</strong>{selectedRecord.applicant?.name ?? '-'}</p>
               </Col>
             </Row>
             <Row gutter={16}>
               <Col span={12}>
-                <p><strong>预估损失：</strong>¥{selectedRecord.estimatedLoss.toLocaleString()}</p>
+                <p><strong>预估损失：</strong>¥{Number(selectedRecord.estimated_loss ?? 0).toLocaleString()}</p>
               </Col>
               <Col span={12}>
                 <p><strong>状态：</strong>
-                  <Tag color={statusConfig[selectedRecord.status].color}>
-                    {statusConfig[selectedRecord.status].text}
-                  </Tag>
+                  {(() => {
+                    const cfg = statusConfig[selectedRecord.status] ?? { color: 'default', text: selectedRecord.status };
+                    return <Tag color={cfg.color}>{cfg.text}</Tag>;
+                  })()}
                 </p>
               </Col>
             </Row>

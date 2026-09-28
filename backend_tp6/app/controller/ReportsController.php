@@ -152,7 +152,8 @@ class ReportsController extends BaseController
                 'total_value' => Db::table('inventory')
                     ->alias('i')
                     ->join('products p', 'i.product_id = p.id')
-                    ->sum('i.quantity * p.cost_price'),
+                    ->field(Db::raw('SUM(i.quantity * p.cost_price) AS total_value'))
+                    ->find()['total_value'] ?? 0,
                 'low_stock_count' => Product::where('stock_quantity', '<=', Db::raw('min_stock_level'))->count(),
             ];
             

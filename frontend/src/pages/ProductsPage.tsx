@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PageHeader from '../components/ui/PageHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -613,29 +614,24 @@ const ProductsPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
+    <div>
+      <PageHeader
+        title="产品管理"
+        sub="商品主数据、SKU 编码与库存阈值维护"
+        extra={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              setSelectedProduct(undefined);
+              setDialogOpen(true);
+            }}
+          >
+            新增产品
+          </Button>
+        }
+      />
       <Card>
-        <div style={{ marginBottom: 16 }}>
-          <Row gutter={16} align="middle">
-            <Col flex="auto">
-              <Title level={2} style={{ margin: 0 }}>
-                产品管理
-              </Title>
-            </Col>
-            <Col>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => {
-                  setSelectedProduct(undefined);
-                  setDialogOpen(true);
-                }}
-              >
-                新增产品
-              </Button>
-            </Col>
-          </Row>
-        </div>
 
         <div style={{ marginBottom: 16 }}>
           <Row gutter={16}>
