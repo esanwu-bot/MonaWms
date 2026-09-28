@@ -35,8 +35,9 @@ services:
       # 注意：initdb 只在 mysql_data 卷为空时执行；已初始化的库需手工导入
       - ./sql/monawms_full_0928.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
     ports:
-      # 仅本机可连，禁止对外暴露 3306
-      - "127.0.0.1:3306:3306"
+      # 仅本机可连，禁止对外暴露；宿主机用 3307（3306 已被同机 mt_mysql 占用），
+      # 容器间互连仍走内部网络 mysql:3306，业务不受影响
+      - "127.0.0.1:3307:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD:-MonaWms2026ChangeMe}"]
       interval: 10s
