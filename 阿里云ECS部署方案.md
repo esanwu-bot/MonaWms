@@ -212,6 +212,10 @@ docker run --rm -v "$PWD/backend_tp6":/app -w /app -e COMPOSER_ALLOW_SUPERUSER=1
 
 ## 6. 构建前端 dist（node 容器一次性构建，不常驻）
 
+> **一键执行**：第 6/7/8 节可合并为一条命令 `bash deploy/setup_ecs.sh`
+> （幂等可重复跑；多行命令直接粘贴终端会因换行丢失被当注释忽略，优先用脚本）。
+> 下面分节说明各步骤内容。
+
 > 生产 API 地址来自 `frontend/.env.production`（`VITE_API_BASE_URL=/api`，
 > 同源相对路径，走 nginx 9110 反代，无跨域），已随仓库提交，无需修改。
 > 本地开发的 `frontend/.env`（127.0.0.1:8000）互不影响。
