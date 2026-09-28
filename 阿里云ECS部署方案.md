@@ -196,11 +196,17 @@ cd /opt/MonaWMS_TX
 docker run --rm -v "$PWD/backend_tp6":/app -w /app -e COMPOSER_ALLOW_SUPERUSER=1 \
   composer:2 sh -c \
   "composer config repos.packagist composer https://mirrors.aliyun.com/composer/ \
-   && composer install --no-dev --optimize-autoloader --ignore-platform-reqs"
+   && composer install --no-dev --optimize-autoloader --ignore-platform-reqs --no-scripts"
 ```
 
-> `--ignore-platform-reqs`：composer:2 容器内没有 gd/zip 扩展，
-> 但运行时容器 monawms-php-fpm:8.1 已装齐，此处仅跳过安装期检查。
+> - `--ignore-platform-reqs`：composer:2 容器内没有 gd/zip 扩展，
+>   但运行时容器 monawms-php-fpm:8.1 已装齐，此处仅跳过安装期检查。
+> - **`--no-scripts`（必加）**：composer:2 镜像现为 PHP 8.4，TP6.1 安装后钩子
+>   `@php think service:discover` 在 8.4 下大量 Deprecated 且退出码 255，导致
+>   整条 install 命令报错——**但此时 23 个包其实已全部装完**，只是钩子失败。
+>   加 `--no-scripts` 跳过钩子；`services.php` 改在 PHP 8.1 运行容器里生成（第 7.1 节）。
+> - `app/model/BomItem.php does not comply with psr-4` 的 warning 是文件名与类名
+>   大小写不一致的提示，不影响运行，可忽略。
 
 ---
 
@@ -236,7 +242,18 @@ docker compose ps
 docker compose logs -f mysql        # 观察库快照导入，出现 "ready for connections" 后 Ctrl+C
 ```
 
-### 7.1 修正 runtime / 上传目录权限
+### 7.1 生成 services.php（TP6 服务清单，必须执行）
+
+> 第 5 节 `--no-scripts` 跳过了 `think service:discover`，它产出的
+> `vendor/services.php` 缺失时框架无法启动。在 **PHP 8.1 运行容器**里补跑
+> （8.1 下无 PHP 8.4 的 Deprecated 问题）：
+
+```bash
+docker compose exec php php think service:discover
+ls -l backend_tp6/vendor/services.php    # 确认已生成
+```
+
+### 7.2 修正 runtime / 上传目录权限
 
 ```bash
 docker compose exec php sh -c \
@@ -340,7 +357,8 @@ uniapp 由 HBuilderX 本地发行，不在 ECS 上构建：
 
 | 现象 | 排查 |
 | --- | --- |
-| 页面 502 | `docker compose ps` 看 php 是否 Up；`docker compose logs php`；多半是 vendor 没装（第 5 节） |
+| composer install 报 `service:discover ... error code 255` + 大量 Deprecated | **包已装完，无需重装**。composer:2 镜像是 PHP 8.4，TP6.1 钩子不兼容。按第 5 节加 `--no-scripts` 重跑（幂等、秒级），再按第 7.1 节在 php 容器内生成 services.php |
+| 页面 502 | `docker compose ps` 看 php 是否 Up；`docker compose logs php`；多半是 vendor 没装（第 5 节）或 services.php 缺失（第 7.1 节） |
 | 页面 403/空白 | dist 未构建：重跑第 6 节；`ls frontend/dist` |
 | 接口 404 | 确认请求路径为 `/api/*`；`docker compose logs nginx`；检查 nginx 与 php 的 backend_tp6 挂载点是否同为 `/var/www/html` |
 | MySQL 表为空 | init 脚本只在**数据卷首次创建**时执行；确认无需保留数据后 `docker compose down -v` 再 `up -d`（**会清库，慎用**） |
