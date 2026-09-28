@@ -20,16 +20,17 @@ import { outboundApi } from '../services/outboundApi';
 const { Title, Text } = Typography;
 const { Step } = Steps;
 
+// 与后端返回的 snake_case 字段对齐（全可选，兼容 types/api 的 OutboundOrder）
 interface OutboundOrder {
   id: string;
-  orderNumber: string;
-  customerName: string;
-  warehouseName: string;
-  status: string;
-  statusText: string;
-  totalQuantity: number;
-  priority: string;
-  expectedDate: string;
+  order_number?: string;
+  customer_name?: string;
+  warehouse_name?: string;
+  status?: string;
+  status_text?: string;
+  total_quantity?: number;
+  priority?: string;
+  expected_date?: string;
 }
 
 interface BatchPickingResult {
@@ -232,20 +233,20 @@ const BatchPickingDialog: React.FC<BatchPickingDialogProps> = ({
   const orderColumns = [
     {
       title: '出库单号',
-      dataIndex: 'orderNumber',
-      key: 'orderNumber',
+      dataIndex: 'order_number',
+      key: 'order_number',
       width: 150,
     },
     {
       title: '客户名称',
-      dataIndex: 'customerName',
-      key: 'customerName',
+      dataIndex: 'customer_name',
+      key: 'customer_name',
       width: 120,
     },
     {
       title: '仓库',
-      dataIndex: 'warehouseName',
-      key: 'warehouseName',
+      dataIndex: 'warehouse_name',
+      key: 'warehouse_name',
       width: 100,
     },
     {
@@ -254,7 +255,7 @@ const BatchPickingDialog: React.FC<BatchPickingDialogProps> = ({
       key: 'status',
       width: 80,
       render: (status: string, record: OutboundOrder) => (
-        <Tag color={getStatusColor(status)}>{record.statusText}</Tag>
+        <Tag color={getStatusColor(status)}>{record.status_text || status}</Tag>
       ),
     },
     {
@@ -270,14 +271,14 @@ const BatchPickingDialog: React.FC<BatchPickingDialogProps> = ({
     },
     {
       title: '数量',
-      dataIndex: 'totalQuantity',
-      key: 'totalQuantity',
+      dataIndex: 'total_quantity',
+      key: 'total_quantity',
       width: 80,
       render: (quantity: number) => `${quantity}件`,
     },
     {
       title: '预期日期',
-      dataIndex: 'expectedDate',
+      dataIndex: 'expected_date',
       key: 'expectedDate',
       width: 100,
     },

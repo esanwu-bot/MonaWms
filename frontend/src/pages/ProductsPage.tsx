@@ -447,7 +447,10 @@ const ProductsPage: React.FC = () => {
         ...(searchTerm && { search: searchTerm }),
         ...(selectedCategory && { categoryId: selectedCategory }),
       });
-      const response = await api.get<PaginatedResponse<Product>>(`/products?${params}`);
+      const response = await api.get<{
+        list: Product[];
+        pagination: { total: number; page: number; limit: number };
+      }>(`/products?${params}`);
       return response.data.data;
     },
   });

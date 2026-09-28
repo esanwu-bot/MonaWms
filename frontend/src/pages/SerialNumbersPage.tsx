@@ -369,9 +369,9 @@ const SerialNumbersPage: React.FC = () => {
           <div style={{ fontSize: '12px', color: '#666' }}>
             SKU: {record.product?.sku || record.productSku}
           </div>
-          {(record.product?.modelNumber || record.productModel) && (
+          {(record.product?.model_number || record.productModel) && (
             <div style={{ fontSize: '12px', color: '#666' }}>
-              型号: {record.product?.modelNumber || record.productModel}
+              型号: {record.product?.model_number || record.productModel}
             </div>
           )}
         </div>

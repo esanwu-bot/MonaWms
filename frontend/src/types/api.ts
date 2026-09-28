@@ -80,6 +80,8 @@ export interface Warehouse {
   };
   status: 'active' | 'inactive';
   status_text: string;
+  contact_person?: string;
+  contact_phone?: string;
   created_at: string;
   updated_at?: string;
   // P7 仓库授权角色（仅前端从授权列表转换而来）

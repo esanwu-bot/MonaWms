@@ -1,0 +1,90 @@
+# ================================================================
+# MonaWMS_TX · 阿里云 ECS Docker 编排
+#
+# 设计原则（同 mechanical_teaching 项目）：
+#   1. backend_tp6 源码以 volume 挂载进 php-fpm 容器，git pull 即时生效，不重新 build 镜像
+#   2. frontend/dist 以 volume 挂载进 nginx 容器，重新 build dist 后刷新即生效
+#   3. 镜像只在「PHP 扩展变更」时才需要重新 build（deploy/php/Dockerfile）
+#
+# 端口规划（对外端口限定 9110-9120）：
+#   9110  WMS 前端（frontend/dist + /api/ 反代）          → 安全组开放
+#   9111  uniapp H5 预留（发行产物上传后生效）            → 按需开放
+#   3306  MySQL，仅绑 127.0.0.1，禁止对外暴露
+#   9000 / 9080  php-fpm / nginx 内部 server，仅容器网络
+#
+# 启动：docker compose up -d
+# 停止：docker compose down
+# ================================================================
+
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: monawms_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-MonaWms2026ChangeMe}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=256M
+      - --max-connections=200
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # 首次启动自动导入完整库快照（含 CREATE DATABASE monawms、全部表结构与演示数据）
+      # 注意：initdb 只在 mysql_data 卷为空时执行；已初始化的库需手工导入
+      - ./sql/monawms_full_0928.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    ports:
+      # 仅本机可连，禁止对外暴露 3306
+      - "127.0.0.1:3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD:-MonaWms2026ChangeMe}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  php:
+    build:
+      context: ./deploy/php
+    image: monawms-php-fpm:8.1
+    container_name: monawms_php
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      # ★ 核心：backend_tp6 源码挂载，git pull 后无需重新 build 镜像
+      # （vendor/ 首次部署需用 composer 容器安装，见《阿里云ECS部署方案.md》第 5 节）
+      - ./backend_tp6:/var/www/html
+      # 生产环境 .env 覆盖仓库内的开发 .env
+      - ./deploy/php/env.production:/var/www/html/.env:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: monawms_nginx
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "9110:9110"  # WMS 前端（React 管理端）
+      - "9111:9111"  # uniapp H5 预留
+    volumes:
+      # ★ 挂载整个目录而非单个文件：宿主机文件被 rename 替换（git pull / sed -i）
+      #   后容器仍会沿用旧 inode。deploy/nginx 下只应有 default.conf 一个 .conf 文件
+      - ./deploy/nginx:/etc/nginx/conf.d:ro
+      - ./frontend/dist:/var/www/frontend/dist:ro
+      # uniapp H5 发行产物（本地 HBuilderX 发行 H5 后上传；目录为空时 9111 返回 404 属预期）
+      - ./uniapp_frontend/unpackage/dist/build/h5:/var/www/h5/dist:ro
+      # backend_tp6 挂载点必须与 php 容器一致（同为 /var/www/html）：
+      #   9080 server 的 root 为 /var/www/html/public，既用于生成 fastcgi SCRIPT_FILENAME
+      #   （由 php 容器解析），也用于 nginx 自身判断静态文件是否存在
+      - ./backend_tp6:/var/www/html:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - php
+
+volumes:
+  mysql_data:
+  nginx_logs:

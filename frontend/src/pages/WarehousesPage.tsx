@@ -93,8 +93,8 @@ const WarehouseDialog: React.FC<WarehouseDialogProps> = ({
       name: warehouse?.name || '',
       description: warehouse?.description || '',
       address: warehouse?.address || '',
-      contactPerson: warehouse?.contactPerson || '',
-      contactPhone: warehouse?.contactPhone || '',
+      contactPerson: warehouse?.contact_person || '',
+      contactPhone: warehouse?.contact_phone || '',
     },
   });
 
@@ -105,16 +105,16 @@ const WarehouseDialog: React.FC<WarehouseDialogProps> = ({
         name: warehouse?.name || '',
         description: warehouse?.description || '',
         address: warehouse?.address || '',
-        contactPerson: warehouse?.contactPerson || '',
-        contactPhone: warehouse?.contactPhone || '',
+        contactPerson: warehouse?.contact_person || '',
+        contactPhone: warehouse?.contact_phone || '',
       });
       form.setFieldsValue({
         code: warehouse?.code || '',
         name: warehouse?.name || '',
         description: warehouse?.description || '',
         address: warehouse?.address || '',
-        contactPerson: warehouse?.contactPerson || '',
-        contactPhone: warehouse?.contactPhone || '',
+        contactPerson: warehouse?.contact_person || '',
+        contactPhone: warehouse?.contact_phone || '',
       });
     }
   }, [open, warehouse, reset, form]);
@@ -464,7 +464,7 @@ const WarehousesPage: React.FC = () => {
 
   // 更新仓库
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: UpdateWarehouseRequest }) => {
+    mutationFn: async ({ id, data }: { id: number; data: UpdateWarehouseRequest }) => {
       const response = await api.put<Warehouse>(`/warehouses/${id}`, data);
       return response.data;
     },
@@ -481,7 +481,7 @@ const WarehousesPage: React.FC = () => {
 
   // 删除仓库
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (id: number) => {
       await api.delete(`/warehouses/${id}`);
     },
     onSuccess: () => {
