@@ -1,36 +1,24 @@
 # ================================================================
 # MonaWMS · ThinkPHP 6 运行镜像（仅装扩展，不含代码）
 # 代码通过 docker-compose volume 挂载，改代码无需重新 build 本镜像
-# 仅当需要新增 PHP 扩展时才执行：docker compose build php
+#
+# ★ 基础镜像复用同 ECS 上 mechanical_teaching 已构建的 mt-php-fpm:8.1
+#   （已含 pdo_mysql / gd / bcmath / opcache / 时区 / 上传配置），
+#   本文件只增量补 zip 扩展（phpspreadsheet xlsx 读写需要）。
+#   2C2G 小机源码编译 gd 约 30+ 分钟，增量只编 zip 约 2-3 分钟。
+#   注意：仅适用于与 mechanical_teaching 同机的部署；
+#         新机器请先构建 mt-php-fpm:8.1 或改回 FROM php:8.1-fpm-alpine。
 # ================================================================
-FROM php:8.1-fpm-alpine
+FROM mt-php-fpm:8.1
 
-# 依赖库 + 时区
-RUN apk add --no-cache tzdata libpng-dev libjpeg-turbo-dev freetype-dev libzip-dev \
-    && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
-    && echo "Asia/Shanghai" > /etc/timezone
+# zip 扩展：phpspreadsheet Xlsx 导入导出（编译后移除 -dev 头文件减小体积）
+RUN apk add --no-cache libzip-dev \
+    && docker-php-ext-install -j$(nproc) zip \
+    && apk del libzip-dev
 
-# TP6 + phpspreadsheet 所需扩展：
-#   pdo_mysql 数据库 / gd 图片处理 / bcmath DECIMAL(18,4) 精确运算（AGENTS.md 铁律）
-#   zip+libzip xlsx 导入导出（phpoffice/phpspreadsheet）/ opcache 生产加速
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) pdo_mysql gd bcmath zip opcache
-
-# opcache：挂载代码场景下保持时间戳校验，git pull 后秒级生效
-RUN { \
-      echo "opcache.enable=1"; \
-      echo "opcache.memory_consumption=128"; \
-      echo "opcache.max_accelerated_files=10000"; \
-      echo "opcache.validate_timestamps=1"; \
-      echo "opcache.revalidate_freq=0"; \
-    } > /usr/local/etc/php/conf.d/opcache-tuning.ini
-
-# 上传限制（xlsx 批量导入 / 报废图片附件）
-RUN { \
-      echo "upload_max_filesize=50M"; \
-      echo "post_max_size=50M"; \
-      echo "memory_limit=256M"; \
-    } > /usr/local/etc/php/conf.d/uploads.ini
+# 覆盖内存限制：zz- 前缀按字母序后加载，覆盖基础镜像的 256M；
+# WMS 万行级 xlsx 导出时 phpspreadsheet 峰值内存较高
+RUN echo "memory_limit=512M" > /usr/local/etc/php/conf.d/zz-memory.ini
 
 WORKDIR /var/www/html
 
