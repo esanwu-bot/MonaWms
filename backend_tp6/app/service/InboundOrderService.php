@@ -411,7 +411,7 @@ class InboundOrderService
      */
     public function getStatistics(array $params = []): array
     {
-        $query = InboundOrder::query();
+        $query = InboundOrder::where('id', '>', 0);
 
         // 筛选条件
         if (isset($params['warehouse_id'])) {

@@ -3,6 +3,8 @@
 namespace app\controller;
 
 use app\BaseController;
+use app\common\Current;
+use app\common\Grant;
 use app\model\OutboundOrder;
 use app\model\OutboundOrderItem;
 use app\model\Warehouse;
@@ -30,6 +32,10 @@ class OutboundOrderController extends BaseController
             $limit = $params['limit'] ?? 15;
             
             $query = OutboundOrder::with(['warehouse', 'customer', 'operator']);
+            
+            if (Current::role() !== 'admin' && Current::grantRole() !== 'manager') {
+                $query->where('created_by', Current::idOrNull());
+            }
             
             // 搜索条件
             $searchFields = [];
@@ -123,6 +129,7 @@ class OutboundOrderController extends BaseController
     public function save(Request $request)
     {
         $data = $request->post();
+        Grant::assert('outbound:write', (int) $data['warehouse_id']);
         
         // 验证参数
         $validate = Validate::rule([
@@ -162,6 +169,7 @@ class OutboundOrderController extends BaseController
             $order->warehouse_id = $data['warehouse_id'];
             $order->customer_id = $data['customer_id'];
             $order->operator_id = $this->getCurrentUserId($request);
+            $order->created_by = Current::idOrNull();
             $order->status = OutboundOrder::STATUS_PENDING;
             $order->type = $data['type'];
             $order->priority = $data['priority'] ?? OutboundOrder::PRIORITY_NORMAL;
@@ -237,6 +245,8 @@ class OutboundOrderController extends BaseController
                 return Response::notFound('出库单不存在');
             }
             
+            Grant::assert('outbound:write', (int) $order->warehouse_id);
+            
             // 只有待处理状态的订单才能修改基本信息
             if ($order->status != OutboundOrder::STATUS_PENDING && 
                 isset($data['warehouse_id'], $data['customer_id'], $data['type'], $data['expected_date'])) {
@@ -292,6 +302,8 @@ class OutboundOrderController extends BaseController
                 return Response::notFound('出库单不存在');
             }
             
+            Grant::assert('outbound:write', (int) $order->warehouse_id);
+            
             if (!$order->canDelete()) {
                 return Response::error('出库单已开始拣货，无法删除');
             }
@@ -325,6 +337,8 @@ class OutboundOrderController extends BaseController
             if (!$order) {
                 return Response::notFound('出库单不存在');
             }
+            
+            Grant::assert('outbound:write', (int) $order->warehouse_id);
             
             $order->startPicking();
             
@@ -364,6 +378,8 @@ class OutboundOrderController extends BaseController
             if (!$order) {
                 return Response::notFound('出库单不存在');
             }
+            
+            Grant::assert('outbound:write', (int) $order->warehouse_id);
             
             if ($order->status != OutboundOrder::STATUS_PICKING) {
                 return Response::error('出库单状态不正确，无法拣货');
@@ -415,6 +431,8 @@ class OutboundOrderController extends BaseController
                 return Response::notFound('出库单不存在');
             }
             
+            Grant::assert('outbound:write', (int) $order->warehouse_id);
+            
             $order->pack();
             
             return Response::success([
@@ -450,6 +468,8 @@ class OutboundOrderController extends BaseController
             if (!$order) {
                 return Response::notFound('出库单不存在');
             }
+            
+            Grant::assert('outbound:post', (int) $order->warehouse_id);
             
             $order->ship($data['tracking_number'] ?? null);
             
@@ -749,6 +769,8 @@ class OutboundOrderController extends BaseController
                 return Response::notFound('出库单不存在');
             }
             
+            Grant::assert('outbound:write', (int) $order->warehouse_id);
+            
             $order->cancel($data['reason']);
             
             return Response::success([
@@ -770,7 +792,7 @@ class OutboundOrderController extends BaseController
         try {
             $params = $request->get();
             
-            $query = OutboundOrder::query();
+            $query = OutboundOrder::where('id', '>', 0);
             
             // 筛选条件
             if (!empty($params['warehouse_id'])) {

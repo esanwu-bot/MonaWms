@@ -3,6 +3,7 @@
 namespace app\controller;
 
 use app\BaseController;
+use app\common\Grant;
 use app\model\Product;
 use app\model\Category;
 use app\common\library\Response;
@@ -100,6 +101,7 @@ class ProductController extends BaseController
      */
     public function save(Request $request)
     {
+        Grant::assert('product:write');
         $data = $request->post();
         
         // 验证参数
@@ -184,6 +186,7 @@ class ProductController extends BaseController
      */
     public function update(Request $request, $id)
     {
+        Grant::assert('product:write');
         $data = $request->put();
         
         // 验证参数
@@ -270,6 +273,7 @@ class ProductController extends BaseController
      */
     public function delete(Request $request, $id)
     {
+        Grant::assert('product:write');
         try {
             $product = Product::find($id);
             

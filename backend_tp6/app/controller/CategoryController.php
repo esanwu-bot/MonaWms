@@ -3,6 +3,7 @@
 namespace app\controller;
 
 use app\BaseController;
+use app\common\Grant;
 use app\model\Category;
 use app\common\library\Response;
 use think\Request;
@@ -111,6 +112,7 @@ class CategoryController extends BaseController
      */
     public function save(Request $request)
     {
+        Grant::assert('category:write');
         try {
             $data = $request->post();
             
@@ -163,6 +165,7 @@ class CategoryController extends BaseController
      */
     public function update(Request $request, $id)
     {
+        Grant::assert('category:write');
         try {
             $category = Category::find($id);
             
@@ -204,6 +207,7 @@ class CategoryController extends BaseController
      */
     public function delete($id)
     {
+        Grant::assert('category:write');
         try {
             $category = Category::find($id);
             

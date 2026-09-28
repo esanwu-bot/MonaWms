@@ -79,7 +79,7 @@ Route::group('api', function () {
             Route::post('adjust', 'InventoryController/adjust');    // 库存调整
             Route::post('reserve', 'InventoryController/reserve');  // 预留库存
             Route::post('release', 'InventoryController/release');  // 释放预留
-        });
+        })->middleware(['warehouse_scope']);
         
         // 入库订单管理
         Route::group('inbound-orders', function () {
@@ -93,7 +93,7 @@ Route::group('api', function () {
             Route::post(':id/receive', 'InboundOrderController/receive'); // 收货
             Route::post(':id/complete', 'InboundOrderController/complete'); // 完成入库
             Route::post(':id/cancel', 'InboundOrderController/cancel'); // 取消入库
-        });
+        })->middleware(['warehouse_scope']);
         
         // 出库订单管理
         Route::group('outbound-orders', function () {
@@ -109,7 +109,7 @@ Route::group('api', function () {
             Route::post(':id/ship', 'OutboundOrderController/ship'); // 发货
             Route::post(':id/deliver', 'OutboundOrderController/deliver'); // 确认送达
             Route::post(':id/cancel', 'OutboundOrderController/cancel'); // 取消出库
-        });
+        })->middleware(['warehouse_scope']);
         
         // 库存事务记录
         Route::group('inventory-transactions', function () {
@@ -122,7 +122,7 @@ Route::group('api', function () {
             Route::get('location/:location_id/history', 'InventoryTransactionController/locationHistory'); // 库位历史
             Route::get('operator/:operator_id/history', 'InventoryTransactionController/operatorHistory'); // 操作员历史
             Route::get('product/:product_id/flow', 'InventoryTransactionController/productFlow'); // 产品流水
-        });
+        })->middleware(['warehouse_scope']);
         
         // 供应商管理
         Route::group('suppliers', function () {
@@ -174,7 +174,7 @@ Route::group('api', function () {
             Route::get(':id', 'LocationController/read');           // 库位详情
             Route::put(':id', 'LocationController/update');         // 更新库位
             Route::delete(':id', 'LocationController/delete');      // 删除库位
-        });
+        })->middleware(['warehouse_scope']);
         
         // 用户管理
         Route::group('users', function () {
@@ -249,7 +249,26 @@ Route::group('api', function () {
             Route::post(':id/process', 'ScrapController/process');      // 处理报废申请
         });
         
-    })->middleware(['auth']); // 需要认证的路由组
+        // 账号 × 仓库 授权管理（仅系统管理员，Service 内二次校验 grant:manage）
+        Route::group('grants', function () {
+            Route::get('matrix', 'GrantController/matrix');             // 授权矩阵
+            Route::get('warehouse/:id', 'GrantController/byWarehouse'); // 某仓库已授权账号
+            Route::get('user/:id', 'GrantController/byUser');           // 某账号被授权的仓库
+            Route::post('grant', 'GrantController/grant');              // 授予/重新授予
+            Route::post('revoke', 'GrantController/revoke');            // 撤销
+            Route::post('change-role', 'GrantController/changeRole');   // 改仓库角色
+            Route::post('batch', 'GrantController/batch');              // 批量授权
+            Route::post('revoke-vendor', 'GrantController/revokeVendor'); // 按代维方批量撤销
+        });
+        
+        // 操作日志（只读审计）
+        Route::group('logs', function () {
+            Route::get('', 'OperationLogController/index');             // 日志列表
+            Route::get('trace', 'OperationLogController/trace');        // 批次追溯
+            Route::get(':id', 'OperationLogController/read');           // 日志详情
+        });
+        
+    })->middleware(['auth', 'operation_log']); // 需要认证的路由组
     
 })->middleware(['cors']); // API路由组，添加CORS中间件
 

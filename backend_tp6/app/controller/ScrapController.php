@@ -328,7 +328,7 @@ class ScrapController extends BaseController
         try {
             $dateRange = $request->param('date_range', []);
             
-            $query = ScrapApplication::query();
+            $query = ScrapApplication::where('id', '>', 0);
             
             // 时间范围筛选
             if ($dateRange && is_array($dateRange) && count($dateRange) == 2) {
@@ -367,7 +367,7 @@ class ScrapController extends BaseController
         try {
             $keyword = $request->param('keyword', '');
             
-            $query = Product::query();
+            $query = Product::where('id', '>', 0);
             
             // 排除已有待处理报废申请的设备
             $excludeDeviceIds = ScrapApplication::whereIn('status', [

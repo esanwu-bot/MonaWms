@@ -3,6 +3,8 @@
 namespace app\controller;
 
 use app\BaseController;
+use app\common\Current;
+use app\common\Grant;
 use app\model\InboundOrder;
 use app\model\InboundOrderItem;
 use app\model\Warehouse;
@@ -34,6 +36,10 @@ class InboundOrderController extends BaseController
             $limit = $params['limit'] ?? 15;
             
             $query = InboundOrder::with(['warehouse', 'supplier', 'operator']);
+            
+            if (Current::role() !== 'admin' && Current::grantRole() !== 'manager') {
+                $query->where('created_by', Current::idOrNull());
+            }
             
             // 搜索条件
             $searchFields = [];
@@ -209,6 +215,8 @@ class InboundOrderController extends BaseController
     public function save(Request $request)
     {
         $data = $request->post();
+        file_put_contents('C:/Users/ADMINI~1/AppData/Local/Temp/opencode/inbound_debug.json', json_encode($data, JSON_UNESCAPED_UNICODE));
+        Grant::assert('inbound:write', (int) $data['warehouse_id']);
         
         // 验证参数
         $validate = Validate::rule([
@@ -249,6 +257,7 @@ class InboundOrderController extends BaseController
             $order->warehouse_id = $data['warehouse_id'];
             $order->supplier_id = $data['supplier_id'];
             $order->operator_id = $this->getCurrentUserId($request);
+            $order->created_by = Current::idOrNull();
             $order->status = InboundOrder::STATUS_PENDING;
             $order->type = $data['type'];
             $order->expected_date = $data['expected_date'];
@@ -641,6 +650,8 @@ class InboundOrderController extends BaseController
                 return Response::notFound('入库单不存在');
             }
             
+            Grant::assert('inbound:write', (int) $order->warehouse_id);
+            
             // 只有待处理状态的订单才能修改
             if ($order->status != InboundOrder::STATUS_PENDING) {
                 return Response::error('只有待处理状态的入库单才能修改');
@@ -695,6 +706,8 @@ class InboundOrderController extends BaseController
                 return Response::notFound('入库单不存在');
             }
             
+            Grant::assert('inbound:write', (int) $order->warehouse_id);
+            
             if (!$order->canDelete()) {
                 return Response::error('入库单已开始收货，无法删除');
             }
@@ -728,6 +741,8 @@ class InboundOrderController extends BaseController
             if (!$order) {
                 return Response::notFound('入库单不存在');
             }
+            
+            Grant::assert('inbound:write', (int) $order->warehouse_id);
             
             $order->startReceiving();
             
@@ -768,6 +783,8 @@ class InboundOrderController extends BaseController
             if (!$order) {
                 return Response::notFound('入库单不存在');
             }
+            
+            Grant::assert('inbound:write', (int) $order->warehouse_id);
             
             if ($order->status != InboundOrder::STATUS_RECEIVING) {
                 return Response::error('入库单状态不正确，无法收货');
@@ -820,6 +837,8 @@ class InboundOrderController extends BaseController
                 return Response::notFound('入库单不存在');
             }
             
+            Grant::assert('inbound:post', (int) $order->warehouse_id);
+            
             $order->complete();
             
             return Response::success([
@@ -857,6 +876,8 @@ class InboundOrderController extends BaseController
                 return Response::notFound('入库单不存在');
             }
             
+            Grant::assert('inbound:write', (int) $order->warehouse_id);
+            
             $order->cancel($data['reason']);
             
             return Response::success([
@@ -878,7 +899,7 @@ class InboundOrderController extends BaseController
         try {
             $params = $request->get();
             
-            $query = InboundOrder::query();
+            $query = InboundOrder::where('id', '>', 0);
             
             // 筛选条件
             if (!empty($params['warehouse_id'])) {

@@ -1,6 +1,7 @@
 <?php
 namespace app;
 
+use app\common\BizException;
 use think\db\exception\DataNotFoundException;
 use think\db\exception\ModelNotFoundException;
 use think\exception\Handle;
@@ -50,7 +51,15 @@ class ExceptionHandle extends Handle
      */
     public function render($request, Throwable $e): Response
     {
-        // 添加自定义异常处理机制
+        // 业务异常：统一输出 {code, message, data, trace_id}
+        if ($e instanceof BizException) {
+            return json([
+                'code'    => $e->getBizCode(),
+                'message' => $e->getMessage(),
+                'data'    => $e->getBizData(),
+                'trace_id' => $request->requestId ?? uniqid('trace_', true),
+            ], $e->getHttpStatus());
+        }
 
         // 其他错误交给系统处理
         return parent::render($request, $e);

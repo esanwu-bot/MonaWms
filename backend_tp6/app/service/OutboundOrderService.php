@@ -490,7 +490,7 @@ class OutboundOrderService
      */
     public function getStatistics(array $params = []): array
     {
-        $query = OutboundOrder::query();
+        $query = OutboundOrder::where('id', '>', 0);
 
         // 筛选条件
         if (isset($params['warehouse_id'])) {

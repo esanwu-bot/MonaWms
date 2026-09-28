@@ -3,6 +3,7 @@
 namespace app\controller;
 
 use app\BaseController;
+use app\common\Grant;
 use app\model\Customer;
 use app\common\library\Response;
 use think\Request;
@@ -57,6 +58,7 @@ class CustomerController extends BaseController
      */
     public function save(Request $request)
     {
+        Grant::assert('customer:write');
         try {
             $data = $request->post();
             
@@ -106,6 +108,7 @@ class CustomerController extends BaseController
      */
     public function update(Request $request, $id)
     {
+        Grant::assert('customer:write');
         try {
             $customer = Customer::find($id);
             
@@ -142,6 +145,7 @@ class CustomerController extends BaseController
      */
     public function delete($id)
     {
+        Grant::assert('customer:write');
         try {
             $customer = Customer::find($id);
             

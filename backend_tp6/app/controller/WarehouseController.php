@@ -3,6 +3,7 @@
 namespace app\controller;
 
 use app\BaseController;
+use app\common\Grant;
 use app\model\Warehouse;
 use app\model\User;
 use app\common\library\Response;
@@ -95,6 +96,7 @@ class WarehouseController extends BaseController
      */
     public function save(Request $request)
     {
+        Grant::assert('warehouse:write');
         $data = $request->post();
         
         // 验证参数
@@ -147,6 +149,7 @@ class WarehouseController extends BaseController
      */
     public function update(Request $request, $id)
     {
+        Grant::assert('warehouse:write');
         $data = $request->put();
         
         // 验证参数
@@ -216,6 +219,7 @@ class WarehouseController extends BaseController
      */
     public function delete(Request $request, $id)
     {
+        Grant::assert('warehouse:write');
         try {
             $warehouseService = new \app\service\WarehouseService();
             $warehouseService->delete($id);

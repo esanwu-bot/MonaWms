@@ -40,10 +40,14 @@ class User extends Model
     protected $field = [
         'id',
         'username',
+        'real_name',
         'email',
+        'phone',
         'password_hash',
         'role',
         'status',
+        'last_login_at',
+        'last_login_time',
         'created_at',
         'updated_at'
     ];
@@ -101,6 +105,21 @@ class User extends Model
         return $roles[$data['role']] ?? '未知';
     }
     
+    /**
+     * 获取用户角色中文名
+     */
+    public function getRoleText()
+    {
+        $roles = [
+            self::ROLE_ADMIN => '管理员',
+            self::ROLE_MANAGER => '经理',
+            self::ROLE_OPERATOR => '操作员',
+            self::ROLE_VIEWER => '查看员'
+        ];
+
+        return $roles[$this->role] ?? '未知';
+    }
+
     /**
      * 获取用户状态中文名
      */

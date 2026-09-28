@@ -3,6 +3,7 @@
 namespace app\controller;
 
 use app\BaseController;
+use app\common\Grant;
 use app\model\User;
 use app\common\library\Response;
 use think\Request;
@@ -23,7 +24,7 @@ class UserController extends BaseController
             $page = $params['page'] ?? 1;
             $limit = $params['limit'] ?? 15;
             
-            $query = User::query();
+            $query = User::where('id', '>', 0);
             
             // 搜索条件
             if (!empty($params['username'])) {
@@ -62,6 +63,7 @@ class UserController extends BaseController
      */
     public function save(Request $request)
     {
+        Grant::assert('user:manage');
         try {
             $data = $request->post();
             
@@ -119,6 +121,7 @@ class UserController extends BaseController
      */
     public function update(Request $request, $id)
     {
+        Grant::assert('user:manage');
         try {
             $user = User::find($id);
             
@@ -161,6 +164,7 @@ class UserController extends BaseController
      */
     public function delete($id)
     {
+        Grant::assert('user:manage');
         try {
             $user = User::find($id);
             
@@ -187,6 +191,7 @@ class UserController extends BaseController
      */
     public function changeStatus(Request $request, $id)
     {
+        Grant::assert('user:manage');
         try {
             $user = User::find($id);
             
@@ -224,6 +229,7 @@ class UserController extends BaseController
      */
     public function changePassword(Request $request, $id)
     {
+        Grant::assert('user:manage');
         try {
             $user = User::find($id);
             

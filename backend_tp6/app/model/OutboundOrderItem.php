@@ -241,6 +241,27 @@ class OutboundOrderItem extends Model
     }
     
     /**
+     * 获取剩余数量
+     */
+    public function getRemainingQuantity()
+    {
+        return (int) ($this->quantity ?? 0) - (int) ($this->picked_quantity ?? 0);
+    }
+
+    /**
+     * 获取完成率
+     */
+    public function getCompletionRate()
+    {
+        $quantity = (int) ($this->quantity ?? 0);
+        if ($quantity <= 0) {
+            return 0;
+        }
+
+        return round(((int) ($this->picked_quantity ?? 0) / $quantity) * 100, 2);
+    }
+
+    /**
      * 获取拣货状态中文名
      */
     public function getPickStatusText()

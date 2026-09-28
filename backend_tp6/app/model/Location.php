@@ -36,10 +36,19 @@ class Location extends Model
     protected $field = [
         'id',
         'shelf_id',
+        'warehouse_id',
+        'zone_id',
         'code',
         'name',
         'barcode',
         'description',
+        'type',
+        'capacity',
+        'length',
+        'width',
+        'height',
+        'weight_limit',
+        'status',
         'created_at'
     ];
     
@@ -49,6 +58,22 @@ class Location extends Model
     public function shelf()
     {
         return $this->belongsTo(Shelf::class, 'shelf_id');
+    }
+    
+    /**
+     * 关联仓库
+     */
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class, 'warehouse_id');
+    }
+    
+    /**
+     * 关联库区
+     */
+    public function zone()
+    {
+        return $this->belongsTo(Zone::class, 'zone_id');
     }
     
     /**
@@ -102,7 +127,7 @@ class Location extends Model
     /**
      * 检查库位是否为空
      */
-    public function isEmpty()
+    public function isEmpty(): bool
     {
         return $this->inventory()->count() === 0;
     }

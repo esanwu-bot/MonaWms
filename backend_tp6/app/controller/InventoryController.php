@@ -3,6 +3,8 @@
 namespace app\controller;
 
 use app\BaseController;
+use app\common\Current;
+use app\common\Grant;
 use app\model\Inventory;
 use app\model\Product;
 use app\model\Location;
@@ -106,6 +108,7 @@ class InventoryController extends BaseController
      */
     public function adjust(Request $request)
     {
+        Grant::assert('inventory:adjust', Current::warehouseIdOrNull());
         $data = $request->post();
         
         // 验证参数
@@ -206,6 +209,7 @@ class InventoryController extends BaseController
      */
     public function reserve(Request $request)
     {
+        Grant::assert('inventory:adjust', Current::warehouseIdOrNull());
         $data = $request->post();
         
         // 验证参数
@@ -267,6 +271,7 @@ class InventoryController extends BaseController
      */
     public function release(Request $request)
     {
+        Grant::assert('inventory:adjust', Current::warehouseIdOrNull());
         $data = $request->post();
         
         // 验证参数

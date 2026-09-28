@@ -209,7 +209,7 @@ class InventoryTransactionService
      */
     public function getStatistics(array $params = []): array
     {
-        $query = InventoryTransaction::query();
+        $query = InventoryTransaction::where('id', '>', 0);
 
         // 筛选条件
         if (isset($params['product_id'])) {
@@ -371,7 +371,7 @@ class InventoryTransactionService
         $startDate = date('Y-m-d', strtotime("-{$days} days"));
         $endDate = date('Y-m-d');
 
-        $query = InventoryTransaction::query()
+        $query = InventoryTransaction::where('id', '>', 0)
             ->where('created_time', '>=', $startDate . ' 00:00:00')
             ->where('created_time', '<=', $endDate . ' 23:59:59');
 

@@ -5,6 +5,10 @@ return [
     'alias'    => [
         // 认证中间件
         'auth' => app\middleware\Auth::class,
+        // 仓库授权作用域中间件
+        'warehouse_scope' => app\middleware\WarehouseScope::class,
+        // 操作日志中间件
+        'operation_log' => app\middleware\OperationLog::class,
         // 权限中间件
         'permission' => app\middleware\Permission::class,
         // CORS跨域中间件

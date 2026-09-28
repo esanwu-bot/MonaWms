@@ -3,6 +3,7 @@
 namespace app\middleware;
 
 use app\common\library\Jwt;
+use app\common\Current;
 use think\Request;
 use think\Response;
 
@@ -54,7 +55,14 @@ class Auth
         
         // 将用户信息存储到请求中
         $request->user = $payload;
-        
+
+        // 注入请求级上下文，供 Grant / WarehouseScoped 使用
+        Current::setUser(
+            (int) ($payload['user_id'] ?? 0),
+            (string) ($payload['role'] ?? 'operator'),
+            $payload['username'] ?? null
+        );
+
         return $next($request);
     }
 }

@@ -100,6 +100,21 @@ class InboundOrder extends Model
     }
     
     /**
+     * 获取类型中文名
+     */
+    public function getTypeText()
+    {
+        $types = [
+            self::TYPE_PURCHASE => '采购入库',
+            self::TYPE_RETURN => '退货入库',
+            self::TYPE_TRANSFER => '调拨入库',
+            self::TYPE_OTHER => '其他入库'
+        ];
+
+        return $types[$this->type] ?? '未知';
+    }
+
+    /**
      * 关联仓库
      */
     public function warehouse()

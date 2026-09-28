@@ -11,6 +11,7 @@ use think\exception\HttpResponseException;
 use think\db\exception\DataNotFoundException;
 use think\db\exception\ModelNotFoundException;
 use think\db\exception\DbException;
+use app\common\BizException;
 use app\common\library\Response as ApiResponse;
 use think\facade\Log;
 use think\facade\Env;
@@ -61,6 +62,16 @@ class ExceptionHandle extends Handle
         // 添加自定义异常处理机制
         if ($e instanceof HttpResponseException) {
             return $e->getResponse();
+        }
+
+        // 业务异常（权限/授权等）：HTTP 状态与业务码分离
+        if ($e instanceof BizException) {
+            return json([
+                'code'     => $e->getBizCode(),
+                'message'  => $e->getMessage(),
+                'data'     => $e->getBizData(),
+                'trace_id' => $request->requestId ?? uniqid('trace_', true),
+            ], $e->getHttpStatus());
         }
 
         // 验证异常

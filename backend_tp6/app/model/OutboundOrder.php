@@ -129,6 +129,36 @@ class OutboundOrder extends Model
     }
     
     /**
+     * 获取类型中文名
+     */
+    public function getTypeText()
+    {
+        $types = [
+            self::TYPE_SALE => '销售出库',
+            self::TYPE_TRANSFER => '调拨出库',
+            self::TYPE_RETURN => '退货出库',
+            self::TYPE_OTHER => '其他出库'
+        ];
+
+        return $types[$this->type] ?? '未知';
+    }
+
+    /**
+     * 获取优先级中文名
+     */
+    public function getPriorityText()
+    {
+        $priorities = [
+            self::PRIORITY_LOW => '低',
+            self::PRIORITY_NORMAL => '普通',
+            self::PRIORITY_HIGH => '高',
+            self::PRIORITY_URGENT => '紧急'
+        ];
+
+        return $priorities[$this->priority] ?? '未知';
+    }
+
+    /**
      * 关联仓库
      */
     public function warehouse()

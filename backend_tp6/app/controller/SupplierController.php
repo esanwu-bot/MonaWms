@@ -3,6 +3,7 @@
 namespace app\controller;
 
 use app\BaseController;
+use app\common\Grant;
 use app\model\Supplier;
 use app\common\library\Response;
 use think\Request;
@@ -57,6 +58,7 @@ class SupplierController extends BaseController
      */
     public function save(Request $request)
     {
+        Grant::assert('supplier:write');
         try {
             $data = $request->post();
             
@@ -106,6 +108,7 @@ class SupplierController extends BaseController
      */
     public function update(Request $request, $id)
     {
+        Grant::assert('supplier:write');
         try {
             $supplier = Supplier::find($id);
             
@@ -142,6 +145,7 @@ class SupplierController extends BaseController
      */
     public function delete($id)
     {
+        Grant::assert('supplier:write');
         try {
             $supplier = Supplier::find($id);
             

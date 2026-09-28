@@ -250,6 +250,27 @@ class Inventory extends Model
     }
     
     /**
+     * 获取可用库存数量
+     */
+    public function getAvailableQuantity(): int
+    {
+        return (int) ($this->quantity ?? 0) - (int) ($this->reserved_quantity ?? 0);
+    }
+
+    /**
+     * 获取距过期天数
+     */
+    public function getDaysToExpiry()
+    {
+        if (empty($this->expiry_date)) {
+            return null;
+        }
+
+        $diff = strtotime($this->expiry_date) - strtotime(date('Y-m-d'));
+        return (int) floor($diff / 86400);
+    }
+
+    /**
      * 检查是否即将过期
      */
     public function isExpiringSoon($days = 30)
