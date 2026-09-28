@@ -44,6 +44,7 @@ class OutboundOrder extends Model
         'warehouse_id',
         'customer_id',
         'operator_id',
+        'created_by',
         'status',
         'type',
         'priority',
@@ -140,7 +141,7 @@ class OutboundOrder extends Model
             self::TYPE_OTHER => '其他出库'
         ];
 
-        return $types[$this->type] ?? '未知';
+        return $types[$this->getData('type')] ?? '未知';
     }
 
     /**

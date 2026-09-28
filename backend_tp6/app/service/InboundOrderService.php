@@ -167,7 +167,7 @@ class InboundOrderService
 
             Db::commit();
             return $this->getDetail($order->id);
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             throw new ValidateException($e->getMessage());
         }
@@ -221,7 +221,7 @@ class InboundOrderService
 
             Db::commit();
             return $this->getDetail($id);
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             throw new ValidateException($e->getMessage());
         }
@@ -252,7 +252,7 @@ class InboundOrderService
 
             Db::commit();
             return true;
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             throw new ValidateException($e->getMessage());
         }
@@ -337,7 +337,7 @@ class InboundOrderService
 
             Db::commit();
             return true;
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             throw new ValidateException($e->getMessage());
         }

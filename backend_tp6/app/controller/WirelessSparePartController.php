@@ -78,7 +78,7 @@ class WirelessSparePartController extends BaseController
             
             return Response::paginate($list, $result->total(), $page, $limit);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取无线备件列表失败：' . $e->getMessage());
         }
     }
@@ -99,7 +99,7 @@ class WirelessSparePartController extends BaseController
             
             return Response::success($data);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取无线备件详情失败：' . $e->getMessage());
         }
     }
@@ -147,7 +147,7 @@ class WirelessSparePartController extends BaseController
             
             return Response::success($result, '创建无线备件记录成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('创建无线备件记录失败：' . $e->getMessage());
         }
     }
@@ -222,7 +222,7 @@ class WirelessSparePartController extends BaseController
             
             return Response::success($result, '更新无线备件记录成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('更新无线备件记录失败：' . $e->getMessage());
         }
     }
@@ -243,7 +243,7 @@ class WirelessSparePartController extends BaseController
             
             return Response::success([], '删除无线备件记录成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('删除无线备件记录失败：' . $e->getMessage());
         }
     }
@@ -296,7 +296,7 @@ class WirelessSparePartController extends BaseController
                     $item->save();
                     
                     $successCount++;
-                } catch (\Exception $e) {
+                } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
                     $failures[] = [
                         'data' => $partData,
                         'reason' => $e->getMessage()
@@ -313,7 +313,7 @@ class WirelessSparePartController extends BaseController
                 'failures' => $failures
             ], '批量导入完成');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('批量导入失败：' . $e->getMessage());
         }
@@ -356,7 +356,7 @@ class WirelessSparePartController extends BaseController
             
             return Response::success($exportData, '导出成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('导出失败：' . $e->getMessage());
         }
     }
@@ -396,7 +396,7 @@ class WirelessSparePartController extends BaseController
                 'by_project' => $byProject
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取统计数据失败：' . $e->getMessage());
         }
     }

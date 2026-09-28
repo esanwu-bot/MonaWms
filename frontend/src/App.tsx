@@ -28,6 +28,8 @@ import OutboundPage from './pages/OutboundPage';
 // ReportsPage已删除
 import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
+import GrantMatrixPage from './pages/GrantMatrixPage';
+import OperationLogPage from './pages/OperationLogPage';
 
 import WirelessSparePartsPage from './pages/WirelessSparePartsPage';
 import BOMPage from './pages/BOMPage';
@@ -150,7 +152,11 @@ function App() {
                 <Route path="dictionary" element={<DictionaryPage />} />
                 
                 {/* 报表分析页面已删除 */}
-                
+
+                {/* P7 权限与审计 */}
+                <Route path="operation-logs" element={<OperationLogPage />} />
+                <Route path="grant-matrix" element={<GrantMatrixPage />} />
+
                 {/* 系统设置 */}
                 <Route path="settings" element={<SettingsPage />} />
                 

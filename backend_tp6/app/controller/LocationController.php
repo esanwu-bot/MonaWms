@@ -59,7 +59,7 @@ class LocationController extends BaseController
             
             return Response::success($result, '获取库位列表成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取库位列表失败: ' . $e->getMessage());
         }
     }
@@ -94,7 +94,7 @@ class LocationController extends BaseController
             
             return Response::success($location, '创建库位成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('创建库位失败: ' . $e->getMessage());
         }
     }
@@ -113,7 +113,7 @@ class LocationController extends BaseController
             
             return Response::success($location, '获取库位详情成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取库位详情失败: ' . $e->getMessage());
         }
     }
@@ -154,7 +154,7 @@ class LocationController extends BaseController
             
             return Response::success($location, '更新库位成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('更新库位失败: ' . $e->getMessage());
         }
     }
@@ -181,7 +181,7 @@ class LocationController extends BaseController
             
             return Response::success(null, '删除库位成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('删除库位失败: ' . $e->getMessage());
         }
     }
@@ -221,7 +221,7 @@ class LocationController extends BaseController
             
             return Response::success($locations, '获取库位选项成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取库位选项失败: ' . $e->getMessage());
         }
     }

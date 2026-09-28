@@ -14,6 +14,7 @@ export interface ScrapApplication {
   reason: string;
   reasonType: 'damage' | 'obsolete' | 'expired' | 'other';
   description: string;
+  images?: string[];
   estimatedLoss: number;
   actualLoss?: number;
   applicant: {
@@ -42,6 +43,7 @@ export interface CreateScrapRequest {
   reasonType: 'damage' | 'obsolete' | 'expired' | 'other';
   description: string;
   estimatedLoss: number;
+  images?: File[];
 }
 
 export interface ScrapListParams {
@@ -90,38 +92,50 @@ export interface ProcessScrapRequest {
 export const scrapService = {
   // 获取报废申请列表
   getScrapApplications: (params: ScrapListParams = {}) => {
-    return api.get('/api/scrap', { params });
+    return api.get('/scrap', { params });
   },
 
   // 获取报废申请详情
   getScrapApplication: (id: string) => {
-    return api.get(`/api/scrap/${id}`);
+    return api.get(`/scrap/${id}`);
   },
 
-  // 创建报废申请
+  // 创建报废申请（支持多图上传）
   createScrapApplication: (data: CreateScrapRequest) => {
-    return api.post('/api/scrap', data);
+    const formData = new FormData();
+    formData.append('device_id', String(data.deviceId));
+    formData.append('reason_type', data.reasonType);
+    formData.append('description', data.description);
+    formData.append('estimated_loss', String(data.estimatedLoss));
+
+    if (data.images && data.images.length > 0) {
+      data.images.forEach((file) => {
+        formData.append('images', file);
+      });
+    }
+
+    return api.postForm('/scrap', formData);
   },
 
   // 审核报废申请
   approveScrapApplication: (id: string, data: ApproveScrapRequest) => {
-    return api.post(`/api/scrap/${id}/approve`, data);
+    return api.post(`/scrap/${id}/approve`, data);
   },
 
   // 处理报废申请
   processScrapApplication: (id: string, data: ProcessScrapRequest) => {
-    return api.post(`/api/scrap/${id}/process`, data);
+    return api.post(`/scrap/${id}/process`, data);
   },
 
   // 获取报废统计数据
   getScrapStatistics: (dateRange?: [string, string]) => {
     const params = dateRange ? { date_range: dateRange } : {};
-    return api.get('/api/scrap/statistics', { params });
+    return api.get('/scrap/statistics', { params });
   },
 
   // 获取可报废的设备列表
   getAvailableDevices: (keyword?: string) => {
     const params = keyword ? { keyword } : {};
-    return api.get('/api/scrap/available-devices', { params });
+    return api.get('/scrap/available-devices', { params });
   },
 };

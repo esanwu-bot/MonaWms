@@ -67,7 +67,7 @@ class DeviceController extends BaseController
                     ]
                 ]
             ]);
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return json([
                 'code' => 500,
                 'message' => '获取失败：' . $e->getMessage()
@@ -107,7 +107,7 @@ class DeviceController extends BaseController
             ]);
         } catch (ValidateException $e) {
             return json(['code' => 400, 'message' => $e->getError()]);
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return json(['code' => 500, 'message' => '创建失败：' . $e->getMessage()]);
         }
     }
@@ -141,7 +141,7 @@ class DeviceController extends BaseController
                 'message' => '更新成功',
                 'data' => $device
             ]);
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return json(['code' => 500, 'message' => '更新失败：' . $e->getMessage()]);
         }
     }
@@ -163,7 +163,7 @@ class DeviceController extends BaseController
                 'code' => 200,
                 'message' => '删除成功'
             ]);
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return json(['code' => 500, 'message' => '删除失败：' . $e->getMessage()]);
         }
     }
@@ -255,11 +255,11 @@ class DeviceController extends BaseController
                         'total_count' => count($devices)
                     ]
                 ]);
-            } catch (\Exception $e) {
+            } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
                 Db::rollback();
                 throw $e;
             }
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return json([
                 'code' => 500,
                 'message' => '导入失败：' . $e->getMessage()
@@ -341,7 +341,7 @@ class DeviceController extends BaseController
             
             $writer->save('php://output');
             exit;
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return json([
                 'code' => 500,
                 'message' => '模板下载失败：' . $e->getMessage()
@@ -384,7 +384,7 @@ class DeviceController extends BaseController
                     'scrapped' => $scrapped
                 ]
             ]);
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return json([
                 'code' => 500,
                 'message' => '获取失败：' . $e->getMessage()

@@ -82,7 +82,7 @@ class AuthController extends BaseController
                 ]
             ], '登录成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('登录失败：' . $e->getMessage());
         }
     }
@@ -128,7 +128,7 @@ class AuthController extends BaseController
                 ]
             ], '注册成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('注册失败：' . $e->getMessage());
         }
     }
@@ -159,7 +159,7 @@ class AuthController extends BaseController
                 ]
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取用户信息失败：' . $e->getMessage());
         }
     }
@@ -223,7 +223,7 @@ class AuthController extends BaseController
                 ]
             ], '更新成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('更新失败：' . $e->getMessage());
         }
     }
@@ -283,7 +283,7 @@ class AuthController extends BaseController
                 'refreshToken' => $newRefreshToken
             ], 'Token刷新成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('Token刷新失败：' . $e->getMessage());
         }
     }
@@ -311,7 +311,7 @@ class AuthController extends BaseController
                 return User::find($userId);
             }
             return null;
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return null;
         }
     }

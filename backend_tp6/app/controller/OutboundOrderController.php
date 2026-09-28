@@ -97,7 +97,7 @@ class OutboundOrderController extends BaseController
             
             return Response::paginate($list, $result->total(), $page, $limit);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取出库单列表失败：' . $e->getMessage());
         }
     }
@@ -118,7 +118,7 @@ class OutboundOrderController extends BaseController
             
             return Response::success($data);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取出库单详情失败：' . $e->getMessage());
         }
     }
@@ -131,8 +131,8 @@ class OutboundOrderController extends BaseController
         $data = $request->post();
         Grant::assert('outbound:write', (int) $data['warehouse_id']);
         
-        // 验证参数
-        $validate = Validate::rule([
+        // 验证参数：直接实例化 think\Validate，避免门面单例导致 items.* 通配规则失效
+        $validate = new \think\Validate([
             'warehouse_id' => 'require|integer',
             'customer_id' => 'require|integer',
             'type' => 'require|in:sale,return,transfer,other',
@@ -210,7 +210,7 @@ class OutboundOrderController extends BaseController
                 'status_text' => $order->status_text
             ], '出库单创建成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('创建出库单失败：' . $e->getMessage());
         }
@@ -285,7 +285,7 @@ class OutboundOrderController extends BaseController
                 'status_text' => $order->status_text
             ], '出库单更新成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('更新出库单失败：' . $e->getMessage());
         }
     }
@@ -320,7 +320,7 @@ class OutboundOrderController extends BaseController
             
             return Response::success([], '出库单删除成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('删除出库单失败：' . $e->getMessage());
         }
@@ -348,7 +348,7 @@ class OutboundOrderController extends BaseController
                 'status_text' => $order->status_text
             ], '开始拣货成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('开始拣货失败：' . $e->getMessage());
         }
     }
@@ -414,7 +414,7 @@ class OutboundOrderController extends BaseController
                 'order_status_text' => $order->status_text
             ], '拣货成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('拣货失败：' . $e->getMessage());
         }
     }
@@ -441,7 +441,7 @@ class OutboundOrderController extends BaseController
                 'status_text' => $order->status_text
             ], '打包完成');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('打包失败：' . $e->getMessage());
         }
     }
@@ -481,7 +481,7 @@ class OutboundOrderController extends BaseController
                 'tracking_number' => $order->tracking_number
             ], '发货成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('发货失败：' . $e->getMessage());
         }
     }
@@ -583,7 +583,7 @@ class OutboundOrderController extends BaseController
                     ];
                     $successCount++;
                     
-                } catch (\Exception $e) {
+                } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
                     $results[] = [
                         'order_id' => $orderId,
                         'order_number' => $order->order_number ?? '',
@@ -603,7 +603,7 @@ class OutboundOrderController extends BaseController
                 'results' => $results
             ], "批量拣货完成，成功：{$successCount}个，失败：{$failCount}个");
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('批量拣货失败：' . $e->getMessage());
         }
@@ -695,7 +695,7 @@ class OutboundOrderController extends BaseController
                     ];
                     $successCount++;
                     
-                } catch (\Exception $e) {
+                } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
                     $results[] = [
                         'order_id' => $orderId,
                         'order_number' => $order->order_number ?? '',
@@ -715,7 +715,7 @@ class OutboundOrderController extends BaseController
                 'results' => $results
             ], "批量完成拣货，成功：{$successCount}个，失败：{$failCount}个");
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('批量完成拣货失败：' . $e->getMessage());
         }
@@ -741,7 +741,7 @@ class OutboundOrderController extends BaseController
                 'status_text' => $order->status_text
             ], '确认送达成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('确认送达失败：' . $e->getMessage());
         }
     }
@@ -779,7 +779,7 @@ class OutboundOrderController extends BaseController
                 'status_text' => $order->status_text
             ], '出库单取消成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('取消出库单失败：' . $e->getMessage());
         }
     }
@@ -815,7 +815,7 @@ class OutboundOrderController extends BaseController
             
             return Response::success($statistics);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取统计信息失败：' . $e->getMessage());
         }
     }

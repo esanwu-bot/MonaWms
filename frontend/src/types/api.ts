@@ -6,15 +6,17 @@ export interface ApiResponse<T = any> {
   timestamp: string;
 }
 
+export interface Pagination {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
 export interface PaginatedResponse<T = any> extends ApiResponse<T> {
-  pagination: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
+  pagination: Pagination;
 }
 
 export interface ErrorResponse {
@@ -80,6 +82,8 @@ export interface Warehouse {
   status_text: string;
   created_at: string;
   updated_at?: string;
+  // P7 仓库授权角色（仅前端从授权列表转换而来）
+  grant_role?: GrantRole;
   statistics?: {
     zones_count: number;
     products_count: number;
@@ -542,4 +546,74 @@ export interface QueryByBarcodeResponse {
   info: SerialNumber | Product;
   product?: Product;
   status_text: string;
+}
+
+// P7 仓库授权类型
+export type GrantRole = 'manager' | 'operator';
+
+export interface WarehouseGrant {
+  id?: number;
+  user_id?: number;
+  username?: string;
+  global_role?: string;
+  warehouse_id: number;
+  warehouse_code?: string;
+  warehouse_name?: string;
+  grant_role: GrantRole;
+  status: 'active' | 'revoked';
+  granted_at?: string;
+  revoked_at?: string;
+  remark?: string;
+}
+
+export interface GrantCell {
+  grant_role: GrantRole;
+  status: 'active' | 'revoked';
+  granted_at?: string;
+  revoked_at?: string;
+  granted_by?: number;
+  remark?: string;
+}
+
+export interface GrantMatrixUser {
+  id: number;
+  username: string;
+  role: string;
+  vendor_id?: number;
+}
+
+export interface GrantMatrixWarehouse {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface GrantMatrix {
+  users: GrantMatrixUser[];
+  warehouses: GrantMatrixWarehouse[];
+  matrix: Record<string, Record<string, GrantCell>>;
+}
+
+// P7 操作日志类型
+export interface OperationLog {
+  id: number;
+  operator_id: number;
+  operator_name: string;
+  action: string;
+  target_type: string;
+  target_id: number;
+  before?: Record<string, any> | null;
+  after?: Record<string, any> | null;
+  ip: string;
+  created_at: string;
+}
+
+export interface OperationLogQueryParams extends QueryParams {
+  limit?: number;
+  operator_id?: number;
+  action?: string;
+  target_type?: string;
+  target_id?: number;
+  start_time?: string;
+  end_time?: string;
 }

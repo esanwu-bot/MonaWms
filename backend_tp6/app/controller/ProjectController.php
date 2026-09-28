@@ -67,7 +67,7 @@ class ProjectController extends BaseController
             
             return Response::paginate($list, $result->total(), $page, $limit);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取项目列表失败：' . $e->getMessage());
         }
     }
@@ -104,7 +104,7 @@ class ProjectController extends BaseController
             
             return Response::success($data);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取项目详情失败：' . $e->getMessage());
         }
     }
@@ -166,7 +166,7 @@ class ProjectController extends BaseController
                 'status_text' => $project->status_text
             ], '项目创建成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('创建项目失败：' . $e->getMessage());
         }
     }
@@ -260,7 +260,7 @@ class ProjectController extends BaseController
                 'status_text' => $project->status_text
             ], '项目更新成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('更新项目失败：' . $e->getMessage());
         }
     }
@@ -287,7 +287,7 @@ class ProjectController extends BaseController
             
             return Response::success([], '项目删除成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('删除项目失败：' . $e->getMessage());
         }
     }
@@ -376,7 +376,7 @@ class ProjectController extends BaseController
                 'reserved_quantity' => $inventory->reserved_quantity
             ], '库存预留成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('库存预留失败：' . $e->getMessage());
         }
@@ -437,7 +437,7 @@ class ProjectController extends BaseController
                 'reserved_quantity' => $inventory->reserved_quantity
             ], '取消预留成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('取消预留失败：' . $e->getMessage());
         }
@@ -480,7 +480,7 @@ class ProjectController extends BaseController
                 'inventory' => $inventoryList
             ], '获取项目库存成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取项目库存失败：' . $e->getMessage());
         }
     }

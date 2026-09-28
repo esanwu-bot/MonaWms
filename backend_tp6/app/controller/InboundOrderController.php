@@ -96,7 +96,7 @@ class InboundOrderController extends BaseController
             
             return Response::paginate($list, $result->total(), $page, $limit);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取入库单列表失败：' . $e->getMessage());
         }
     }
@@ -117,7 +117,7 @@ class InboundOrderController extends BaseController
             
             return Response::success($data);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取入库单详情失败：' . $e->getMessage());
         }
     }
@@ -165,7 +165,7 @@ class InboundOrderController extends BaseController
 
             return Response::success($results, '批量导入完成');
 
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('批量导入失败：' . $e->getMessage());
         }
     }
@@ -204,7 +204,7 @@ class InboundOrderController extends BaseController
 
             return download($templatePath, $filename, $headers);
 
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('下载模板失败：' . $e->getMessage());
         }
     }
@@ -215,11 +215,10 @@ class InboundOrderController extends BaseController
     public function save(Request $request)
     {
         $data = $request->post();
-        file_put_contents('C:/Users/ADMINI~1/AppData/Local/Temp/opencode/inbound_debug.json', json_encode($data, JSON_UNESCAPED_UNICODE));
         Grant::assert('inbound:write', (int) $data['warehouse_id']);
         
-        // 验证参数
-        $validate = Validate::rule([
+        // 验证参数：直接实例化 think\Validate，避免门面单例导致 items.* 通配规则失效
+        $validate = new \think\Validate([
             'warehouse_id' => 'require|integer',
             'supplier_id' => 'require|integer',
             'type' => 'require|in:purchase,return,transfer,other',
@@ -293,7 +292,7 @@ class InboundOrderController extends BaseController
                 'status_text' => $order->status_text
             ], '入库单创建成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('创建入库单失败：' . $e->getMessage());
         }
@@ -359,7 +358,7 @@ class InboundOrderController extends BaseController
             
             return array_values($data);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             throw new \Exception('Excel文件解析失败: ' . $e->getMessage());
         }
     }
@@ -514,7 +513,7 @@ class InboundOrderController extends BaseController
                         'id' => $order->id
                     ];
                     
-                } catch (\Exception $e) {
+                } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
                     $results['error_count']++;
                     $results['details'][] = [
                         'order_number' => $orderNumber,
@@ -527,7 +526,7 @@ class InboundOrderController extends BaseController
             Db::commit();
             return $results;
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             throw $e;
         }
@@ -618,7 +617,7 @@ class InboundOrderController extends BaseController
             $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
             $writer->save($templatePath);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             throw new \Exception('创建模板失败：' . $e->getMessage());
         }
     }
@@ -689,7 +688,7 @@ class InboundOrderController extends BaseController
                 'status_text' => $order->status_text
             ], '入库单更新成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('更新入库单失败：' . $e->getMessage());
         }
     }
@@ -724,7 +723,7 @@ class InboundOrderController extends BaseController
             
             return Response::success([], '入库单删除成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('删除入库单失败：' . $e->getMessage());
         }
@@ -744,7 +743,7 @@ class InboundOrderController extends BaseController
             
             Grant::assert('inbound:write', (int) $order->warehouse_id);
             
-            $order->startReceiving();
+            $order->startReceiving($this->getCurrentUserId($request));
             
             return Response::success([
                 'id' => $order->id,
@@ -752,7 +751,7 @@ class InboundOrderController extends BaseController
                 'status_text' => $order->status_text
             ], '开始收货成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('开始收货失败：' . $e->getMessage());
         }
     }
@@ -784,7 +783,8 @@ class InboundOrderController extends BaseController
                 return Response::notFound('入库单不存在');
             }
             
-            Grant::assert('inbound:write', (int) $order->warehouse_id);
+            // 收货真正增加库存，属于过账动作，仅仓库管理员可操作
+            Grant::assert('inbound:post', (int) $order->warehouse_id);
             
             if ($order->status != InboundOrder::STATUS_RECEIVING) {
                 return Response::error('入库单状态不正确，无法收货');
@@ -808,9 +808,6 @@ class InboundOrderController extends BaseController
                 $data['expiry_date'] ?? null
             );
             
-            // 检查是否完成收货
-            $order->checkAndComplete();
-            
             return Response::success([
                 'item_id' => $item->id,
                 'received_quantity' => $item->received_quantity,
@@ -820,7 +817,7 @@ class InboundOrderController extends BaseController
                 'order_status_text' => $order->status_text
             ], '收货成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('收货失败：' . $e->getMessage());
         }
     }
@@ -848,7 +845,7 @@ class InboundOrderController extends BaseController
                 'received_date' => $order->received_date
             ], '入库完成');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('完成入库失败：' . $e->getMessage());
         }
     }
@@ -886,7 +883,7 @@ class InboundOrderController extends BaseController
                 'status_text' => $order->status_text
             ], '入库单取消成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('取消入库单失败：' . $e->getMessage());
         }
     }
@@ -922,7 +919,7 @@ class InboundOrderController extends BaseController
             
             return Response::success($statistics);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取统计信息失败：' . $e->getMessage());
         }
     }

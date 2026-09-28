@@ -29,6 +29,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { useWarehouseStore } from '../store/warehouseStore';
 
 const { Title, Text } = Typography;
 const { useToken } = theme;
@@ -52,6 +53,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, isAuthenticated, isLoading, error, clearError } = useAuthStore();
+  const { fetchWarehouses } = useWarehouseStore();
   const [showPassword, setShowPassword] = useState(false);
   const { token } = useToken();
 
@@ -84,6 +86,10 @@ const LoginPage: React.FC = () => {
   const onSubmit = async (data: LoginFormData) => {
     try {
       await login(data.username, data.password);
+      const user = useAuthStore.getState().user;
+      if (user?.id) {
+        await fetchWarehouses(Number(user.id));
+      }
       navigate('/dashboard', { replace: true });
     } catch (error) {
       // 错误已在store中处理

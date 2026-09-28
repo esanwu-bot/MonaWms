@@ -32,7 +32,7 @@ class InventoryTransactionController
             return Response::success($result);
         } catch (ValidateException $e) {
             return Response::error($e->getMessage());
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取库存事务列表失败');
         }
     }
@@ -50,7 +50,7 @@ class InventoryTransactionController
             return Response::success($transaction);
         } catch (ValidateException $e) {
             return Response::error($e->getMessage());
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取库存事务详情失败');
         }
     }
@@ -68,7 +68,7 @@ class InventoryTransactionController
             return Response::success($statistics);
         } catch (ValidateException $e) {
             return Response::error($e->getMessage());
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取库存事务统计失败');
         }
     }
@@ -86,7 +86,7 @@ class InventoryTransactionController
             return Response::success($trend);
         } catch (ValidateException $e) {
             return Response::error($e->getMessage());
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取库存变动趋势失败');
         }
     }
@@ -105,7 +105,7 @@ class InventoryTransactionController
             return Response::success($recent);
         } catch (ValidateException $e) {
             return Response::error($e->getMessage());
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取最近库存事务失败');
         }
     }
@@ -124,7 +124,7 @@ class InventoryTransactionController
             return Response::success($history);
         } catch (ValidateException $e) {
             return Response::error($e->getMessage());
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取产品库存历史失败');
         }
     }
@@ -143,7 +143,7 @@ class InventoryTransactionController
             return Response::success($history);
         } catch (ValidateException $e) {
             return Response::error($e->getMessage());
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取库位库存历史失败');
         }
     }
@@ -162,7 +162,7 @@ class InventoryTransactionController
             return Response::success($history);
         } catch (ValidateException $e) {
             return Response::error($e->getMessage());
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取操作员历史失败');
         }
     }
@@ -181,7 +181,7 @@ class InventoryTransactionController
             return Response::success($flow);
         } catch (ValidateException $e) {
             return Response::error($e->getMessage());
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取产品库存流水失败');
         }
     }

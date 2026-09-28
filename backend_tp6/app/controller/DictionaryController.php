@@ -75,7 +75,7 @@ class DictionaryController extends BaseController
             $type->save($data);
             Db::commit();
             return json(['code' => 200, 'message' => '创建成功', 'data' => $type]);
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return json(['code' => 500, 'message' => '创建失败: ' . $e->getMessage()]);
         }
@@ -109,7 +109,7 @@ class DictionaryController extends BaseController
             $type->save($data);
             Db::commit();
             return json(['code' => 200, 'message' => '更新成功', 'data' => $type]);
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return json(['code' => 500, 'message' => '更新失败: ' . $e->getMessage()]);
         }
@@ -130,7 +130,7 @@ class DictionaryController extends BaseController
             $type->delete();
             Db::commit();
             return json(['code' => 200, 'message' => '删除成功']);
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return json(['code' => 500, 'message' => '删除失败: ' . $e->getMessage()]);
         }
@@ -172,7 +172,7 @@ class DictionaryController extends BaseController
             $item->save($data);
             Db::commit();
             return json(['code' => 200, 'message' => '创建成功', 'data' => $item]);
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return json(['code' => 500, 'message' => '创建失败: ' . $e->getMessage()]);
         }
@@ -224,7 +224,7 @@ class DictionaryController extends BaseController
             $item->save($data);
             Db::commit();
             return json(['code' => 200, 'message' => '更新成功', 'data' => $item]);
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return json(['code' => 500, 'message' => '更新失败: ' . $e->getMessage()]);
         }
@@ -245,7 +245,7 @@ class DictionaryController extends BaseController
             $item->delete();
             Db::commit();
             return json(['code' => 200, 'message' => '删除成功']);
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return json(['code' => 500, 'message' => '删除失败: ' . $e->getMessage()]);
         }

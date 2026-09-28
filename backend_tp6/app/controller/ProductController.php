@@ -70,7 +70,7 @@ class ProductController extends BaseController
             
             return Response::paginate($list, $result->total(), $page, $limit);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取商品列表失败：' . $e->getMessage());
         }
     }
@@ -91,7 +91,7 @@ class ProductController extends BaseController
             
             return Response::success($data);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取商品详情失败：' . $e->getMessage());
         }
     }
@@ -176,7 +176,7 @@ class ProductController extends BaseController
                 'status_text' => $product->status_text
             ], '商品创建成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('创建商品失败：' . $e->getMessage());
         }
     }
@@ -263,7 +263,7 @@ class ProductController extends BaseController
                 'status_text' => $product->status_text
             ], '商品更新成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('更新商品失败：' . $e->getMessage());
         }
     }
@@ -295,7 +295,7 @@ class ProductController extends BaseController
             
             return Response::success([], '商品删除成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('删除商品失败：' . $e->getMessage());
         }
     }
@@ -322,7 +322,7 @@ class ProductController extends BaseController
             
             return Response::success($data);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('查找商品失败：' . $e->getMessage());
         }
     }
@@ -349,7 +349,7 @@ class ProductController extends BaseController
             
             return Response::success($data);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('查找商品失败：' . $e->getMessage());
         }
     }
@@ -382,7 +382,7 @@ class ProductController extends BaseController
             
             return Response::success($stockInfo);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取库存信息失败：' . $e->getMessage());
         }
     }
@@ -408,7 +408,7 @@ class ProductController extends BaseController
             
             return Response::success($options);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取商品选项失败：' . $e->getMessage());
         }
     }

@@ -60,7 +60,7 @@ class SerialNumberController extends BaseController
             
             return Response::paginate($list, $result->total(), $page, $limit);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取序列号列表失败：' . $e->getMessage());
         }
     }
@@ -83,7 +83,7 @@ class SerialNumberController extends BaseController
             
             return Response::success($data);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取序列号详情失败：' . $e->getMessage());
         }
     }
@@ -142,7 +142,7 @@ class SerialNumberController extends BaseController
                 'status_text' => $serialNumber->status_text
             ], '序列号创建成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('创建序列号失败：' . $e->getMessage());
         }
     }
@@ -226,7 +226,7 @@ class SerialNumberController extends BaseController
                 'status_text' => $serialNumber->status_text
             ], '序列号更新成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('更新序列号失败：' . $e->getMessage());
         }
     }
@@ -247,7 +247,7 @@ class SerialNumberController extends BaseController
             
             return Response::success([], '序列号删除成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('删除序列号失败：' . $e->getMessage());
         }
     }
@@ -291,7 +291,7 @@ class SerialNumberController extends BaseController
             
             return Response::notFound('未找到对应的设备信息');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('查询设备信息失败：' . $e->getMessage());
         }
     }
@@ -361,7 +361,7 @@ class SerialNumberController extends BaseController
                     $serialNumber->save();
                     
                     $successCount++;
-                } catch (\Exception $e) {
+                } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
                     $failures[] = [
                         'data' => $item,
                         'reason' => $e->getMessage()
@@ -375,7 +375,7 @@ class SerialNumberController extends BaseController
                 'failures' => $failures
             ], '批量导入完成');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('批量导入失败：' . $e->getMessage());
         }
     }
@@ -451,7 +451,7 @@ class SerialNumberController extends BaseController
             
             return Response::success($result, '设备登记成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('设备登记失败：' . $e->getMessage());
         }
     }
@@ -511,7 +511,7 @@ class SerialNumberController extends BaseController
                 'serialNumber' => $serialNumber
             ], '条码识别成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('条码识别失败：' . $e->getMessage());
         }
     }
@@ -547,7 +547,7 @@ class SerialNumberController extends BaseController
                 'serialNumber' => $serialNumber
             ], '条码识别成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('条码识别失败：' . $e->getMessage());
         }
     }

@@ -77,7 +77,7 @@ class InventoryController extends BaseController
             
             return Response::paginate($list, $result->total(), $page, $limit);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取库存列表失败：' . $e->getMessage());
         }
     }
@@ -98,7 +98,7 @@ class InventoryController extends BaseController
             
             return Response::success($data);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取库存详情失败：' . $e->getMessage());
         }
     }
@@ -199,7 +199,7 @@ class InventoryController extends BaseController
                 'available_quantity' => $inventory->getAvailableQuantity()
             ], '库存调整成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('库存调整失败：' . $e->getMessage());
         }
     }
@@ -261,7 +261,7 @@ class InventoryController extends BaseController
                 'available_quantity' => $inventory->getAvailableQuantity()
             ], '库存预留成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('库存预留失败：' . $e->getMessage());
         }
     }
@@ -323,7 +323,7 @@ class InventoryController extends BaseController
                 'available_quantity' => $inventory->getAvailableQuantity()
             ], '预留库存释放成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('预留库存释放失败：' . $e->getMessage());
         }
     }
@@ -390,7 +390,7 @@ class InventoryController extends BaseController
             
             return Response::success($statistics);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取库存统计失败：' . $e->getMessage());
         }
     }
@@ -422,7 +422,7 @@ class InventoryController extends BaseController
             
             return Response::success($list);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取即将过期库存失败：' . $e->getMessage());
         }
     }

@@ -48,7 +48,7 @@ class CustomerController extends BaseController
             
             return Response::success($result, '获取客户列表成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取客户列表失败: ' . $e->getMessage());
         }
     }
@@ -79,7 +79,7 @@ class CustomerController extends BaseController
             
             return Response::success($customer, '创建客户成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('创建客户失败: ' . $e->getMessage());
         }
     }
@@ -98,7 +98,7 @@ class CustomerController extends BaseController
             
             return Response::success($customer, '获取客户详情成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取客户详情失败: ' . $e->getMessage());
         }
     }
@@ -135,7 +135,7 @@ class CustomerController extends BaseController
             
             return Response::success($customer, '更新客户成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('更新客户失败: ' . $e->getMessage());
         }
     }
@@ -157,7 +157,7 @@ class CustomerController extends BaseController
             
             return Response::success(null, '删除客户成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('删除客户失败: ' . $e->getMessage());
         }
     }
@@ -175,7 +175,7 @@ class CustomerController extends BaseController
             
             return Response::success($customers, '获取客户选项成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取客户选项失败: ' . $e->getMessage());
         }
     }

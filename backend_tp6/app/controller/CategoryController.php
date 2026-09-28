@@ -63,7 +63,7 @@ class CategoryController extends BaseController
                 ]
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取分类列表失败: ' . $e->getMessage());
         }
     }
@@ -82,7 +82,7 @@ class CategoryController extends BaseController
             
             return Response::success($tree, '获取分类树成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取分类树失败: ' . $e->getMessage());
         }
     }
@@ -133,7 +133,7 @@ class CategoryController extends BaseController
             
             return Response::success($category, '创建分类成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('创建分类失败: ' . $e->getMessage());
         }
     }
@@ -155,7 +155,7 @@ class CategoryController extends BaseController
             
             return Response::success($data, '获取分类详情成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取分类详情失败: ' . $e->getMessage());
         }
     }
@@ -197,7 +197,7 @@ class CategoryController extends BaseController
             
             return Response::success($category, '更新分类成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('更新分类失败: ' . $e->getMessage());
         }
     }
@@ -231,7 +231,7 @@ class CategoryController extends BaseController
             
             return Response::success(null, '删除分类成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('删除分类失败: ' . $e->getMessage());
         }
     }
@@ -250,7 +250,7 @@ class CategoryController extends BaseController
             
             return Response::success($categories, '获取分类选项成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取分类选项失败: ' . $e->getMessage());
         }
     }

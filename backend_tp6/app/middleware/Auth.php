@@ -63,6 +63,9 @@ class Auth
             $payload['username'] ?? null
         );
 
+        // 兼容旧控制器中通过 $request->user_id 获取当前用户 ID 的写法
+        $request->user_id = Current::id();
+
         return $next($request);
     }
 }

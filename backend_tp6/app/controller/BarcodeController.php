@@ -57,7 +57,7 @@ class BarcodeController extends BaseController
                 return Response::error('未能识别到有效条码');
             }
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('条码识别失败: ' . $e->getMessage());
         }
     }
@@ -87,7 +87,7 @@ class BarcodeController extends BaseController
             
             return $barcode;
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             throw new \Exception('图像处理失败: ' . $e->getMessage());
         }
     }

@@ -352,7 +352,11 @@ class GrantService
             ->whereNull('deleted_at')
             ->find();
 
-        return $row ? $row->toArray() : null;
+        if (!$row) {
+            return null;
+        }
+
+        return is_array($row) ? $row : $row->toArray();
     }
 
     private function assertGrantRole(string $role): void

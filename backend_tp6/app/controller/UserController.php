@@ -19,6 +19,7 @@ class UserController extends BaseController
      */
     public function index(Request $request)
     {
+        Grant::assert('user:manage');
         try {
             $params = $request->get();
             $page = $params['page'] ?? 1;
@@ -53,7 +54,7 @@ class UserController extends BaseController
             
             return Response::success($result, '获取用户列表成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取用户列表失败: ' . $e->getMessage());
         }
     }
@@ -91,7 +92,7 @@ class UserController extends BaseController
             
             return Response::success($user, '创建用户成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('创建用户失败: ' . $e->getMessage());
         }
     }
@@ -101,6 +102,7 @@ class UserController extends BaseController
      */
     public function read($id)
     {
+        Grant::assert('user:manage');
         try {
             $user = User::field('id,username,email,real_name,phone,role,status,last_login_time,created_at')
                        ->find($id);
@@ -111,7 +113,7 @@ class UserController extends BaseController
             
             return Response::success($user, '获取用户详情成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取用户详情失败: ' . $e->getMessage());
         }
     }
@@ -154,7 +156,7 @@ class UserController extends BaseController
             
             return Response::success($user, '更新用户成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('更新用户失败: ' . $e->getMessage());
         }
     }
@@ -181,7 +183,7 @@ class UserController extends BaseController
             
             return Response::success(null, '删除用户成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('删除用户失败: ' . $e->getMessage());
         }
     }
@@ -219,7 +221,7 @@ class UserController extends BaseController
             
             return Response::success(null, '修改用户状态成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('修改用户状态失败: ' . $e->getMessage());
         }
     }
@@ -256,7 +258,7 @@ class UserController extends BaseController
             
             return Response::success(null, '修改密码成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('修改密码失败: ' . $e->getMessage());
         }
     }
@@ -274,7 +276,7 @@ class UserController extends BaseController
             
             return Response::success($users, '获取用户选项成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取用户选项失败: ' . $e->getMessage());
         }
     }

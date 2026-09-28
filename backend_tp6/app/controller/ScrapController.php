@@ -77,6 +77,7 @@ class ScrapController extends BaseController
                     'reason' => $item->reason_text,
                     'reason_type' => $item->reason_type,
                     'description' => $item->description,
+                    'images' => $item->images ?: [],
                     'estimated_loss' => $item->estimated_loss,
                     'actual_loss' => $item->actual_loss,
                     'applicant' => [
@@ -85,9 +86,9 @@ class ScrapController extends BaseController
                     ],
                     'status' => $item->status,
                     'status_text' => $item->status_text,
-                    'created_at' => $item->created_at->format('Y-m-d H:i:s'),
-                    'approved_at' => $item->approved_at ? $item->approved_at->format('Y-m-d H:i:s') : null,
-                    'processed_at' => $item->processed_at ? $item->processed_at->format('Y-m-d H:i:s') : null,
+                    'created_at' => (string) $item->created_at,
+                    'approved_at' => $item->approved_at ? (string) $item->approved_at : null,
+                    'processed_at' => $item->processed_at ? (string) $item->processed_at : null,
                 ];
             }
 
@@ -98,7 +99,7 @@ class ScrapController extends BaseController
                 'limit' => $limit,
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取报废申请列表失败: ' . $e->getMessage());
         }
     }
@@ -129,6 +130,7 @@ class ScrapController extends BaseController
                 'reason' => $scrapApplication->reason_text,
                 'reason_type' => $scrapApplication->reason_type,
                 'description' => $scrapApplication->description,
+                'images' => $scrapApplication->images ?: [],
                 'estimated_loss' => $scrapApplication->estimated_loss,
                 'actual_loss' => $scrapApplication->actual_loss,
                 'applicant' => [
@@ -145,16 +147,16 @@ class ScrapController extends BaseController
                 ] : null,
                 'status' => $scrapApplication->status,
                 'status_text' => $scrapApplication->status_text,
-                'created_at' => $scrapApplication->created_at->format('Y-m-d H:i:s'),
-                'approved_at' => $scrapApplication->approved_at ? $scrapApplication->approved_at->format('Y-m-d H:i:s') : null,
-                'processed_at' => $scrapApplication->processed_at ? $scrapApplication->processed_at->format('Y-m-d H:i:s') : null,
+                'created_at' => (string) $scrapApplication->created_at,
+                'approved_at' => $scrapApplication->approved_at ? (string) $scrapApplication->approved_at : null,
+                'processed_at' => $scrapApplication->processed_at ? (string) $scrapApplication->processed_at : null,
                 'approval_notes' => $scrapApplication->approval_notes,
                 'processing_notes' => $scrapApplication->processing_notes,
             ];
 
             return Response::success($data);
 
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取报废申请详情失败: ' . $e->getMessage());
         }
     }
@@ -200,6 +202,13 @@ class ScrapController extends BaseController
                     'status' => ScrapApplication::STATUS_PENDING,
                 ]);
 
+                // 处理多图上传
+                $images = $this->uploadImages($request);
+                if ($images) {
+                    $scrapApplication->images = $images;
+                    $scrapApplication->save();
+                }
+
                 Db::commit();
 
                 return Response::success([
@@ -207,14 +216,14 @@ class ScrapController extends BaseController
                     'scrap_number' => $scrapApplication->scrap_number,
                 ], '报废申请提交成功');
 
-            } catch (\Exception $e) {
+            } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
                 Db::rollback();
                 throw $e;
             }
 
         } catch (ValidateException $e) {
             return Response::error($e->getError());
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('创建报废申请失败: ' . $e->getMessage());
         }
     }
@@ -260,12 +269,12 @@ class ScrapController extends BaseController
 
                 return Response::success([], $message);
 
-            } catch (\Exception $e) {
+            } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
                 Db::rollback();
                 throw $e;
             }
 
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('审核报废申请失败: ' . $e->getMessage());
         }
     }
@@ -310,12 +319,12 @@ class ScrapController extends BaseController
 
                 return Response::success([], '报废申请处理完成');
 
-            } catch (\Exception $e) {
+            } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
                 Db::rollback();
                 throw $e;
             }
 
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('处理报废申请失败: ' . $e->getMessage());
         }
     }
@@ -354,7 +363,7 @@ class ScrapController extends BaseController
 
             return Response::success($stats);
 
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取统计数据失败: ' . $e->getMessage());
         }
     }
@@ -406,9 +415,55 @@ class ScrapController extends BaseController
 
             return Response::success($data);
 
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取设备列表失败: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * 处理报废图片上传
+     * 支持多文件，返回可访问的 URL 数组
+     */
+    private function uploadImages(Request $request): array
+    {
+        $files = $request->file('images');
+        if (empty($files)) {
+            return [];
+        }
+
+        if (!is_array($files)) {
+            $files = [$files];
+        }
+
+        $urls = [];
+        $uploadDir = public_path() . 'uploads/scraps/' . date('Ymd');
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $allowedExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $maxSize = 5 * 1024 * 1024; // 5MB
+
+        foreach ($files as $file) {
+            if (!$file || !$file->isValid()) {
+                continue;
+            }
+
+            $ext = strtolower($file->getOriginalExtension());
+            if (!in_array($ext, $allowedExt, true)) {
+                continue;
+            }
+
+            if ($file->getSize() > $maxSize) {
+                continue;
+            }
+
+            $filename = uniqid('scrap_', true) . '.' . $ext;
+            $file->move($uploadDir, $filename);
+            $urls[] = '/uploads/scraps/' . date('Ymd') . '/' . $filename;
+        }
+
+        return $urls;
     }
 
     /**

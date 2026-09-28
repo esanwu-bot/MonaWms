@@ -16,7 +16,10 @@ import {
   Typography,
   message,
   Popconfirm,
+  Upload,
+  Image,
 } from 'antd';
+import type { UploadFile } from 'antd/es/upload';
 import {
   PlusOutlined,
   ExclamationCircleOutlined,
@@ -55,11 +58,13 @@ const statusConfig = {
   completed: { color: 'processing', text: '已处理' },
 };
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api').replace('/api', '');
 
 const ScrapPage: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<ScrapApplication | null>(null);
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
 
@@ -134,6 +139,17 @@ const ScrapPage: React.FC = () => {
       key: 'estimatedLoss',
       width: 120,
       render: (value) => `¥${value.toLocaleString()}`,
+    },
+    {
+      title: '图片',
+      key: 'images',
+      width: 80,
+      render: (_, record) =>
+        record.images && record.images.length > 0 ? (
+          <Tag color="blue">{record.images.length}张</Tag>
+        ) : (
+          '-'
+        ),
     },
     {
       title: '状态',
@@ -238,6 +254,7 @@ const ScrapPage: React.FC = () => {
       message.success('报废申请提交成功');
       setModalVisible(false);
       form.resetFields();
+      setFileList([]);
       queryClient.invalidateQueries({ queryKey: ['scrapApplications'] });
       queryClient.invalidateQueries({ queryKey: ['scrapStatistics'] });
       queryClient.invalidateQueries({ queryKey: ['availableDevices'] });
@@ -265,17 +282,22 @@ const ScrapPage: React.FC = () => {
   // 提交新建申请
   const handleSubmit = (values: Record<string, unknown>) => {
     const selectedDevice = (devices as AvailableDevice[]).find((device: AvailableDevice) => device.value === values.deviceId);
-    
+
     if (!selectedDevice) {
       message.error('请选择有效的设备');
       return;
     }
+
+    const images = fileList
+      .map((file) => file.originFileObj)
+      .filter(Boolean) as File[];
 
     const requestData: CreateScrapRequest = {
       deviceId: values.deviceId as number,
       reasonType: values.reasonType as 'damage' | 'obsolete' | 'expired' | 'other',
       description: values.description as string,
       estimatedLoss: values.estimatedLoss as number,
+      images,
     };
 
     createMutation.mutate(requestData);
@@ -364,6 +386,7 @@ const ScrapPage: React.FC = () => {
         onCancel={() => {
           setModalVisible(false);
           form.resetFields();
+          setFileList([]);
         }}
         footer={null}
         width={600}
@@ -423,8 +446,26 @@ const ScrapPage: React.FC = () => {
               min={0}
               step={0.01}
               formatter={(value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={(value) => parseFloat(value!.replace(/¥\s?|(,*)/g, '')) || 0}
+              parser={(value) => value!.replace(/¥\s?|(,*)/g, '') as any}
             />
+          </Form.Item>
+
+          <Form.Item label="报废图片（最多 9 张，单张不超过 5MB）">
+            <Upload
+              listType="picture-card"
+              fileList={fileList}
+              onChange={({ fileList: newFileList }) => setFileList(newFileList)}
+              beforeUpload={() => false}
+              accept="image/*"
+              multiple
+            >
+              {fileList.length >= 9 ? null : (
+                <div>
+                  <PlusOutlined />
+                  <div style={{ marginTop: 8 }}>上传</div>
+                </div>
+              )}
+            </Upload>
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
@@ -432,6 +473,7 @@ const ScrapPage: React.FC = () => {
               <Button onClick={() => {
                 setModalVisible(false);
                 form.resetFields();
+                setFileList([]);
               }}>
                 取消
               </Button>
@@ -500,6 +542,26 @@ const ScrapPage: React.FC = () => {
                   <p style={{ background: '#f5f5f5', padding: '8px', borderRadius: '4px' }}>
                     {selectedRecord.description}
                   </p>
+                </Col>
+              </Row>
+            )}
+            {selectedRecord.images && selectedRecord.images.length > 0 && (
+              <Row style={{ marginTop: 16 }}>
+                <Col span={24}>
+                  <p><strong>报废图片：</strong></p>
+                  <Image.PreviewGroup>
+                    <Space wrap>
+                      {selectedRecord.images.map((url, idx) => (
+                        <Image
+                          key={idx}
+                          src={`${API_BASE}${url}`}
+                          alt="报废图片"
+                          width={120}
+                          style={{ borderRadius: 4, objectFit: 'cover' }}
+                        />
+                      ))}
+                    </Space>
+                  </Image.PreviewGroup>
                 </Col>
               </Row>
             )}

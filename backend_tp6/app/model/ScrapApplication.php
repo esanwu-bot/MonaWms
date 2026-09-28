@@ -28,6 +28,7 @@ class ScrapApplication extends Model
         'device_id' => 'integer',
         'estimated_loss' => 'float',
         'actual_loss' => 'float',
+        'images' => 'json',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',

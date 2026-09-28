@@ -44,6 +44,7 @@ class InboundOrder extends Model
         'warehouse_id',
         'supplier_id',
         'operator_id',
+        'created_by',
         'status',
         'type',
         'expected_date',
@@ -111,7 +112,7 @@ class InboundOrder extends Model
             self::TYPE_OTHER => '其他入库'
         ];
 
-        return $types[$this->type] ?? '未知';
+        return $types[$this->getData('type')] ?? '未知';
     }
 
     /**

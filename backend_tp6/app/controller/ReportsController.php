@@ -56,7 +56,7 @@ class ReportsController extends BaseController
             
             return Response::success($data, '获取仪表盘数据成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取仪表盘数据失败: ' . $e->getMessage());
         }
     }
@@ -183,7 +183,7 @@ class ReportsController extends BaseController
             
             return Response::success($data, '获取库存报表成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取库存报表失败: ' . $e->getMessage());
         }
     }
@@ -233,7 +233,7 @@ class ReportsController extends BaseController
             
             return Response::success($data, '获取订单报表成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取订单报表失败: ' . $e->getMessage());
         }
     }

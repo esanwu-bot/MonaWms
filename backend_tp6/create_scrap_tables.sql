@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS `scrap_applications` (
   `device_id` int(11) NOT NULL COMMENT '设备ID',
   `reason_type` enum('damage','obsolete','expired','other') NOT NULL COMMENT '报废原因类型',
   `description` text COMMENT '详细说明',
+  `images` json DEFAULT NULL COMMENT '报废图片 URL 列表',
   `estimated_loss` decimal(10,2) DEFAULT 0.00 COMMENT '预估损失金额',
   `actual_loss` decimal(10,2) DEFAULT 0.00 COMMENT '实际损失金额',
   `applicant_id` int(11) NOT NULL COMMENT '申请人ID',

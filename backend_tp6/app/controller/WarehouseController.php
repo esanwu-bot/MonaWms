@@ -62,7 +62,7 @@ class WarehouseController extends BaseController
             
             return Response::paginate($list, $result->total(), $page, $limit);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取仓库列表失败：' . $e->getMessage());
         }
     }
@@ -86,7 +86,7 @@ class WarehouseController extends BaseController
             
             return Response::success($data);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取仓库详情失败：' . $e->getMessage());
         }
     }
@@ -139,7 +139,7 @@ class WarehouseController extends BaseController
                 'status_text' => $warehouse->status_text
             ], '仓库创建成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('创建仓库失败：' . $e->getMessage());
         }
     }
@@ -209,7 +209,7 @@ class WarehouseController extends BaseController
                 'status_text' => $warehouse->status_text
             ], '仓库更新成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('更新仓库失败：' . $e->getMessage());
         }
     }
@@ -230,7 +230,7 @@ class WarehouseController extends BaseController
             return Response::error($e->getMessage());
         } catch (\think\exception\NotFoundException $e) {
             return Response::notFound($e->getMessage());
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('删除仓库失败：' . $e->getMessage());
         }
     }
@@ -251,7 +251,7 @@ class WarehouseController extends BaseController
             
             return Response::success($statistics);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取统计信息失败：' . $e->getMessage());
         }
     }
@@ -277,7 +277,7 @@ class WarehouseController extends BaseController
             
             return Response::success($options);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取仓库选项失败：' . $e->getMessage());
         }
     }

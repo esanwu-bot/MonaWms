@@ -48,7 +48,7 @@ class SupplierController extends BaseController
             
             return Response::success($result, '获取供应商列表成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取供应商列表失败: ' . $e->getMessage());
         }
     }
@@ -79,7 +79,7 @@ class SupplierController extends BaseController
             
             return Response::success($supplier, '创建供应商成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('创建供应商失败: ' . $e->getMessage());
         }
     }
@@ -98,7 +98,7 @@ class SupplierController extends BaseController
             
             return Response::success($supplier, '获取供应商详情成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取供应商详情失败: ' . $e->getMessage());
         }
     }
@@ -135,7 +135,7 @@ class SupplierController extends BaseController
             
             return Response::success($supplier, '更新供应商成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('更新供应商失败: ' . $e->getMessage());
         }
     }
@@ -157,7 +157,7 @@ class SupplierController extends BaseController
             
             return Response::success(null, '删除供应商成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('删除供应商失败: ' . $e->getMessage());
         }
     }
@@ -175,7 +175,7 @@ class SupplierController extends BaseController
             
             return Response::success($suppliers, '获取供应商选项成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::error('获取供应商选项失败: ' . $e->getMessage());
         }
     }

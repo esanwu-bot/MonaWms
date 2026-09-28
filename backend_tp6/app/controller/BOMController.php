@@ -59,7 +59,7 @@ class BOMController extends BaseController
             
             return Response::paginate($list, $result->total(), $page, $limit);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取BOM列表失败：' . $e->getMessage());
         }
     }
@@ -92,7 +92,7 @@ class BOMController extends BaseController
             
             return Response::success($data);
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('获取BOM详情失败：' . $e->getMessage());
         }
     }
@@ -176,7 +176,7 @@ class BOMController extends BaseController
                 'status_text' => $bomHeader->status_text
             ], 'BOM创建成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('创建BOM失败：' . $e->getMessage());
         }
@@ -277,7 +277,7 @@ class BOMController extends BaseController
                 'status_text' => $bomHeader->status_text
             ], 'BOM更新成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('更新BOM失败：' . $e->getMessage());
         }
@@ -309,7 +309,7 @@ class BOMController extends BaseController
             
             return Response::success([], 'BOM删除成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('删除BOM失败：' . $e->getMessage());
         }
@@ -372,7 +372,7 @@ class BOMController extends BaseController
                 'status_text' => $newBomHeader->status_text
             ], 'BOM复制成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             Db::rollback();
             return Response::serverError('复制BOM失败：' . $e->getMessage());
         }
@@ -416,7 +416,7 @@ class BOMController extends BaseController
                 'items' => $explodedItems
             ], 'BOM展开成功');
             
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('BOM展开失败：' . $e->getMessage());
         }
     }

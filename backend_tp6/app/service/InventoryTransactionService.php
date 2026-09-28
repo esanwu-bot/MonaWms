@@ -447,7 +447,7 @@ class InventoryTransactionService
                 $this->create($transaction);
             }
             return true;
-        } catch (\Exception $e) {
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             throw new ValidateException('批量创建失败：' . $e->getMessage());
         }
     }
