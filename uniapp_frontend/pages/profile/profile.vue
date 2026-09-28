@@ -377,212 +377,239 @@ export default {
 
 <style scoped>
 .profile-page {
-  min-height: 100vh;
-  background: #f5f5f5;
-  padding-bottom: 40rpx;
+	min-height: 100vh;
+	background: #0a0e16;
+	padding-bottom: calc(60rpx + env(safe-area-inset-bottom));
 }
 
-/* 用户信息卡片 */
+/* 用户卡片 */
 .user-card {
-  background: linear-gradient(135deg, #007AFF 0%, #00D4FF 100%);
-  padding: 60rpx 30rpx 40rpx;
-  margin-bottom: 20rpx;
-  display: flex;
-  align-items: center;
-  position: relative;
+	display: flex;
+	align-items: center;
+	gap: 28rpx;
+	margin: 24rpx 32rpx;
+	padding: 32rpx;
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .09);
+	border-radius: 36rpx;
+	position: relative;
+	overflow: hidden;
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 4rpx;
+		background: linear-gradient(90deg, #22d3ee, transparent);
+	}
+
+	.user-avatar {
+		position: relative;
+		flex-shrink: 0;
+
+		.avatar-image {
+			width: 120rpx;
+			height: 120rpx;
+			border-radius: 36rpx;
+			border: 4rpx solid #1c2536;
+			background: #161e2e;
+		}
+
+		.avatar-edit {
+			position: absolute;
+			right: -6rpx;
+			bottom: -6rpx;
+			width: 52rpx;
+			height: 52rpx;
+			border-radius: 18rpx;
+			background: linear-gradient(135deg, #06b6d4, #0891b2);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			border: 2rpx solid #111725;
+		}
+	}
+
+	.user-info {
+		flex: 1;
+		min-width: 0;
+
+		.user-name {
+			display: block;
+			font-size: 34rpx;
+			font-weight: 700;
+			color: #e8edf6;
+		}
+
+		.user-role {
+			display: block;
+			margin-top: 8rpx;
+			font-size: 23rpx;
+			color: #22d3ee;
+		}
+
+		.user-department {
+			display: block;
+			margin-top: 6rpx;
+			font-size: 22rpx;
+			color: #5c677d;
+		}
+	}
+
+	.edit-btn {
+		width: 76rpx;
+		height: 76rpx;
+		flex-shrink: 0;
+		border-radius: 24rpx;
+		background: #161e2e;
+		border: 1rpx solid rgba(148, 163, 184, .12);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
 }
 
-.user-avatar {
-  position: relative;
-  margin-right: 30rpx;
-}
-
-.avatar-image {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 60rpx;
-  border: 6rpx solid rgba(255, 255, 255, 0.3);
-}
-
-.avatar-edit {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 40rpx;
-  height: 40rpx;
-  background: #007AFF;
-  border: 4rpx solid #fff;
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.user-info {
-  flex: 1;
-}
-
-.user-name {
-  display: block;
-  font-size: 36rpx;
-  font-weight: bold;
-  color: #fff;
-  margin-bottom: 8rpx;
-}
-
-.user-role {
-  display: block;
-  font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 4rpx;
-}
-
-.user-department {
-  display: block;
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.edit-btn {
-  background: rgba(255, 255, 255, 0.2);
-  border: 2rpx solid rgba(255, 255, 255, 0.3);
-  border-radius: 50rpx;
-  padding: 16rpx;
-  color: #fff;
-}
-
-/* 统计信息 */
+/* 工作统计 */
 .stats-section {
-  background: #fff;
-  margin: 0 20rpx 20rpx;
-  border-radius: 16rpx;
-  padding: 30rpx;
-}
+	margin: 0 32rpx 24rpx;
+	padding: 28rpx;
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .09);
+	border-radius: 36rpx;
 
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-bottom: 30rpx;
-  font-size: 30rpx;
-  font-weight: bold;
-  color: #333;
-}
+	.section-title {
+		display: flex;
+		align-items: center;
+		gap: 12rpx;
+		margin-bottom: 24rpx;
+		font-size: 28rpx;
+		font-weight: 700;
+		color: #e8edf6;
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30rpx;
-}
+		&::before {
+			content: '';
+			width: 6rpx;
+			height: 26rpx;
+			background: #22d3ee;
+			border-radius: 3rpx;
+			margin-right: 8rpx;
+		}
+	}
 
-.stat-item {
-  text-align: center;
-  padding: 30rpx 20rpx;
-  background: #f8f9fa;
-  border-radius: 12rpx;
-}
+	.stats-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 20rpx;
+	}
 
-.stat-value {
-  display: block;
-  font-size: 48rpx;
-  font-weight: bold;
-  color: #007AFF;
-  margin-bottom: 8rpx;
-}
+	.stat-item {
+		padding: 22rpx;
+		background: #161e2e;
+		border-radius: 22rpx;
+		text-align: center;
+	}
 
-.stat-label {
-  display: block;
-  font-size: 24rpx;
-  color: #666;
+	.stat-value {
+		display: block;
+		font-size: 40rpx;
+		font-weight: 700;
+		line-height: 1.1;
+		color: #22d3ee;
+		font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+	}
+
+	.stat-label {
+		display: block;
+		margin-top: 8rpx;
+		font-size: 21rpx;
+		color: #5c677d;
+	}
 }
 
 /* 功能菜单 */
 .menu-section {
-  margin: 0 20rpx;
-}
+	margin: 0 32rpx;
 
-.menu-group {
-  background: #fff;
-  border-radius: 16rpx;
-  margin-bottom: 20rpx;
-  overflow: hidden;
-}
+	.menu-group {
+		margin-bottom: 24rpx;
+		background: #111725;
+		border: 1rpx solid rgba(148, 163, 184, .09);
+		border-radius: 32rpx;
+		overflow: hidden;
+	}
 
-.menu-item {
-  display: flex;
-  align-items: center;
-  padding: 30rpx;
-  border-bottom: 2rpx solid #f8f9fa;
-  transition: background-color 0.3s ease;
-}
+	.menu-item {
+		display: flex;
+		align-items: center;
+		gap: 20rpx;
+		padding: 28rpx;
+		border-bottom: 1rpx solid rgba(148, 163, 184, .09);
+		transition: background .15s ease;
 
-.menu-item:last-child {
-  border-bottom: none;
-}
+		&:last-child {
+			border-bottom: none;
+		}
 
-.menu-item:active {
-  background: #f8f9fa;
-}
+		&:active {
+			background: #161e2e;
+		}
 
-.menu-icon {
-  width: 60rpx;
-  height: 60rpx;
-  background: #f0f8ff;
-  border-radius: 12rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 20rpx;
-}
+		.menu-icon {
+			width: 68rpx;
+			height: 68rpx;
+			border-radius: 20rpx;
+			background: rgba(34, 211, 238, .12);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex-shrink: 0;
+		}
 
-.menu-text {
-  flex: 1;
-  font-size: 30rpx;
-  color: #333;
-}
+		.menu-text {
+			flex: 1;
+			font-size: 27rpx;
+			font-weight: 500;
+			color: #e8edf6;
+		}
 
-.menu-badge {
-  background: #FF3B30;
-  color: #fff;
-  font-size: 20rpx;
-  padding: 4rpx 12rpx;
-  border-radius: 12rpx;
-  margin-right: 16rpx;
-}
-
-.menu-arrow {
-  margin-left: 16rpx;
+		.menu-badge {
+			padding: 6rpx 16rpx;
+			border-radius: 999rpx;
+			background: rgba(251, 191, 36, .12);
+			color: #fbbf24;
+			font-size: 20rpx;
+		}
+	}
 }
 
 /* 退出登录 */
 .logout-section {
-  margin: 40rpx 20rpx 20rpx;
+	margin: 40rpx 32rpx 0;
+
+	.logout-btn {
+		width: 100%;
+		height: 92rpx;
+		border-radius: 26rpx;
+		background: rgba(248, 113, 113, .12);
+		border: 1rpx solid rgba(248, 113, 113, .3);
+		color: #f87171;
+		font-size: 29rpx;
+		font-weight: 600;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 12rpx;
+	}
 }
 
-.logout-btn {
-  width: 100%;
-  height: 88rpx;
-  background: #fff;
-  color: #FF3B30;
-  border: 2rpx solid #FF3B30;
-  border-radius: 16rpx;
-  font-size: 32rpx;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12rpx;
-}
-
-.logout-btn:active {
-  background: #fff5f5;
-}
-
-/* 版本信息 */
 .version-info {
-  text-align: center;
-  padding: 20rpx;
-  font-size: 24rpx;
-  color: #999;
+	margin-top: 40rpx;
+	text-align: center;
+	font-size: 21rpx;
+	color: #5c677d;
+	letter-spacing: .05em;
+	font-family: "JetBrains Mono", Menlo, Consolas, monospace;
 }
 </style>

@@ -574,382 +574,305 @@ export default {
 
 <style scoped>
 .outbound-list {
-  min-height: 100vh;
-  background-color: #f5f5f5;
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+	background: #0a0e16;
 }
 
 /* 搜索栏 */
 .search-bar {
-  background-color: #fff;
-  padding: 20rpx 30rpx;
-  border-bottom: 1rpx solid #eee;
+	padding: 20rpx 32rpx;
+
+	.search-input {
+		display: flex;
+		align-items: center;
+		gap: 14rpx;
+		height: 76rpx;
+		padding: 0 28rpx;
+		background: #161e2e;
+		border: 1rpx solid rgba(148, 163, 184, .12);
+		border-radius: 22rpx;
+
+		input {
+			flex: 1;
+			font-size: 26rpx;
+			color: #e8edf6;
+			background: transparent;
+			border: none;
+		}
+	}
 }
 
-.search-input {
-  display: flex;
-  align-items: center;
-  background-color: #f8f8f8;
-  border-radius: 25rpx;
-  padding: 16rpx 20rpx;
-}
-
-.search-input uni-icons {
-  margin-right: 16rpx;
-}
-
-.search-input input {
-  flex: 1;
-  font-size: 28rpx;
-  color: #333;
-}
-
-/* 筛选标签 */
+/* chips */
 .filter-tags {
-  display: flex;
-  align-items: center;
-  background-color: #fff;
-  padding: 20rpx 30rpx;
-  border-bottom: 1rpx solid #eee;
-  gap: 20rpx;
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	padding: 0 32rpx 20rpx;
+
+	.filter-tag {
+		flex-shrink: 0;
+		padding: 12rpx 28rpx;
+		background: #111725;
+		border: 1rpx solid rgba(148, 163, 184, .12);
+		border-radius: 999rpx;
+		color: #9aa5bb;
+		font-size: 24rpx;
+		font-weight: 600;
+		transition: all .2s ease;
+
+		&.active {
+			background: rgba(34, 211, 238, .12);
+			border-color: rgba(34, 211, 238, .35);
+			color: #22d3ee;
+		}
+	}
+
+	.filter-more {
+		display: flex;
+		align-items: center;
+		gap: 8rpx;
+		margin-left: auto;
+		padding: 12rpx 24rpx;
+		border-radius: 999rpx;
+		background: #161e2e;
+		border: 1rpx solid rgba(148, 163, 184, .12);
+		color: #9aa5bb;
+		font-size: 24rpx;
+	}
 }
 
-.filter-tag {
-  padding: 12rpx 24rpx;
-  border-radius: 20rpx;
-  font-size: 24rpx;
-  color: #666;
-  background-color: #f8f8f8;
-  white-space: nowrap;
-}
-
-.filter-tag.active {
-  background-color: #007AFF;
-  color: #fff;
-}
-
-.filter-more {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 12rpx 20rpx;
-  border-radius: 20rpx;
-  font-size: 24rpx;
-  color: #666;
-  background-color: #f8f8f8;
-  margin-left: auto;
-}
-
-/* 统计信息 */
+/* 统计条 */
 .statistics {
-  display: flex;
-  background-color: #fff;
-  padding: 30rpx;
-  margin-bottom: 20rpx;
-  gap: 40rpx;
+	display: flex;
+	gap: 16rpx;
+	padding: 0 32rpx 24rpx;
+
+	.stat-item {
+		flex: 1;
+		padding: 18rpx 12rpx;
+		background: #111725;
+		border: 1rpx solid rgba(148, 163, 184, .09);
+		border-radius: 24rpx;
+		text-align: center;
+	}
+
+	.stat-number {
+		display: block;
+		font-size: 34rpx;
+		font-weight: 700;
+		color: #22d3ee;
+		font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+	}
+
+	.stat-label {
+		display: block;
+		margin-top: 6rpx;
+		font-size: 20rpx;
+		color: #5c677d;
+	}
 }
 
-.stat-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.stat-number {
-  font-size: 36rpx;
-  font-weight: bold;
-  color: #007AFF;
-}
-
-.stat-label {
-  font-size: 24rpx;
-  color: #666;
-}
-
-/* 列表容器 */
+/* 列表 */
 .list-container {
-  flex: 1;
-  padding: 0 30rpx;
+	flex: 1;
+	padding: 0 32rpx calc(32rpx + env(safe-area-inset-bottom));
 }
 
-/* 列表项 */
 .list-item {
-  background-color: #fff;
-  border-radius: 12rpx;
-  padding: 30rpx;
-  margin-bottom: 20rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+	padding: 28rpx;
+	margin-bottom: 24rpx;
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .09);
+	border-radius: 32rpx;
+	transition: transform .15s ease;
+
+	&:active {
+		transform: scale(.985);
+	}
+
+	.item-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 20rpx;
+	}
+
+	.order-no {
+		font-size: 28rpx;
+		font-weight: 600;
+		color: #22d3ee;
+		letter-spacing: .02em;
+		font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+	}
+
+	.customer-info,
+	.warehouse-info {
+		display: flex;
+		align-items: center;
+		gap: 10rpx;
+		font-size: 25rpx;
+		color: #9aa5bb;
+	}
+
+	.customer-info {
+		margin-bottom: 16rpx;
+
+		.customer-name {
+			font-size: 28rpx;
+			font-weight: 600;
+			color: #e8edf6;
+		}
+	}
+
+	.order-info {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0 32rpx;
+
+		.info-row {
+			width: 50%;
+			display: flex;
+			align-items: center;
+			gap: 8rpx;
+			padding: 6rpx 0;
+		}
+
+		.info-label {
+			font-size: 23rpx;
+			color: #5c677d;
+		}
+
+		.info-value {
+			font-size: 24rpx;
+			color: #e8edf6;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+
+			&.picked {
+				color: #34d399;
+			}
+		}
+	}
+
+	.warehouse-info {
+		margin-top: 12rpx;
+	}
+
+	.item-footer {
+		display: flex;
+		align-items: center;
+		gap: 24rpx;
+		margin-top: 22rpx;
+		padding-top: 20rpx;
+		border-top: 1rpx solid rgba(148, 163, 184, .09);
+
+		.create-time {
+			flex-shrink: 0;
+			font-size: 22rpx;
+			color: #5c677d;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+		}
+
+		.progress-info {
+			flex: 1;
+			display: flex;
+			align-items: center;
+			gap: 16rpx;
+		}
+
+		.progress-text {
+			flex-shrink: 0;
+			font-size: 22rpx;
+			color: #9aa5bb;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+		}
+
+		.progress-bar {
+			flex: 1;
+			height: 10rpx;
+			background: #1c2536;
+			border-radius: 6rpx;
+			overflow: hidden;
+		}
+
+		.progress-fill {
+			height: 100%;
+			border-radius: 6rpx;
+			background: linear-gradient(90deg, #06b6d4, #22d3ee);
+			transition: width .6s cubic-bezier(.22, 1, .36, 1);
+		}
+	}
 }
 
-.item-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20rpx;
-}
-
-.order-no {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #333;
-}
-
-.status-badge {
-  padding: 8rpx 16rpx;
-  border-radius: 12rpx;
-  font-size: 22rpx;
-  color: #fff;
-  font-weight: 500;
-}
-
-.status-pending {
-  background-color: #FF9500;
-}
-
-.status-picking {
-  background-color: #007AFF;
-}
-
-.status-completed {
-  background-color: #34C759;
-}
-
-.status-cancelled {
-  background-color: #8E8E93;
-}
-
-.item-content {
-  margin-bottom: 20rpx;
-}
-
-.customer-info {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-bottom: 16rpx;
-}
-
-.customer-name {
-  font-size: 26rpx;
-  color: #333;
-  font-weight: 500;
-}
-
-.order-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-  margin-bottom: 16rpx;
-}
-
-.info-row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.info-label {
-  font-size: 24rpx;
-  color: #666;
-  min-width: 120rpx;
-}
-
-.info-value {
-  font-size: 24rpx;
-  color: #333;
-  font-weight: 500;
-}
-
-.info-value.picked {
-  color: #34C759;
-}
-
-.warehouse-info {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.warehouse-name {
-  font-size: 24rpx;
-  color: #666;
-}
-
-.item-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.create-time {
-  font-size: 22rpx;
-  color: #999;
-}
-
-.progress-info {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.progress-text {
-  font-size: 22rpx;
-  color: #666;
-  min-width: 80rpx;
-  text-align: right;
-}
-
-.progress-bar {
-  width: 100rpx;
-  height: 8rpx;
-  background-color: #f0f0f0;
-  border-radius: 4rpx;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #007AFF 0%, #34C759 100%);
-  border-radius: 4rpx;
-  transition: width 0.3s ease;
-}
-
-/* 加载更多 */
-.load-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12rpx;
-  padding: 40rpx;
-  color: #999;
-  font-size: 26rpx;
-}
-
-/* 空状态 */
+/* 空态 */
 .empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 100rpx 40rpx;
-  color: #ccc;
-}
-
-.empty-state text {
-  font-size: 26rpx;
-  margin-top: 20rpx;
+	padding: 140rpx 0;
+	text-align: center;
+	font-size: 26rpx;
+	color: #5c677d;
 }
 
 /* 筛选弹窗 */
 .filter-popup {
-  background-color: #fff;
-  border-radius: 20rpx 20rpx 0 0;
-  max-height: 80vh;
-  overflow: hidden;
-}
+	max-height: 80vh;
 
-.popup-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 30rpx;
-  border-bottom: 1rpx solid #eee;
-}
+	.popup-header {
+		align-items: center;
+	}
 
-.popup-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #333;
-}
+	.popup-actions {
+		display: flex;
+		gap: 16rpx;
+		margin: 0;
 
-.popup-actions {
-  display: flex;
-  gap: 30rpx;
-}
+		.reset-btn,
+		.confirm-btn {
+			padding: 12rpx 30rpx;
+			border-radius: 20rpx;
+			font-size: 25rpx;
+		}
 
-.reset-btn {
-  font-size: 28rpx;
-  color: #666;
-}
+		.reset-btn {
+			background: #161e2e;
+			border: 1rpx solid rgba(148, 163, 184, .12);
+			color: #9aa5bb;
+		}
 
-.confirm-btn {
-  font-size: 28rpx;
-  color: #007AFF;
-  font-weight: 500;
-}
+		.confirm-btn {
+			background: linear-gradient(135deg, #06b6d4, #0891b2);
+			color: #04222b;
+		}
+	}
 
-.popup-content {
-  padding: 30rpx;
-  max-height: 60vh;
-  overflow-y: auto;
-}
+	.popup-content {
+		max-height: 60vh;
+		overflow-y: auto;
+	}
 
-.filter-section {
-  margin-bottom: 40rpx;
-}
+	.option-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 16rpx;
+	}
 
-.section-title {
-  font-size: 28rpx;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 20rpx;
-}
+	.checkbox {
+		width: 34rpx;
+		height: 34rpx;
+		border-radius: 12rpx;
+		border: 2rpx solid rgba(148, 163, 184, .3);
+		display: flex;
+		align-items: center;
+		justify-content: center;
 
-.option-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-}
+		&.checked {
+			background: #22d3ee;
+			border-color: #22d3ee;
+		}
+	}
 
-.option-item {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-.checkbox {
-  width: 36rpx;
-  height: 36rpx;
-  border: 2rpx solid #ddd;
-  border-radius: 6rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #fff;
-}
-
-.checkbox.checked {
-  background-color: #007AFF;
-  border-color: #007AFF;
-}
-
-.option-label {
-  font-size: 26rpx;
-  color: #333;
-}
-
-.date-range {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-.date-input {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20rpx;
-  border: 1rpx solid #ddd;
-  border-radius: 8rpx;
-  background-color: #f8f8f8;
-  font-size: 26rpx;
-  color: #333;
-}
-
-.date-separator {
-  font-size: 24rpx;
-  color: #666;
+	.option-item:active .checkbox {
+		border-color: #22d3ee;
+	}
 }
 </style>

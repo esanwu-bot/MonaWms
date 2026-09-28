@@ -444,313 +444,325 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.dashboard {
+.home-page {
 	min-height: 100vh;
-	background: #f5f5f5;
-	padding-bottom: 20rpx;
+	background: #0a0e16;
+	padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
 }
 
-.status-bar {
+.pad {
+	padding: 0 32rpx;
+}
+
+/* ===== 顶栏 ===== */
+.topbar {
 	display: flex;
-	justify-content: space-between;
 	align-items: center;
-	padding: 20rpx 30rpx;
-	background: #007AFF;
-	color: white;
-	
-	.user-info {
+	justify-content: space-between;
+	padding: 16rpx 32rpx 24rpx;
+}
+
+.topbar-left {
+	.date {
+		display: block;
+		font-size: 22rpx;
+		color: #5c677d;
+		letter-spacing: .05em;
+		font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+	}
+
+	.greeting {
+		display: block;
+		margin-top: 6rpx;
+		font-size: 40rpx;
+		font-weight: 700;
+		color: #e8edf6;
+		letter-spacing: .01em;
+	}
+}
+
+.topbar-right {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+
+	.ic-btn {
+		position: relative;
+		width: 76rpx;
+		height: 76rpx;
+		border-radius: 24rpx;
+		border: 1rpx solid rgba(148, 163, 184, .09);
+		background: #111725;
 		display: flex;
 		align-items: center;
-		
-		.avatar {
-			width: 80rpx;
-			height: 80rpx;
+		justify-content: center;
+
+		.iconfont {
+			font-size: 34rpx;
+			color: #9aa5bb;
+		}
+
+		.dot {
+			position: absolute;
+			top: 16rpx;
+			right: 18rpx;
+			width: 14rpx;
+			height: 14rpx;
 			border-radius: 50%;
-			margin-right: 20rpx;
-			border: 2rpx solid rgba(255, 255, 255, 0.3);
-		}
-		
-		.user-text {
-			.greeting {
-				display: block;
-				font-size: 24rpx;
-				opacity: 0.8;
-				margin-bottom: 4rpx;
-			}
-			
-			.username {
-				display: block;
-				font-size: 32rpx;
-				font-weight: bold;
-			}
+			background: #f87171;
+			border: 2rpx solid #111725;
 		}
 	}
-	
-	.actions {
-		.action-btn {
-			position: relative;
-			width: 60rpx;
-			height: 60rpx;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			border-radius: 50%;
-			background: rgba(255, 255, 255, 0.2);
-			
-			.iconfont {
-				font-size: 32rpx;
-			}
-			
-			.badge {
-				position: absolute;
-				top: -8rpx;
-				right: -8rpx;
-				min-width: 32rpx;
-				height: 32rpx;
-				background: #FF3B30;
-				color: white;
-				border-radius: 16rpx;
-				font-size: 20rpx;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				padding: 0 8rpx;
-			}
-		}
+
+	.avatar {
+		width: 80rpx;
+		height: 80rpx;
+		border-radius: 28rpx;
+		border: 4rpx solid #1c2536;
 	}
 }
 
-.stats-section {
-	padding: 30rpx;
-	margin-top: -20rpx;
-	
-	.stats-grid {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 20rpx;
-		
-		.stat-card {
-			background: white;
-			border-radius: 16rpx;
-			padding: 30rpx;
-			display: flex;
-			align-items: center;
-			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
-			transition: transform 0.2s;
-			
-			&:active {
-				transform: scale(0.98);
-			}
-			
-			.stat-icon {
-				width: 60rpx;
-				height: 60rpx;
-				border-radius: 12rpx;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				margin-right: 20rpx;
-				
-				.iconfont {
-					font-size: 32rpx;
-					color: white;
-				}
-			}
-			
-			.stat-info {
-				flex: 1;
-				
-				.stat-value {
-					display: block;
-					font-size: 36rpx;
-					font-weight: bold;
-					color: #333;
-					margin-bottom: 8rpx;
-				}
-				
-				.stat-label {
-					display: block;
-					font-size: 24rpx;
-					color: #666;
-				}
-			}
-		}
+/* ===== 区块标题 ===== */
+.sec-title {
+	display: flex;
+	align-items: center;
+	margin: 44rpx 0 24rpx;
+
+	.bar {
+		width: 6rpx;
+		height: 28rpx;
+		background: #22d3ee;
+		border-radius: 3rpx;
+		margin-right: 14rpx;
+	}
+
+	.sec-h {
+		flex: 1;
+		font-size: 30rpx;
+		font-weight: 700;
+		color: #e8edf6;
+	}
+
+	.more-btn {
+		font-size: 24rpx;
+		color: #5c677d;
 	}
 }
 
-.quick-actions, .todo-section, .activity-section {
-	margin: 30rpx;
-	background: white;
-	border-radius: 16rpx;
-	padding: 30rpx;
-	box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
-	
-	.section-title {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 30rpx;
-		
-		.title-text {
-			font-size: 32rpx;
-			font-weight: bold;
-			color: #333;
-		}
-		
-		.more-btn {
-			font-size: 28rpx;
-			color: #007AFF;
-		}
-	}
-}
-
-.action-grid {
+/* ===== 统计卡 ===== */
+.stats {
 	display: grid;
-	grid-template-columns: repeat(4, 1fr);
-	gap: 30rpx;
-	
-	.action-item {
+	grid-template-columns: 1fr 1fr;
+	gap: 24rpx;
+}
+
+.stat {
+	position: relative;
+	overflow: hidden;
+	padding: 28rpx;
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .09);
+	border-radius: 32rpx;
+	transition: transform .15s ease;
+
+	&:active {
+		transform: scale(.98);
+	}
+
+	.stat-line {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 4rpx;
+	}
+
+	.stat-k {
 		display: flex;
-		flex-direction: column;
 		align-items: center;
-		transition: transform 0.2s;
-		
-		&:active {
-			transform: scale(0.95);
+		gap: 10rpx;
+		font-size: 23rpx;
+		color: #9aa5bb;
+
+		.iconfont {
+			font-size: 26rpx;
 		}
-		
-		.action-icon {
-			width: 80rpx;
-			height: 80rpx;
-			border-radius: 16rpx;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			margin-bottom: 16rpx;
-			
-			.iconfont {
-				font-size: 36rpx;
-				color: white;
-			}
+	}
+
+	.stat-n {
+		display: flex;
+		align-items: baseline;
+		margin: 14rpx 0 10rpx;
+
+		.stat-value {
+			font-size: 52rpx;
+			font-weight: 700;
+			line-height: 1.1;
+			color: #e8edf6;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
 		}
-		
-		.action-label {
-			font-size: 24rpx;
-			color: #666;
-			text-align: center;
+
+		.stat-unit {
+			margin-left: 6rpx;
+			font-size: 22rpx;
+			color: #5c677d;
+		}
+	}
+
+	.stat-d {
+		display: inline-block;
+		padding: 4rpx 16rpx;
+		border-radius: 999rpx;
+		font-size: 20rpx;
+
+		&.up {
+			color: #34d399;
+			background: rgba(52, 211, 153, .12);
+		}
+
+		&.down {
+			color: #f87171;
+			background: rgba(248, 113, 113, .12);
 		}
 	}
 }
 
-.todo-list, .activity-list {
-	.todo-item, .activity-item {
+/* ===== 快捷操作 ===== */
+.quick {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 22rpx;
+}
+
+.qk {
+	padding: 28rpx 8rpx;
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .09);
+	border-radius: 30rpx;
+	text-align: center;
+	transition: transform .15s ease;
+
+	&:active {
+		transform: scale(.95);
+	}
+
+	.qi {
+		width: 84rpx;
+		height: 84rpx;
+		border-radius: 24rpx;
+		margin: 0 auto 16rpx;
 		display: flex;
 		align-items: center;
-		padding: 20rpx 0;
-		border-bottom: 1rpx solid #f0f0f0;
-		transition: background-color 0.2s;
-		
-		&:last-child {
-			border-bottom: none;
-		}
-		
-		&:active {
-			background-color: #f8f8f8;
+		justify-content: center;
+
+		.iconfont {
+			font-size: 38rpx;
 		}
 	}
-	
-	.todo-item {
-		.todo-icon {
-			width: 60rpx;
-			height: 60rpx;
-			border-radius: 12rpx;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			margin-right: 20rpx;
-			
-			.iconfont {
-				font-size: 28rpx;
-				color: white;
-			}
-		}
-		
-		.todo-content {
-			flex: 1;
-			
-			.todo-title {
-				display: block;
-				font-size: 30rpx;
-				color: #333;
-				margin-bottom: 8rpx;
-			}
-			
-			.todo-desc {
-				display: block;
-				font-size: 24rpx;
-				color: #666;
-			}
-		}
-		
-		.todo-meta {
-			display: flex;
-			align-items: center;
-			
-			.todo-count {
-				font-size: 28rpx;
-				color: #007AFF;
-				font-weight: bold;
-				margin-right: 10rpx;
-			}
-			
-			.iconfont {
-				font-size: 24rpx;
-				color: #ccc;
-			}
+
+	.qn {
+		display: block;
+		font-size: 24rpx;
+		font-weight: 600;
+		color: #e8edf6;
+		letter-spacing: .02em;
+	}
+}
+
+/* ===== 待办横滚 ===== */
+.todos {
+	display: flex;
+	flex-direction: row;
+	padding: 0 32rpx 8rpx;
+}
+
+.todo {
+	flex: 0 0 auto;
+	min-width: 300rpx;
+	margin-right: 22rpx;
+	padding: 26rpx 30rpx;
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .09);
+	border-radius: 30rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 10rpx;
+
+	.tl {
+		font-size: 23rpx;
+		color: #9aa5bb;
+	}
+
+	.tv {
+		font-size: 44rpx;
+		font-weight: 700;
+		color: #fbbf24;
+		font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+	}
+
+	.tt {
+		font-size: 21rpx;
+		color: #5c677d;
+	}
+}
+
+/* ===== 最近活动 ===== */
+.act-list {
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .09);
+	border-radius: 32rpx;
+	padding: 8rpx 28rpx;
+}
+
+.act-item {
+	display: flex;
+	align-items: flex-start;
+	gap: 24rpx;
+	padding: 24rpx 0;
+	border-bottom: 1rpx solid rgba(148, 163, 184, .09);
+
+	&:last-child {
+		border-bottom: none;
+	}
+
+	.act-ic {
+		width: 68rpx;
+		height: 68rpx;
+		border-radius: 22rpx;
+		flex-shrink: 0;
+		background: rgba(34, 211, 238, .12);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+
+		.iconfont {
+			font-size: 30rpx;
+			color: #22d3ee;
 		}
 	}
-	
-	.activity-item {
-		.activity-time {
-			width: 120rpx;
-			margin-right: 20rpx;
-			
-			.time-text {
-				font-size: 24rpx;
-				color: #999;
-			}
+
+	.act-body {
+		flex: 1;
+		min-width: 0;
+
+		.at {
+			display: block;
+			font-size: 26rpx;
+			font-weight: 500;
+			color: #e8edf6;
 		}
-		
-		.activity-content {
-			flex: 1;
-			
-			.activity-title {
-				display: block;
-				font-size: 28rpx;
-				color: #333;
-				margin-bottom: 8rpx;
-			}
-			
-			.activity-desc {
-				display: block;
-				font-size: 24rpx;
-				color: #666;
-			}
-		}
-	}
-	
-	.empty-todo, .empty-activity {
-		text-align: center;
-		padding: 60rpx 0;
-		
-		.empty-text {
-			font-size: 28rpx;
-			color: #999;
+
+		.am {
+			display: block;
+			margin-top: 6rpx;
+			font-size: 22rpx;
+			color: #5c677d;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
 		}
 	}
 }
 
-/* 字体图标样式 */
+/* ===== 字体图标 ===== */
 .iconfont {
 	font-family: 'iconfont';
 	font-style: normal;

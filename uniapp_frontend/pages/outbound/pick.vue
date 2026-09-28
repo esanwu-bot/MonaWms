@@ -638,3 +638,489 @@ export default {
   }
 }
 </script>
+
+<style lang="scss" scoped>
+.pick-page {
+	min-height: 100vh;
+	background: #0a0e16;
+	padding-bottom: 180rpx;
+}
+
+/* 头部单据卡 */
+.header-info {
+	margin: 24rpx 32rpx;
+	padding: 28rpx;
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .09);
+	border-radius: 32rpx;
+	position: relative;
+	overflow: hidden;
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 4rpx;
+		background: linear-gradient(90deg, #22d3ee, transparent);
+	}
+
+	.order-info {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 20rpx;
+
+		.order-no {
+			font-size: 30rpx;
+			font-weight: 700;
+			color: #22d3ee;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+		}
+
+		.customer-name {
+			flex: 1;
+			text-align: right;
+			font-size: 25rpx;
+			color: #9aa5bb;
+		}
+	}
+
+	.progress-info {
+		display: flex;
+		align-items: center;
+		gap: 20rpx;
+		margin-top: 24rpx;
+
+		.progress-text {
+			flex-shrink: 0;
+			font-size: 24rpx;
+			color: #e8edf6;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+		}
+
+		.progress-bar {
+			flex: 1;
+			height: 12rpx;
+			background: #1c2536;
+			border-radius: 8rpx;
+			overflow: hidden;
+		}
+
+		.progress-fill {
+			height: 100%;
+			border-radius: 8rpx;
+			background: linear-gradient(90deg, #06b6d4, #22d3ee);
+			transition: width .6s cubic-bezier(.22, 1, .36, 1);
+		}
+	}
+}
+
+/* 扫码区 */
+.scan-section {
+	padding: 0 32rpx 24rpx;
+
+	.scan-input {
+		display: flex;
+		align-items: center;
+		gap: 16rpx;
+		height: 88rpx;
+		padding: 0 20rpx 0 28rpx;
+		background: #161e2e;
+		border: 1rpx solid rgba(148, 163, 184, .12);
+		border-radius: 24rpx;
+
+		input {
+			flex: 1;
+			font-size: 27rpx;
+			color: #e8edf6;
+			background: transparent;
+			border: none;
+		}
+
+		.scan-btn {
+			width: 68rpx;
+			height: 68rpx;
+			flex-shrink: 0;
+			border-radius: 20rpx;
+			background: linear-gradient(135deg, #06b6d4, #0891b2);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+	}
+
+	.scan-tips {
+		margin-top: 16rpx;
+		font-size: 23rpx;
+		color: #5c677d;
+	}
+}
+
+/* 区块标题 */
+.section-title {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+	margin: 32rpx 0 20rpx;
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #e8edf6;
+
+	&::before {
+		content: '';
+		width: 6rpx;
+		height: 26rpx;
+		background: #22d3ee;
+		border-radius: 3rpx;
+		margin-right: 8rpx;
+	}
+
+	.record-count {
+		font-size: 23rpx;
+		color: #5c677d;
+	}
+
+	.filter-tabs {
+		display: flex;
+		gap: 12rpx;
+		margin-left: auto;
+
+		.filter-tab {
+			padding: 8rpx 20rpx;
+			border-radius: 16rpx;
+			background: #161e2e;
+			border: 1rpx solid rgba(148, 163, 184, .12);
+			color: #9aa5bb;
+			font-size: 22rpx;
+
+			&.active {
+				background: rgba(34, 211, 238, .12);
+				border-color: rgba(34, 211, 238, .35);
+				color: #22d3ee;
+			}
+		}
+	}
+}
+
+/* 当前商品 */
+.current-product {
+	margin: 0 32rpx 24rpx;
+	padding: 28rpx;
+	background: #111725;
+	border: 1rpx solid rgba(34, 211, 238, .28);
+	border-radius: 32rpx;
+
+	.section-title {
+		margin: 0 0 20rpx;
+	}
+
+	.product-card {
+		display: flex;
+		align-items: center;
+		gap: 20rpx;
+
+		.product-image {
+			width: 104rpx;
+			height: 104rpx;
+			border-radius: 24rpx;
+			background: #1c2536;
+			flex-shrink: 0;
+		}
+
+		.product-info {
+			flex: 1;
+			min-width: 0;
+
+			.product-name {
+				display: block;
+				font-size: 28rpx;
+				font-weight: 600;
+				color: #e8edf6;
+			}
+
+			.product-sku {
+				display: block;
+				margin-top: 4rpx;
+				font-size: 22rpx;
+				color: #5c677d;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+			}
+
+			.product-spec {
+				display: block;
+				margin-top: 4rpx;
+				font-size: 22rpx;
+				color: #9aa5bb;
+			}
+		}
+
+		.quantity-section {
+			flex-shrink: 0;
+			text-align: right;
+
+			.quantity-info {
+				display: flex;
+				align-items: center;
+				justify-content: flex-end;
+				gap: 8rpx;
+			}
+
+			.quantity-label {
+				font-size: 22rpx;
+				color: #5c677d;
+			}
+
+			.quantity-value {
+				font-size: 24rpx;
+				color: #e8edf6;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+
+				&.picked {
+					color: #34d399;
+				}
+
+				&.pending {
+					color: #fbbf24;
+				}
+			}
+		}
+	}
+
+	.pick-input {
+		margin-top: 24rpx;
+		padding-top: 24rpx;
+		border-top: 1rpx solid rgba(148, 163, 184, .09);
+
+		.input-label {
+			display: block;
+			margin-bottom: 16rpx;
+			font-size: 25rpx;
+			color: #9aa5bb;
+		}
+
+		.quantity-input {
+			display: flex;
+			align-items: center;
+			gap: 20rpx;
+			margin-bottom: 24rpx;
+
+			.quantity-btn {
+				width: 76rpx;
+				height: 76rpx;
+				flex-shrink: 0;
+				line-height: 76rpx;
+				text-align: center;
+				border-radius: 20rpx;
+				background: #161e2e;
+				border: 1rpx solid rgba(148, 163, 184, .12);
+				color: #e8edf6;
+				font-size: 34rpx;
+			}
+
+			.quantity-field {
+				flex: 1;
+				height: 76rpx;
+				text-align: center;
+				background: #161e2e;
+				border: 1rpx solid rgba(148, 163, 184, .12);
+				border-radius: 20rpx;
+				color: #22d3ee;
+				font-size: 30rpx;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+			}
+		}
+
+		.confirm-btn {
+			width: 100%;
+			height: 84rpx;
+			line-height: 84rpx;
+			text-align: center;
+			border-radius: 24rpx;
+			background: linear-gradient(135deg, #06b6d4, #0891b2);
+			color: #04222b;
+			font-size: 28rpx;
+			font-weight: 600;
+		}
+	}
+}
+
+/* 拣货记录 */
+.pick-records {
+	margin: 0 32rpx 24rpx;
+
+	.records-list {
+		display: flex;
+		flex-direction: column;
+		gap: 20rpx;
+	}
+
+	.record-item {
+		padding: 24rpx;
+		background: #111725;
+		border: 1rpx solid rgba(148, 163, 184, .09);
+		border-radius: 26rpx;
+
+		.record-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 16rpx;
+		}
+
+		.record-product {
+			flex: 1;
+			font-size: 26rpx;
+			font-weight: 600;
+			color: #e8edf6;
+		}
+
+		.record-time {
+			flex-shrink: 0;
+			font-size: 21rpx;
+			color: #5c677d;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+		}
+
+		.record-details {
+			display: flex;
+			gap: 24rpx;
+			margin-top: 10rpx;
+
+			.record-sku {
+				font-size: 22rpx;
+				color: #5c677d;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+			}
+
+			.record-quantity {
+				font-size: 22rpx;
+				color: #34d399;
+			}
+		}
+
+		.undo-btn {
+			display: inline-flex;
+			align-items: center;
+			gap: 8rpx;
+			margin-top: 18rpx;
+			padding: 10rpx 24rpx;
+			border-radius: 16rpx;
+			background: rgba(248, 113, 113, .12);
+			border: 1rpx solid rgba(248, 113, 113, .3);
+			color: #f87171;
+			font-size: 23rpx;
+		}
+	}
+
+	.empty-records {
+		padding: 60rpx 0;
+		text-align: center;
+		font-size: 25rpx;
+		color: #5c677d;
+	}
+}
+
+/* 商品清单 */
+.product-list {
+	margin: 0 32rpx;
+
+	.list-container {
+		display: flex;
+		flex-direction: column;
+		gap: 20rpx;
+		padding: 0;
+	}
+
+	.list-item {
+		display: flex;
+		align-items: center;
+		gap: 20rpx;
+		padding: 24rpx;
+		background: #111725;
+		border: 1rpx solid rgba(148, 163, 184, .09);
+		border-radius: 26rpx;
+		transition: all .2s ease;
+
+		&.selected {
+			border-color: rgba(34, 211, 238, .45);
+			background: rgba(34, 211, 238, .06);
+		}
+
+		.item-image {
+			width: 96rpx;
+			height: 96rpx;
+			border-radius: 22rpx;
+			background: #1c2536;
+			flex-shrink: 0;
+		}
+
+		.item-info {
+			flex: 1;
+			min-width: 0;
+
+			.item-name {
+				display: block;
+				font-size: 27rpx;
+				font-weight: 600;
+				color: #e8edf6;
+			}
+
+			.item-sku {
+				display: block;
+				margin-top: 4rpx;
+				font-size: 22rpx;
+				color: #5c677d;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+			}
+
+			.item-spec {
+				display: block;
+				margin-top: 4rpx;
+				font-size: 22rpx;
+				color: #9aa5bb;
+			}
+		}
+
+		.item-status {
+			flex-shrink: 0;
+			text-align: right;
+
+			.quantity-progress {
+				margin-top: 12rpx;
+			}
+
+			.progress-text {
+				display: block;
+				margin-bottom: 8rpx;
+				font-size: 21rpx;
+				color: #9aa5bb;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+			}
+		}
+	}
+}
+
+/* 底部操作栏 */
+.bottom-actions {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 100;
+	display: flex;
+	gap: 16rpx;
+	margin: 0;
+	padding: 16rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
+	background: rgba(13, 18, 32, .92);
+	border-top: 1rpx solid rgba(148, 163, 184, .09);
+
+	.action-btn {
+		height: 84rpx;
+		line-height: 84rpx;
+		border-radius: 24rpx;
+		font-size: 27rpx;
+	}
+}
+</style>

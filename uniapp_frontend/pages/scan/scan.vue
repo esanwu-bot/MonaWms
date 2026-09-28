@@ -349,340 +349,332 @@ export default {
 
 <style scoped>
 .scan-page {
-  min-height: 100vh;
-  background: #f5f5f5;
+	min-height: 100vh;
+	background: #0a0e16;
+	padding-bottom: calc(60rpx + env(safe-area-inset-bottom));
 }
 
-/* 扫码容器 */
+/* 扫码区 */
 .scan-container {
-  background: #000;
-  padding: 60rpx 30rpx;
-  text-align: center;
-  position: relative;
+	padding: 40rpx 32rpx 0;
 }
 
 .scan-header {
-  margin-bottom: 60rpx;
+	.scan-title {
+		display: block;
+		font-size: 40rpx;
+		font-weight: 700;
+		color: #e8edf6;
+	}
+
+	.scan-subtitle {
+		display: block;
+		margin-top: 8rpx;
+		font-size: 24rpx;
+		color: #5c677d;
+	}
 }
 
-.scan-title {
-  display: block;
-  font-size: 36rpx;
-  font-weight: bold;
-  color: #fff;
-  margin-bottom: 16rpx;
-}
-
-.scan-subtitle {
-  display: block;
-  font-size: 28rpx;
-  color: #ccc;
-}
-
-/* 扫码框 */
 .scan-frame {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 60rpx;
+	width: 520rpx;
+	height: 520rpx;
+	margin: 48rpx auto 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .scan-area {
-  width: 400rpx;
-  height: 400rpx;
-  position: relative;
-  border: 4rpx solid rgba(255, 255, 255, 0.3);
-  border-radius: 16rpx;
+	position: relative;
+	width: 100%;
+	height: 100%;
+	border-radius: 40rpx;
+	border: 2rpx solid rgba(34, 211, 238, .22);
+	background: rgba(34, 211, 238, .04);
+	overflow: hidden;
 }
 
 .scan-line {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 4rpx;
-  background: linear-gradient(90deg, transparent 0%, #007AFF 50%, transparent 100%);
-  animation: scanLine 2s linear infinite;
+	position: absolute;
+	left: 48rpx;
+	right: 48rpx;
+	top: 48rpx;
+	height: 4rpx;
+	border-radius: 2rpx;
+	background: linear-gradient(90deg, transparent, #22d3ee, transparent);
+	box-shadow: 0 0 24rpx rgba(34, 211, 238, .6);
+	animation: scan-move 2.6s ease-in-out infinite;
 }
 
-@keyframes scanLine {
-  0% {
-    transform: translateY(-200rpx);
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(200rpx);
-    opacity: 0;
-  }
+@keyframes scan-move {
+	0% { top: 48rpx; }
+	50% { top: 440rpx; }
+	100% { top: 48rpx; }
 }
 
 .corner {
-  position: absolute;
-  width: 40rpx;
-  height: 40rpx;
-  border: 6rpx solid #007AFF;
+	position: absolute;
+	width: 52rpx;
+	height: 52rpx;
+	border: 5rpx solid #22d3ee;
 }
 
 .corner-tl {
-  top: -6rpx;
-  left: -6rpx;
-  border-right: none;
-  border-bottom: none;
+	top: 24rpx;
+	left: 24rpx;
+	border-right: none;
+	border-bottom: none;
+	border-radius: 24rpx 0 0 0;
 }
 
 .corner-tr {
-  top: -6rpx;
-  right: -6rpx;
-  border-left: none;
-  border-bottom: none;
+	top: 24rpx;
+	right: 24rpx;
+	border-left: none;
+	border-bottom: none;
+	border-radius: 0 24rpx 0 0;
 }
 
 .corner-bl {
-  bottom: -6rpx;
-  left: -6rpx;
-  border-right: none;
-  border-top: none;
+	bottom: 24rpx;
+	left: 24rpx;
+	border-right: none;
+	border-top: none;
+	border-radius: 0 0 0 24rpx;
 }
 
 .corner-br {
-  bottom: -6rpx;
-  right: -6rpx;
-  border-left: none;
-  border-top: none;
+	bottom: 24rpx;
+	right: 24rpx;
+	border-left: none;
+	border-top: none;
+	border-radius: 0 0 24rpx 0;
 }
 
-/* 操作按钮 */
 .scan-actions {
-  display: flex;
-  justify-content: center;
-  gap: 40rpx;
-  margin-bottom: 40rpx;
+	display: flex;
+	gap: 20rpx;
+	margin-top: 56rpx;
 }
 
 .scan-btn {
-  background: #007AFF;
-  color: #fff;
-  border: none;
-  border-radius: 50rpx;
-  padding: 24rpx 48rpx;
-  font-size: 32rpx;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
+	flex: 1;
+	height: 92rpx;
+	border-radius: 26rpx;
+	background: linear-gradient(135deg, #06b6d4, #0891b2);
+	color: #04222b;
+	font-size: 30rpx;
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10rpx;
 }
 
 .manual-btn {
-  background: rgba(255, 255, 255, 0.1);
-  color: #007AFF;
-  border: 2rpx solid #007AFF;
-  border-radius: 50rpx;
-  padding: 22rpx 40rpx;
-  font-size: 28rpx;
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
+	flex: 1;
+	height: 92rpx;
+	border-radius: 26rpx;
+	background: #161e2e;
+	border: 1rpx solid rgba(148, 163, 184, .12);
+	color: #9aa5bb;
+	font-size: 28rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10rpx;
 }
 
 .scan-tips {
-  font-size: 24rpx;
-  color: #ccc;
+	margin-top: 24rpx;
+	text-align: center;
+	font-size: 23rpx;
+	color: #5c677d;
 }
 
-/* 扫码历史 */
+/* 扫码记录 */
 .scan-history {
-  background: #fff;
-  margin: 20rpx;
-  border-radius: 16rpx;
-  overflow: hidden;
+	margin: 64rpx 32rpx 0;
 }
 
 .history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 30rpx;
-  border-bottom: 2rpx solid #f0f0f0;
-}
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 20rpx;
 
-.history-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #333;
-}
+	.history-title {
+		position: relative;
+		padding-left: 18rpx;
+		font-size: 28rpx;
+		font-weight: 700;
+		color: #e8edf6;
 
-.clear-btn {
-  background: none;
-  border: none;
-  color: #FF3B30;
-  font-size: 24rpx;
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
+		&::before {
+			content: '';
+			position: absolute;
+			left: 0;
+			top: 50%;
+			transform: translateY(-50%);
+			width: 6rpx;
+			height: 26rpx;
+			background: #22d3ee;
+			border-radius: 3rpx;
+		}
+	}
+
+	.clear-btn {
+		display: flex;
+		align-items: center;
+		gap: 8rpx;
+		padding: 10rpx 22rpx;
+		border-radius: 16rpx;
+		background: rgba(248, 113, 113, .12);
+		border: 1rpx solid rgba(248, 113, 113, .3);
+		color: #f87171;
+		font-size: 23rpx;
+	}
 }
 
 .history-list {
-  max-height: 600rpx;
-  overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
 }
 
 .history-item {
-  display: flex;
-  align-items: center;
-  padding: 24rpx 30rpx;
-  border-bottom: 2rpx solid #f8f9fa;
-  transition: background-color 0.3s ease;
-}
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+	padding: 24rpx;
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .09);
+	border-radius: 26rpx;
+	transition: transform .15s ease;
 
-.history-item:active {
-  background: #f8f9fa;
-}
+	&:active {
+		transform: scale(.985);
+	}
 
-.item-icon {
-  margin-right: 20rpx;
-}
+	.item-icon {
+		width: 68rpx;
+		height: 68rpx;
+		border-radius: 20rpx;
+		background: rgba(34, 211, 238, .12);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
 
-.item-content {
-  flex: 1;
-}
+	.item-content {
+		flex: 1;
+		min-width: 0;
 
-.item-code {
-  display: block;
-  font-size: 28rpx;
-  color: #333;
-  margin-bottom: 8rpx;
-  word-break: break-all;
-}
+		.item-code {
+			display: block;
+			font-size: 26rpx;
+			color: #e8edf6;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+		}
 
-.item-time {
-  display: block;
-  font-size: 24rpx;
-  color: #999;
-}
-
-.item-action {
-  margin-left: 20rpx;
+		.item-time {
+			display: block;
+			margin-top: 6rpx;
+			font-size: 21rpx;
+			color: #5c677d;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+		}
+	}
 }
 
 .empty-history {
-  text-align: center;
-  padding: 80rpx 0;
-  color: #ccc;
+	padding: 80rpx 0;
+	text-align: center;
+	font-size: 25rpx;
+	color: #5c677d;
 }
 
-.empty-history text {
-  display: block;
-  margin-top: 20rpx;
-  font-size: 28rpx;
-}
-
-/* 手动输入弹窗 */
+/* 手动输入弹窗（居中卡片） */
 .manual-popup {
-  width: 600rpx;
-  background: #fff;
-  border-radius: 16rpx;
-  overflow: hidden;
-}
+	position: relative;
+	left: auto;
+	right: auto;
+	bottom: auto;
+	width: 620rpx;
+	max-height: none;
+	padding: 32rpx;
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .2);
+	border-radius: 36rpx;
+	box-shadow: 0 24rpx 60rpx rgba(0, 0, 0, .6);
+	overflow: visible;
 
-.popup-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 30rpx;
-  border-bottom: 2rpx solid #f0f0f0;
-}
+	.popup-header {
+		padding: 0 0 24rpx;
+	}
 
-.popup-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #333;
-}
+	.popup-title {
+		font-size: 32rpx;
+		font-weight: 700;
+	}
 
-.close-btn {
-  background: none;
-  border: none;
-  padding: 8rpx;
-}
+	.input-group {
+		margin-bottom: 24rpx;
+	}
 
-.popup-content {
-  padding: 30rpx;
-}
+	.input-label {
+		display: block;
+		margin-bottom: 12rpx;
+		font-size: 24rpx;
+		font-weight: 600;
+		color: #9aa5bb;
+	}
 
-.input-group {
-  margin-bottom: 30rpx;
-}
+	.manual-input {
+		width: 100%;
+		height: 88rpx;
+		padding: 0 28rpx;
+		background: #161e2e;
+		border: 1rpx solid rgba(148, 163, 184, .12);
+		border-radius: 22rpx;
+		color: #e8edf6;
+		font-size: 28rpx;
+	}
 
-.input-label {
-  display: block;
-  font-size: 28rpx;
-  color: #333;
-  margin-bottom: 16rpx;
-}
+	.type-selector {
+		display: flex;
+		gap: 16rpx;
+	}
 
-.manual-input {
-  width: 100%;
-  height: 80rpx;
-  padding: 0 20rpx;
-  border: 2rpx solid #e0e0e0;
-  border-radius: 8rpx;
-  font-size: 28rpx;
-  box-sizing: border-box;
-}
+	.type-btn {
+		flex: 1;
+		height: 78rpx;
+		line-height: 78rpx;
+		text-align: center;
+		border-radius: 20rpx;
+		background: #161e2e;
+		border: 1rpx solid rgba(148, 163, 184, .12);
+		color: #9aa5bb;
+		font-size: 26rpx;
 
-.manual-input:focus {
-  border-color: #007AFF;
-}
+		&.active {
+			background: rgba(34, 211, 238, .12);
+			border-color: rgba(34, 211, 238, .35);
+			color: #22d3ee;
+		}
+	}
 
-.type-selector {
-  display: flex;
-  gap: 20rpx;
-}
+	.popup-actions {
+		margin-top: 8rpx;
+	}
 
-.type-btn {
-  flex: 1;
-  height: 60rpx;
-  background: #f0f0f0;
-  color: #666;
-  border: none;
-  border-radius: 8rpx;
-  font-size: 26rpx;
-  transition: all 0.3s ease;
-}
-
-.type-btn.active {
-  background: #007AFF;
-  color: #fff;
-}
-
-.popup-actions {
-  display: flex;
-  border-top: 2rpx solid #f0f0f0;
-}
-
-.cancel-btn,
-.confirm-btn {
-  flex: 1;
-  height: 88rpx;
-  border: none;
-  font-size: 32rpx;
-  font-weight: bold;
-}
-
-.cancel-btn {
-  background: #f8f9fa;
-  color: #666;
-  border-right: 2rpx solid #f0f0f0;
-}
-
-.confirm-btn {
-  background: #007AFF;
-  color: #fff;
-}
-
-.confirm-btn:disabled {
-  background: #ccc;
-  color: #999;
+	.cancel-btn,
+	.confirm-btn {
+		height: 82rpx;
+		line-height: 82rpx;
+		border-radius: 22rpx;
+		font-size: 27rpx;
+	}
 }
 </style>

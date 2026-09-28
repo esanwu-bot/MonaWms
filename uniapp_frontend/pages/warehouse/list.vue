@@ -270,224 +270,223 @@ export default {
 
 <style scoped>
 .warehouse-page {
-  height: 100vh;
-  background-color: #f5f5f5;
-  display: flex;
-  flex-direction: column;
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+	background: #0a0e16;
 }
 
 /* 搜索栏 */
 .search-bar {
-  display: flex;
-  align-items: center;
-  padding: 20rpx;
-  background-color: #fff;
-  border-bottom: 1rpx solid #eee;
+	padding: 20rpx 32rpx;
+
+	.search-input {
+		display: flex;
+		align-items: center;
+		gap: 14rpx;
+		height: 76rpx;
+		padding: 0 28rpx;
+		background: #161e2e;
+		border: 1rpx solid rgba(148, 163, 184, .12);
+		border-radius: 22rpx;
+
+		input {
+			flex: 1;
+			font-size: 26rpx;
+			color: #e8edf6;
+			background: transparent;
+			border: none;
+		}
+	}
 }
 
-.search-input {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  background-color: #f8f8f8;
-  border-radius: 20rpx;
-  padding: 16rpx 24rpx;
-}
-
-.search-input input {
-  flex: 1;
-  margin-left: 16rpx;
-  font-size: 28rpx;
-  color: #333;
-}
-
-/* 列表容器 */
+/* 列表 */
 .list-container {
-  flex: 1;
-  padding: 20rpx;
+	flex: 1;
+	padding: 0 32rpx calc(140rpx + env(safe-area-inset-bottom));
 }
 
-/* 仓库项 */
 .warehouse-item {
-  background-color: #fff;
-  border-radius: 16rpx;
-  padding: 30rpx;
-  margin-bottom: 20rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+	padding: 28rpx;
+	margin-bottom: 24rpx;
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .09);
+	border-radius: 32rpx;
+	transition: transform .15s ease;
+
+	&:active {
+		transform: scale(.985);
+	}
+
+	.warehouse-header {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		margin-bottom: 24rpx;
+	}
+
+	.warehouse-info {
+		flex: 1;
+		min-width: 0;
+
+		.warehouse-name {
+			display: block;
+			font-size: 32rpx;
+			font-weight: 700;
+			color: #e8edf6;
+		}
+
+		.warehouse-location {
+			display: block;
+			margin-top: 6rpx;
+			font-size: 23rpx;
+			color: #5c677d;
+		}
+	}
+
+	.warehouse-status {
+		flex-shrink: 0;
+		margin-left: 16rpx;
+		padding: 6rpx 18rpx;
+		border-radius: 999rpx;
+		font-size: 22rpx;
+		font-weight: 600;
+		color: #9aa5bb;
+		background: rgba(148, 163, 184, .1);
+
+		&.status-active {
+			color: #34d399;
+			background: rgba(52, 211, 153, .12);
+		}
+
+		&.status-maintenance {
+			color: #fbbf24;
+			background: rgba(251, 191, 36, .12);
+		}
+
+		&.status-inactive {
+			color: #f87171;
+			background: rgba(248, 113, 113, .12);
+		}
+	}
+
+	.warehouse-stats {
+		margin-bottom: 24rpx;
+
+		.stat-group {
+			display: flex;
+			gap: 16rpx;
+		}
+
+		.stat-item {
+			flex: 1;
+			padding: 20rpx 8rpx;
+			background: #161e2e;
+			border-radius: 20rpx;
+			text-align: center;
+		}
+
+		.stat-value {
+			display: block;
+			font-size: 32rpx;
+			font-weight: 700;
+			color: #22d3ee;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+		}
+
+		.stat-label {
+			display: block;
+			margin-top: 6rpx;
+			font-size: 20rpx;
+			color: #5c677d;
+		}
+	}
+
+	.warehouse-progress {
+		margin-bottom: 24rpx;
+
+		.progress-info {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			margin-bottom: 12rpx;
+		}
+
+		.progress-label {
+			font-size: 23rpx;
+			color: #9aa5bb;
+		}
+
+		.progress-text {
+			font-size: 22rpx;
+			color: #e8edf6;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+		}
+
+		.progress-bar {
+			height: 12rpx;
+			background: #1c2536;
+			border-radius: 8rpx;
+			overflow: hidden;
+		}
+
+		.progress-fill {
+			height: 100%;
+			border-radius: 8rpx;
+			background: linear-gradient(90deg, #06b6d4, #22d3ee);
+			transition: width .6s cubic-bezier(.22, 1, .36, 1);
+		}
+	}
+
+	.warehouse-footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 20rpx;
+		padding-top: 20rpx;
+		border-top: 1rpx solid rgba(148, 163, 184, .09);
+
+		.manager {
+			font-size: 23rpx;
+			color: #9aa5bb;
+		}
+
+		.actions {
+			display: flex;
+			gap: 12rpx;
+			margin: 0;
+		}
+
+		.action-btn {
+			width: auto;
+			min-width: 150rpx;
+			flex: none;
+			height: 64rpx;
+			line-height: 64rpx;
+			padding: 0 24rpx;
+			border-radius: 18rpx;
+			background: #161e2e;
+			border: 1rpx solid rgba(148, 163, 184, .12);
+			color: #9aa5bb;
+			font-size: 23rpx;
+		}
+	}
 }
 
-.warehouse-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20rpx;
-}
-
-.warehouse-info {
-  flex: 1;
-}
-
-.warehouse-name {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 8rpx;
-  display: block;
-}
-
-.warehouse-location {
-  font-size: 24rpx;
-  color: #666;
-  display: block;
-}
-
-.warehouse-status {
-  padding: 8rpx 16rpx;
-  border-radius: 12rpx;
-  font-size: 24rpx;
-  color: #fff;
-}
-
-.status-active {
-  background-color: #34C759;
-}
-
-.status-maintenance {
-  background-color: #FF9500;
-}
-
-.status-inactive {
-  background-color: #8E8E93;
-}
-
-.warehouse-stats {
-  margin-bottom: 20rpx;
-}
-
-.stat-group {
-  display: flex;
-  justify-content: space-around;
-}
-
-.stat-item {
-  text-align: center;
-}
-
-.stat-value {
-  display: block;
-  font-size: 36rpx;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 8rpx;
-}
-
-.stat-label {
-  font-size: 24rpx;
-  color: #666;
-}
-
-.warehouse-progress {
-  margin-bottom: 20rpx;
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 10rpx;
-}
-
-.progress-label {
-  font-size: 26rpx;
-  color: #666;
-}
-
-.progress-text {
-  font-size: 26rpx;
-  color: #333;
-}
-
-.progress-bar {
-  height: 12rpx;
-  background-color: #f0f0f0;
-  border-radius: 6rpx;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-  border-radius: 6rpx;
-  transition: width 0.3s ease;
-}
-
-.warehouse-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.manager {
-  font-size: 24rpx;
-  color: #666;
-}
-
-.actions {
-  display: flex;
-  gap: 16rpx;
-}
-
-.action-btn {
-  padding: 12rpx 24rpx;
-  border-radius: 20rpx;
-  font-size: 24rpx;
-  border: none;
-  background-color: #f8f8f8;
-  color: #666;
-}
-
-.action-btn.primary {
-  background-color: #007AFF;
-  color: #fff;
-}
-
-.action-btn.secondary {
-  background-color: #FF9500;
-  color: #fff;
-}
-
-/* 浮动操作按钮 */
-.fab {
-  position: fixed;
-  bottom: 100rpx;
-  right: 40rpx;
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.3);
-  z-index: 100;
-}
-
-/* 空状态 */
 .empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 100rpx 40rpx;
+	padding: 140rpx 0;
+	text-align: center;
 }
 
 .empty-image {
-  width: 200rpx;
-  height: 200rpx;
-  margin-bottom: 30rpx;
+	width: 200rpx;
+	height: 200rpx;
+	margin-bottom: 24rpx;
+	opacity: .35;
 }
 
 .empty-text {
-  font-size: 28rpx;
-  color: #999;
+	font-size: 26rpx;
+	color: #5c677d;
 }
 </style>

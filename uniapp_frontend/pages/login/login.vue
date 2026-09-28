@@ -260,231 +260,211 @@ export default {
 .login-container {
 	position: relative;
 	min-height: 100vh;
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 	display: flex;
-	align-items: center;
+	flex-direction: column;
 	justify-content: center;
-	padding: 40rpx;
-	box-sizing: border-box;
+	padding: 0 48rpx calc(60rpx + env(safe-area-inset-bottom));
+	background:
+		radial-gradient(900rpx 600rpx at 80% -10%, rgba(34, 211, 238, .12), transparent),
+		radial-gradient(700rpx 500rpx at 10% 110%, rgba(167, 139, 250, .10), transparent),
+		#0a0e16;
+	overflow: hidden;
 }
 
 .bg-decoration {
 	position: absolute;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	overflow: hidden;
+	inset: 0;
 	z-index: 0;
-	
-	.circle {
-		position: absolute;
-		border-radius: 50%;
-		background: rgba(255, 255, 255, 0.1);
-		
-		&.circle1 {
-			width: 300rpx;
-			height: 300rpx;
-			top: -150rpx;
-			right: -150rpx;
-		}
-		
-		&.circle2 {
-			width: 200rpx;
-			height: 200rpx;
-			bottom: -100rpx;
-			left: -100rpx;
-		}
-	}
+	overflow: hidden;
+}
+
+.circle {
+	position: absolute;
+	border-radius: 50%;
+}
+
+.circle1 {
+	width: 420rpx;
+	height: 420rpx;
+	top: -140rpx;
+	right: -120rpx;
+	background: rgba(34, 211, 238, .09);
+}
+
+.circle2 {
+	width: 520rpx;
+	height: 520rpx;
+	bottom: -180rpx;
+	left: -160rpx;
+	background: rgba(167, 139, 250, .09);
 }
 
 .login-form {
 	position: relative;
 	z-index: 1;
-	width: 100%;
-	max-width: 600rpx;
-	background: rgba(255, 255, 255, 0.95);
-	border-radius: 24rpx;
-	padding: 60rpx 40rpx;
-	box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.1);
-	backdrop-filter: blur(10rpx);
 }
 
+/* Logo */
 .logo-section {
 	text-align: center;
-	margin-bottom: 60rpx;
-	
+	margin-bottom: 80rpx;
+
 	.logo {
-		width: 120rpx;
-		height: 120rpx;
-		margin-bottom: 20rpx;
+		display: block;
+		width: 160rpx;
+		height: 160rpx;
+		margin: 0 auto;
+		padding: 20rpx;
+		background: #111725;
+		border: 1rpx solid rgba(148, 163, 184, .09);
+		border-radius: 40rpx;
 	}
-	
+
 	.app-name {
 		display: block;
+		margin-top: 28rpx;
 		font-size: 48rpx;
-		font-weight: bold;
-		color: #333;
-		margin-bottom: 10rpx;
+		font-weight: 700;
+		color: #e8edf6;
+		letter-spacing: .02em;
 	}
-	
+
 	.app-desc {
 		display: block;
-		font-size: 28rpx;
-		color: #666;
+		margin-top: 10rpx;
+		font-size: 24rpx;
+		color: #5c677d;
+		letter-spacing: .08em;
 	}
 }
 
-.input-section {
-	margin-bottom: 40rpx;
-}
-
+/* 输入 */
 .input-group {
-	position: relative;
-	margin-bottom: 30rpx;
-	border: 2rpx solid #e5e5e5;
-	border-radius: 12rpx;
-	background: #fff;
 	display: flex;
 	align-items: center;
-	transition: border-color 0.3s;
-	
-	&:focus-within {
-		border-color: #007AFF;
-	}
-	
+	gap: 16rpx;
+	height: 96rpx;
+	margin-bottom: 24rpx;
+	padding: 0 28rpx;
+	background: #161e2e;
+	border: 1rpx solid rgba(148, 163, 184, .12);
+	border-radius: 26rpx;
+
 	.input-icon {
-		width: 80rpx;
-		height: 80rpx;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: #999;
-		font-size: 32rpx;
-	}
-	
-	.input-field {
-		flex: 1;
-		height: 80rpx;
-		padding: 0 20rpx;
-		font-size: 32rpx;
-		color: #333;
-		border: none;
-		outline: none;
-		background: transparent;
-		
-		.placeholder {
-			color: #999;
+		.iconfont {
+			font-size: 32rpx;
+			color: #5c677d;
 		}
 	}
-	
+
+	.input-field {
+		flex: 1;
+		font-size: 28rpx;
+		color: #e8edf6;
+		background: transparent;
+		border: none;
+	}
+
 	.password-toggle {
-		width: 80rpx;
-		height: 80rpx;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: #999;
-		font-size: 32rpx;
-		cursor: pointer;
+		padding-left: 12rpx;
+
+		.iconfont {
+			font-size: 30rpx;
+			color: #5c677d;
+		}
 	}
 }
 
+.placeholder {
+	color: #5c677d;
+}
+
+/* 记住密码 */
 .remember-section {
 	display: flex;
-	justify-content: space-between;
 	align-items: center;
-	margin-bottom: 20rpx;
-	
+	justify-content: space-between;
+	margin: 8rpx 0 40rpx;
+
 	.checkbox-group {
 		display: flex;
 		align-items: center;
-		cursor: pointer;
-		
-		.checkbox {
-			width: 32rpx;
-			height: 32rpx;
-			border: 2rpx solid #ddd;
-			border-radius: 6rpx;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			margin-right: 16rpx;
-			transition: all 0.3s;
-			
-			&.checked {
-				background: #007AFF;
-				border-color: #007AFF;
-				color: #fff;
-			}
-			
-			.iconfont {
-				font-size: 20rpx;
-			}
-		}
-		
-		.checkbox-text {
-			font-size: 28rpx;
-			color: #666;
-		}
+		gap: 12rpx;
 	}
-	
-	.forgot-password {
-		font-size: 28rpx;
-		color: #007AFF;
-		cursor: pointer;
-	}
-}
 
-.button-section {
-	margin-bottom: 40rpx;
-	
-	.login-btn {
-		width: 100%;
-		height: 88rpx;
-		background: linear-gradient(135deg, #007AFF, #5856D6);
-		color: #fff;
-		border: none;
+	.checkbox {
+		width: 36rpx;
+		height: 36rpx;
 		border-radius: 12rpx;
-		font-size: 32rpx;
-		font-weight: bold;
+		border: 2rpx solid rgba(148, 163, 184, .3);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: all 0.3s;
-		
-		&:not(.disabled):active {
-			transform: scale(0.98);
+
+		&.checked {
+			background: #22d3ee;
+			border-color: #22d3ee;
 		}
-		
+
+		.iconfont {
+			font-size: 20rpx;
+			color: #04222b;
+		}
+	}
+
+	.checkbox-text {
+		font-size: 25rpx;
+		color: #9aa5bb;
+	}
+
+	.forgot-password {
+		font-size: 25rpx;
+		color: #22d3ee;
+	}
+}
+
+/* 登录按钮 */
+.button-section {
+	.login-btn {
+		width: 100%;
+		height: 96rpx;
+		line-height: 96rpx;
+		border-radius: 26rpx;
+		background: linear-gradient(135deg, #06b6d4, #0891b2);
+		color: #04222b;
+		font-size: 31rpx;
+		font-weight: 700;
+		box-shadow: 0 16rpx 40rpx rgba(34, 211, 238, .26);
+
 		&.disabled {
-			background: #ccc;
-			color: #999;
+			background: #1c2536;
+			color: #5c677d;
+			box-shadow: none;
 		}
-		
-		.loading-text {
-			color: #fff;
-		}
+	}
+
+	.loading-text {
+		color: inherit;
 	}
 }
 
 .other-options {
+	margin-top: 40rpx;
 	text-align: center;
-	
+
 	.register-text {
-		font-size: 28rpx;
-		color: #666;
+		font-size: 25rpx;
+		color: #5c677d;
 	}
-	
+
 	.register-link {
-		font-size: 28rpx;
-		color: #007AFF;
-		margin-left: 10rpx;
-		cursor: pointer;
+		margin-left: 8rpx;
+		font-size: 25rpx;
+		color: #22d3ee;
 	}
 }
 
-/* 字体图标样式 */
+/* 字体图标 */
 .iconfont {
 	font-family: 'iconfont';
 	font-style: normal;

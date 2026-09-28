@@ -535,421 +535,358 @@ export default {
 
 <style scoped>
 .outbound-detail {
-  min-height: 100vh;
-  background-color: #f5f5f5;
-  padding-bottom: 120rpx;
+	min-height: 100vh;
+	background: #0a0e16;
+	padding-bottom: 160rpx;
 }
 
-/* 头部信息 */
+/* 头部单据卡 */
 .header-info {
-  background-color: #fff;
-  padding: 30rpx;
-  margin-bottom: 20rpx;
-  border-bottom: 1rpx solid #eee;
+	margin: 24rpx 32rpx;
+	padding: 28rpx;
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .09);
+	border-radius: 32rpx;
+	position: relative;
+	overflow: hidden;
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 4rpx;
+		background: linear-gradient(90deg, #22d3ee, transparent);
+	}
+
+	.order-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.order-no {
+		font-size: 30rpx;
+		font-weight: 700;
+		color: #22d3ee;
+		letter-spacing: .02em;
+		font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+	}
+
+	.create-time {
+		display: block;
+		margin-top: 10rpx;
+		font-size: 22rpx;
+		color: #5c677d;
+		font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+	}
 }
 
-.order-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16rpx;
-}
-
-.order-no {
-  font-size: 36rpx;
-  font-weight: bold;
-  color: #333;
-}
-
-.status-badge {
-  padding: 8rpx 16rpx;
-  border-radius: 12rpx;
-  font-size: 22rpx;
-  color: #fff;
-  font-weight: 500;
-}
-
-.status-pending {
-  background-color: #FF9500;
-}
-
-.status-picking {
-  background-color: #007AFF;
-}
-
-.status-completed {
-  background-color: #34C759;
-}
-
-.status-cancelled {
-  background-color: #8E8E93;
-}
-
-.create-time {
-  font-size: 24rpx;
-  color: #999;
-}
-
-/* 通用区块 */
+/* 区块 */
 .section {
-  background-color: #fff;
-  margin-bottom: 20rpx;
-  padding: 30rpx;
+	margin: 0 32rpx 24rpx;
+	padding: 28rpx;
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .09);
+	border-radius: 32rpx;
+
+	.section-header {
+		display: flex;
+		align-items: center;
+		gap: 12rpx;
+		margin-bottom: 20rpx;
+	}
+
+	.section-title {
+		position: relative;
+		padding-left: 16rpx;
+		font-size: 28rpx;
+		font-weight: 700;
+		color: #e8edf6;
+
+		&::before {
+			content: '';
+			position: absolute;
+			left: 0;
+			top: 50%;
+			transform: translateY(-50%);
+			width: 6rpx;
+			height: 26rpx;
+			background: #22d3ee;
+			border-radius: 3rpx;
+		}
+	}
+
+	.product-count {
+		margin-left: auto;
+		font-size: 22rpx;
+		color: #5c677d;
+	}
+
+	.info-row {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		padding: 12rpx 0;
+		border-bottom: 1rpx solid rgba(148, 163, 184, .09);
+
+		&:last-child {
+			border-bottom: none;
+		}
+	}
+
+	.info-label {
+		flex-shrink: 0;
+		font-size: 25rpx;
+		color: #5c677d;
+	}
+
+	.info-value {
+		flex: 1;
+		text-align: right;
+		font-size: 25rpx;
+		color: #e8edf6;
+		font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+	}
 }
 
-.section-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 24rpx;
-}
-
-.section-header uni-icons {
-  margin-right: 12rpx;
-}
-
-.section-title {
-  font-size: 28rpx;
-  font-weight: bold;
-  color: #333;
-}
-
-.product-count {
-  margin-left: auto;
-  font-size: 24rpx;
-  color: #666;
-  font-weight: normal;
-}
-
-/* 客户信息 */
-.customer-info {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.info-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 20rpx;
-}
-
-.info-label {
-  font-size: 26rpx;
-  color: #666;
-  min-width: 140rpx;
-  flex-shrink: 0;
-}
-
-.info-value {
-  font-size: 26rpx;
-  color: #333;
-  flex: 1;
-  word-break: break-all;
-}
-
-/* 出库详情 */
-.outbound-info {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-/* 进度统计 */
+/* 进度 */
 .progress-stats {
-  display: flex;
-  gap: 40rpx;
-  margin-bottom: 24rpx;
-}
+	display: flex;
+	gap: 16rpx;
+	margin-bottom: 24rpx;
 
-.stat-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8rpx;
-}
+	.stat-item {
+		flex: 1;
+		padding: 18rpx 8rpx;
+		background: #161e2e;
+		border-radius: 20rpx;
+		text-align: center;
+	}
 
-.stat-number {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #333;
-}
+	.stat-number {
+		display: block;
+		font-size: 32rpx;
+		font-weight: 700;
+		color: #22d3ee;
+		font-family: "JetBrains Mono", Menlo, Consolas, monospace;
 
-.stat-number.picked {
-  color: #34C759;
-}
+		&.picked {
+			color: #34d399;
+		}
 
-.stat-number.progress {
-  color: #007AFF;
-}
+		&.progress {
+			color: #fbbf24;
+		}
+	}
 
-.stat-label {
-  font-size: 22rpx;
-  color: #666;
+	.stat-label {
+		display: block;
+		margin-top: 6rpx;
+		font-size: 20rpx;
+		color: #5c677d;
+	}
 }
 
 .progress-bar {
-  width: 100%;
-  height: 16rpx;
-  background-color: #f0f0f0;
-  border-radius: 8rpx;
-  overflow: hidden;
+	height: 12rpx;
+	background: #1c2536;
+	border-radius: 8rpx;
+	overflow: hidden;
 }
 
 .progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #007AFF 0%, #34C759 100%);
-  border-radius: 8rpx;
-  transition: width 0.3s ease;
+	height: 100%;
+	border-radius: 8rpx;
+	background: linear-gradient(90deg, #06b6d4, #22d3ee);
+	transition: width .6s cubic-bezier(.22, 1, .36, 1);
 }
 
 /* 商品清单 */
 .product-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-}
+	.product-item {
+		display: flex;
+		align-items: center;
+		gap: 20rpx;
+		padding: 20rpx 0;
+		border-bottom: 1rpx solid rgba(148, 163, 184, .09);
 
-.product-item {
-  display: flex;
-  align-items: center;
-  padding: 24rpx;
-  background-color: #f8f8f8;
-  border-radius: 12rpx;
-  gap: 20rpx;
-}
+		&:last-child {
+			border-bottom: none;
+		}
 
-.product-image {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 8rpx;
-  background-color: #f0f0f0;
-  flex-shrink: 0;
-}
+		.product-image {
+			width: 96rpx;
+			height: 96rpx;
+			border-radius: 24rpx;
+			background: #1c2536;
+			flex-shrink: 0;
+		}
 
-.product-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6rpx;
-}
+		.product-info {
+			flex: 1;
+			min-width: 0;
 
-.product-name {
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #333;
-}
+			.product-name {
+				display: block;
+				font-size: 27rpx;
+				font-weight: 600;
+				color: #e8edf6;
+			}
 
-.product-sku {
-  font-size: 24rpx;
-  color: #666;
-}
+			.product-sku {
+				display: block;
+				margin-top: 4rpx;
+				font-size: 22rpx;
+				color: #5c677d;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+			}
 
-.product-spec {
-  font-size: 24rpx;
-  color: #999;
-}
+			.product-spec {
+				display: block;
+				margin-top: 4rpx;
+				font-size: 22rpx;
+				color: #9aa5bb;
+			}
+		}
 
-.quantity-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6rpx;
-  margin-right: 20rpx;
-}
+		.quantity-info {
+			flex-shrink: 0;
+			text-align: right;
 
-.quantity-row {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
+			.quantity-row {
+				display: flex;
+				align-items: center;
+				justify-content: flex-end;
+				gap: 8rpx;
+			}
 
-.quantity-label {
-  font-size: 22rpx;
-  color: #666;
-  min-width: 60rpx;
-}
+			.quantity-label {
+				font-size: 22rpx;
+				color: #5c677d;
+			}
 
-.quantity-value {
-  font-size: 24rpx;
-  font-weight: 500;
-  color: #333;
-  min-width: 40rpx;
-  text-align: right;
-}
+			.quantity-value {
+				font-size: 24rpx;
+				color: #e8edf6;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
 
-.quantity-value.picked {
-  color: #34C759;
-}
+				&.picked {
+					color: #34d399;
+				}
 
-.quantity-value.pending {
-  color: #FF9500;
-}
+				&.pending {
+					color: #fbbf24;
+				}
+			}
+		}
 
-.product-status {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.product-status .status-badge {
-  padding: 6rpx 12rpx;
-  border-radius: 10rpx;
-  font-size: 20rpx;
-  color: #fff;
-}
-
-.mini-progress {
-  width: 60rpx;
-  height: 6rpx;
-  background-color: #f0f0f0;
-  border-radius: 3rpx;
-  overflow: hidden;
-}
-
-.mini-progress-fill {
-  height: 100%;
-  background-color: #34C759;
-  border-radius: 3rpx;
-  transition: width 0.3s ease;
+		.product-status {
+			flex-shrink: 0;
+			width: 120rpx;
+			text-align: center;
+		}
+	}
 }
 
 /* 操作记录 */
 .record-list {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
+	.record-item {
+		display: flex;
+		gap: 20rpx;
+		padding-bottom: 28rpx;
+
+		&:last-child {
+			padding-bottom: 0;
+		}
+
+		.record-dot {
+			width: 20rpx;
+			height: 20rpx;
+			margin-top: 10rpx;
+			border-radius: 50%;
+			background: #22d3ee;
+			flex-shrink: 0;
+			box-shadow: 0 0 0 6rpx rgba(34, 211, 238, .12);
+
+			&.success {
+				background: #34d399;
+				box-shadow: 0 0 0 6rpx rgba(52, 211, 153, .12);
+			}
+
+			&.warning {
+				background: #fbbf24;
+				box-shadow: 0 0 0 6rpx rgba(251, 191, 36, .12);
+			}
+
+			&.danger {
+				background: #f87171;
+				box-shadow: 0 0 0 6rpx rgba(248, 113, 113, .12);
+			}
+		}
+
+		.record-content {
+			flex: 1;
+			min-width: 0;
+
+			.record-header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 16rpx;
+			}
+
+			.record-action {
+				flex: 1;
+				font-size: 26rpx;
+				font-weight: 500;
+				color: #e8edf6;
+			}
+
+			.record-time {
+				flex-shrink: 0;
+				font-size: 21rpx;
+				color: #5c677d;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+			}
+
+			.record-detail {
+				display: block;
+				margin-top: 6rpx;
+				font-size: 23rpx;
+				color: #9aa5bb;
+			}
+
+			.record-operator {
+				display: block;
+				margin-top: 6rpx;
+				font-size: 23rpx;
+				color: #5c677d;
+			}
+		}
+	}
 }
 
-.record-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 20rpx;
-  position: relative;
-}
-
-.record-item:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  left: 16rpx;
-  top: 32rpx;
-  bottom: -24rpx;
-  width: 2rpx;
-  background-color: #eee;
-}
-
-.record-dot {
-  width: 32rpx;
-  height: 32rpx;
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-top: 4rpx;
-  position: relative;
-  z-index: 1;
-}
-
-.dot-create {
-  background-color: #007AFF;
-}
-
-.dot-start {
-  background-color: #FF9500;
-}
-
-.dot-pick {
-  background-color: #34C759;
-}
-
-.dot-complete {
-  background-color: #30D158;
-}
-
-.dot-cancel {
-  background-color: #FF3B30;
-}
-
-.dot-default {
-  background-color: #8E8E93;
-}
-
-.record-content {
-  flex: 1;
-}
-
-.record-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8rpx;
-}
-
-.record-action {
-  font-size: 26rpx;
-  font-weight: 500;
-  color: #333;
-}
-
-.record-time {
-  font-size: 22rpx;
-  color: #999;
-}
-
-.record-detail {
-  font-size: 24rpx;
-  color: #666;
-  margin-bottom: 4rpx;
-  display: block;
-}
-
-.record-operator {
-  font-size: 22rpx;
-  color: #999;
-}
-
-/* 底部操作 */
+/* 底部操作栏 */
 .bottom-actions {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: #fff;
-  padding: 20rpx 30rpx;
-  border-top: 1rpx solid #eee;
-  display: flex;
-  gap: 20rpx;
-  z-index: 100;
-}
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 100;
+	display: flex;
+	gap: 16rpx;
+	margin: 0;
+	padding: 16rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
+	background: rgba(13, 18, 32, .92);
+	border-top: 1rpx solid rgba(148, 163, 184, .09);
 
-.action-btn {
-  flex: 1;
-  height: 80rpx;
-  border-radius: 40rpx;
-  font-size: 28rpx;
-  font-weight: 500;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.action-btn.primary {
-  background-color: #007AFF;
-  color: #fff;
-}
-
-.action-btn.secondary {
-  background-color: #f8f8f8;
-  color: #FF3B30;
-  border: 1rpx solid #FF3B30;
-}
-
-.action-btn:disabled {
-  background-color: #ccc;
-  color: #999;
-  border-color: #ccc;
-}
-
-.action-btn:active:not(:disabled) {
-  opacity: 0.8;
+	.action-btn {
+		height: 84rpx;
+		line-height: 84rpx;
+		border-radius: 24rpx;
+		font-size: 27rpx;
+	}
 }
 </style>

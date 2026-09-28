@@ -590,533 +590,485 @@ export default {
 
 <style scoped>
 .receive-page {
-  min-height: 100vh;
-  background-color: #f5f5f5;
-  padding-bottom: 120rpx;
+	min-height: 100vh;
+	background: #0a0e16;
+	padding-bottom: 180rpx;
 }
 
-/* 头部信息 */
+/* 头部单据卡 */
 .header-info {
-  background-color: #fff;
-  padding: 30rpx;
-  margin-bottom: 20rpx;
-  border-bottom: 1rpx solid #eee;
+	margin: 24rpx 32rpx;
+	padding: 28rpx;
+	background: #111725;
+	border: 1rpx solid rgba(148, 163, 184, .09);
+	border-radius: 32rpx;
+	position: relative;
+	overflow: hidden;
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 4rpx;
+		background: linear-gradient(90deg, #22d3ee, transparent);
+	}
+
+	.order-info {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 20rpx;
+
+		.order-no {
+			font-size: 30rpx;
+			font-weight: 700;
+			color: #22d3ee;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+		}
+
+		.supplier-name {
+			flex: 1;
+			text-align: right;
+			font-size: 25rpx;
+			color: #9aa5bb;
+		}
+	}
+
+	.progress-info {
+		display: flex;
+		align-items: center;
+		gap: 20rpx;
+		margin-top: 24rpx;
+
+		.progress-text {
+			flex-shrink: 0;
+			font-size: 24rpx;
+			color: #e8edf6;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+		}
+
+		.progress-bar {
+			flex: 1;
+			height: 12rpx;
+			background: #1c2536;
+			border-radius: 8rpx;
+			overflow: hidden;
+		}
+
+		.progress-fill {
+			height: 100%;
+			border-radius: 8rpx;
+			background: linear-gradient(90deg, #06b6d4, #22d3ee);
+			transition: width .6s cubic-bezier(.22, 1, .36, 1);
+		}
+	}
 }
 
-.order-info {
-  margin-bottom: 20rpx;
-}
-
-.order-no {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 8rpx;
-  display: block;
-}
-
-.supplier-name {
-  font-size: 26rpx;
-  color: #666;
-}
-
-.progress-info {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-.progress-text {
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #007AFF;
-  min-width: 120rpx;
-}
-
-.progress-bar {
-  flex: 1;
-  height: 12rpx;
-  background-color: #f0f0f0;
-  border-radius: 6rpx;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #007AFF 0%, #34C759 100%);
-  border-radius: 6rpx;
-  transition: width 0.3s ease;
-}
-
-/* 扫码区域 */
+/* 扫码区 */
 .scan-section {
-  background-color: #fff;
-  padding: 30rpx;
-  margin-bottom: 20rpx;
+	padding: 0 32rpx 24rpx;
+
+	.scan-input {
+		display: flex;
+		align-items: center;
+		gap: 16rpx;
+		height: 88rpx;
+		padding: 0 20rpx 0 28rpx;
+		background: #161e2e;
+		border: 1rpx solid rgba(148, 163, 184, .12);
+		border-radius: 24rpx;
+
+		input {
+			flex: 1;
+			font-size: 27rpx;
+			color: #e8edf6;
+			background: transparent;
+			border: none;
+		}
+
+		.scan-btn {
+			width: 68rpx;
+			height: 68rpx;
+			flex-shrink: 0;
+			border-radius: 20rpx;
+			background: linear-gradient(135deg, #06b6d4, #0891b2);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+	}
+
+	.scan-tips {
+		margin-top: 16rpx;
+		font-size: 23rpx;
+		color: #5c677d;
+	}
 }
 
-.scan-input {
-  display: flex;
-  align-items: center;
-  background-color: #f8f8f8;
-  border-radius: 12rpx;
-  padding: 20rpx;
-  margin-bottom: 16rpx;
-}
-
-.scan-input uni-icons {
-  margin-right: 16rpx;
-}
-
-.scan-input input {
-  flex: 1;
-  font-size: 28rpx;
-  color: #333;
-}
-
-.scan-btn {
-  background-color: #007AFF;
-  color: #fff;
-  border: none;
-  border-radius: 8rpx;
-  padding: 12rpx 16rpx;
-  margin-left: 16rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.scan-tips {
-  text-align: center;
-}
-
-.scan-tips text {
-  font-size: 24rpx;
-  color: #999;
-}
-
-/* 当前收货商品 */
-.current-product {
-  background-color: #fff;
-  padding: 30rpx;
-  margin-bottom: 20rpx;
-}
-
+/* 区块标题 */
 .section-title {
-  display: flex;
-  align-items: center;
-  font-size: 28rpx;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 24rpx;
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+	margin: 32rpx 0 20rpx;
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #e8edf6;
+
+	&::before {
+		content: '';
+		width: 6rpx;
+		height: 26rpx;
+		background: #22d3ee;
+		border-radius: 3rpx;
+		margin-right: 8rpx;
+	}
+
+	.record-count {
+		font-size: 23rpx;
+		color: #5c677d;
+	}
 }
 
-.section-title uni-icons {
-  margin-right: 12rpx;
-}
+/* 当前商品卡 */
+.current-product {
+	margin: 0 32rpx 24rpx;
+	padding: 28rpx;
+	background: #111725;
+	border: 1rpx solid rgba(34, 211, 238, .28);
+	border-radius: 32rpx;
 
-.record-count {
-  margin-left: auto;
-  font-size: 24rpx;
-  color: #666;
-  font-weight: normal;
-}
+	.section-title {
+		margin: 0 0 20rpx;
+	}
 
-.product-card {
-  display: flex;
-  align-items: center;
-  padding: 24rpx;
-  background-color: #f8f8f8;
-  border-radius: 12rpx;
-  margin-bottom: 24rpx;
-}
+	.product-card {
+		display: flex;
+		align-items: center;
+		gap: 20rpx;
 
-.product-image {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 8rpx;
-  margin-right: 20rpx;
-  background-color: #f0f0f0;
-}
+		.product-image {
+			width: 104rpx;
+			height: 104rpx;
+			border-radius: 24rpx;
+			background: #1c2536;
+			flex-shrink: 0;
+		}
 
-.product-info {
-  flex: 1;
-  margin-right: 20rpx;
-}
+		.product-info {
+			flex: 1;
+			min-width: 0;
 
-.product-name {
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 8rpx;
-}
+			.product-name {
+				font-size: 28rpx;
+				font-weight: 600;
+				color: #e8edf6;
+			}
 
-.product-sku {
-  font-size: 24rpx;
-  color: #666;
-  margin-bottom: 4rpx;
-}
+			.product-sku {
+				margin-top: 4rpx;
+				font-size: 22rpx;
+				color: #5c677d;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+			}
 
-.product-spec {
-  font-size: 24rpx;
-  color: #999;
-}
+			.product-spec {
+				margin-top: 4rpx;
+				font-size: 22rpx;
+				color: #9aa5bb;
+			}
+		}
 
-.quantity-section {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4rpx;
-}
+		.quantity-section {
+			flex-shrink: 0;
+			text-align: right;
 
-.quantity-info {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
+			.quantity-info {
+				display: flex;
+				align-items: center;
+				justify-content: flex-end;
+				gap: 8rpx;
+			}
 
-.quantity-label {
-  font-size: 24rpx;
-  color: #666;
-}
+			.quantity-label {
+				font-size: 22rpx;
+				color: #5c677d;
+			}
 
-.quantity-value {
-  font-size: 26rpx;
-  font-weight: 500;
-  color: #333;
-  min-width: 60rpx;
-  text-align: right;
-}
+			.quantity-value {
+				font-size: 24rpx;
+				color: #e8edf6;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
 
-.quantity-value.received {
-  color: #34C759;
-}
+				&.received {
+					color: #34d399;
+				}
 
-.quantity-value.pending {
-  color: #FF9500;
-}
+				&.pending {
+					color: #fbbf24;
+				}
+			}
+		}
+	}
 
-/* 收货数量输入 */
-.receive-input {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
+	.receive-input {
+		margin-top: 24rpx;
+		padding-top: 24rpx;
+		border-top: 1rpx solid rgba(148, 163, 184, .09);
 
-.input-label {
-  font-size: 26rpx;
-  color: #333;
-  white-space: nowrap;
-}
+		.input-label {
+			display: block;
+			margin-bottom: 16rpx;
+			font-size: 25rpx;
+			color: #9aa5bb;
+		}
 
-.quantity-input {
-  display: flex;
-  align-items: center;
-  border: 1rpx solid #ddd;
-  border-radius: 8rpx;
-  overflow: hidden;
-}
+		.quantity-input {
+			display: flex;
+			align-items: center;
+			gap: 20rpx;
+			margin-bottom: 24rpx;
 
-.quantity-btn {
-  width: 60rpx;
-  height: 60rpx;
-  background-color: #f8f8f8;
-  border: none;
-  font-size: 28rpx;
-  color: #333;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+			.quantity-btn {
+				width: 76rpx;
+				height: 76rpx;
+				flex-shrink: 0;
+				line-height: 76rpx;
+				text-align: center;
+				border-radius: 20rpx;
+				background: #161e2e;
+				border: 1rpx solid rgba(148, 163, 184, .12);
+				color: #e8edf6;
+				font-size: 34rpx;
+			}
 
-.quantity-btn:active {
-  background-color: #eee;
-}
+			.quantity-field {
+				flex: 1;
+				height: 76rpx;
+				text-align: center;
+				background: #161e2e;
+				border: 1rpx solid rgba(148, 163, 184, .12);
+				border-radius: 20rpx;
+				color: #22d3ee;
+				font-size: 30rpx;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+			}
+		}
 
-.quantity-field {
-  width: 100rpx;
-  height: 60rpx;
-  text-align: center;
-  font-size: 26rpx;
-  color: #333;
-  border: none;
-  background-color: #fff;
-}
-
-.confirm-btn {
-  background-color: #007AFF;
-  color: #fff;
-  border: none;
-  border-radius: 8rpx;
-  padding: 16rpx 32rpx;
-  font-size: 26rpx;
-  margin-left: auto;
-}
-
-.confirm-btn:disabled {
-  background-color: #ccc;
-  color: #999;
+		.confirm-btn {
+			width: 100%;
+			height: 84rpx;
+			line-height: 84rpx;
+			text-align: center;
+			border-radius: 24rpx;
+			background: linear-gradient(135deg, #06b6d4, #0891b2);
+			color: #04222b;
+			font-size: 28rpx;
+			font-weight: 600;
+		}
+	}
 }
 
 /* 收货记录 */
 .receive-records {
-  background-color: #fff;
-  padding: 30rpx;
-  margin-bottom: 20rpx;
-}
+	margin: 0 32rpx 24rpx;
 
-.records-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
+	.records-list {
+		display: flex;
+		flex-direction: column;
+		gap: 20rpx;
+	}
 
-.record-item {
-  display: flex;
-  align-items: center;
-  padding: 20rpx;
-  background-color: #f8f8f8;
-  border-radius: 12rpx;
-  position: relative;
-}
+	.record-item {
+		padding: 24rpx;
+		background: #111725;
+		border: 1rpx solid rgba(148, 163, 184, .09);
+		border-radius: 26rpx;
 
-.record-header {
-  flex: 1;
-  margin-right: 20rpx;
-}
+		.record-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 16rpx;
+		}
 
-.record-product {
-  font-size: 26rpx;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 4rpx;
-  display: block;
-}
+		.record-product {
+			flex: 1;
+			font-size: 26rpx;
+			font-weight: 600;
+			color: #e8edf6;
+		}
 
-.record-time {
-  font-size: 22rpx;
-  color: #999;
-}
+		.record-time {
+			flex-shrink: 0;
+			font-size: 21rpx;
+			color: #5c677d;
+			font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+		}
 
-.record-details {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  margin-right: 20rpx;
-}
+		.record-details {
+			display: flex;
+			gap: 24rpx;
+			margin-top: 10rpx;
 
-.record-sku {
-  font-size: 22rpx;
-  color: #666;
-  margin-bottom: 4rpx;
-}
+			.record-sku {
+				font-size: 22rpx;
+				color: #5c677d;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+			}
 
-.record-quantity {
-  font-size: 24rpx;
-  font-weight: 500;
-  color: #34C759;
-}
+			.record-quantity {
+				font-size: 22rpx;
+				color: #34d399;
+			}
+		}
 
-.undo-btn {
-  display: flex;
-  align-items: center;
-  gap: 4rpx;
-  background-color: transparent;
-  border: 1rpx solid #FF3B30;
-  border-radius: 16rpx;
-  padding: 8rpx 12rpx;
-  font-size: 22rpx;
-  color: #FF3B30;
-}
+		.undo-btn {
+			display: inline-flex;
+			align-items: center;
+			gap: 8rpx;
+			margin-top: 18rpx;
+			padding: 10rpx 24rpx;
+			border-radius: 16rpx;
+			background: rgba(248, 113, 113, .12);
+			border: 1rpx solid rgba(248, 113, 113, .3);
+			color: #f87171;
+			font-size: 23rpx;
+		}
+	}
 
-.empty-records {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60rpx 40rpx;
-  color: #ccc;
-}
-
-.empty-records text {
-  font-size: 26rpx;
-  margin-top: 16rpx;
+	.empty-records {
+		padding: 60rpx 0;
+		text-align: center;
+		font-size: 25rpx;
+		color: #5c677d;
+	}
 }
 
 /* 商品清单 */
 .product-list {
-  background-color: #fff;
-  padding: 30rpx;
-  margin-bottom: 20rpx;
+	margin: 0 32rpx;
+
+	.filter-tabs {
+		display: flex;
+		gap: 12rpx;
+		margin-left: auto;
+		padding: 0;
+
+		.filter-tab {
+			flex: none;
+			width: auto;
+			height: auto;
+			line-height: 1.4;
+			padding: 8rpx 20rpx;
+			border-radius: 16rpx;
+			background: #161e2e;
+			border: 1rpx solid rgba(148, 163, 184, .12);
+			color: #9aa5bb;
+			font-size: 22rpx;
+
+			&.active {
+				background: rgba(34, 211, 238, .12);
+				border-color: rgba(34, 211, 238, .35);
+				color: #22d3ee;
+			}
+		}
+	}
+
+	.list-container {
+		display: flex;
+		flex-direction: column;
+		gap: 20rpx;
+		padding: 0;
+	}
+
+	.list-item {
+		display: flex;
+		align-items: center;
+		gap: 20rpx;
+		padding: 24rpx;
+		background: #111725;
+		border: 1rpx solid rgba(148, 163, 184, .09);
+		border-radius: 26rpx;
+		transition: all .2s ease;
+
+		&.selected {
+			border-color: rgba(34, 211, 238, .45);
+			background: rgba(34, 211, 238, .06);
+		}
+
+		.item-image {
+			width: 96rpx;
+			height: 96rpx;
+			border-radius: 22rpx;
+			background: #1c2536;
+			flex-shrink: 0;
+		}
+
+		.item-info {
+			flex: 1;
+			min-width: 0;
+
+			.item-name {
+				font-size: 27rpx;
+				font-weight: 600;
+				color: #e8edf6;
+			}
+
+			.item-sku {
+				margin-top: 4rpx;
+				font-size: 22rpx;
+				color: #5c677d;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+			}
+
+			.item-spec {
+				margin-top: 4rpx;
+				font-size: 22rpx;
+				color: #9aa5bb;
+			}
+		}
+
+		.item-status {
+			flex-shrink: 0;
+			text-align: right;
+
+			.quantity-progress {
+				margin-top: 12rpx;
+			}
+
+			.progress-text {
+				display: block;
+				margin-bottom: 8rpx;
+				font-size: 21rpx;
+				color: #9aa5bb;
+				font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+			}
+		}
+	}
 }
 
-.filter-tabs {
-  display: flex;
-  margin-left: auto;
-  gap: 20rpx;
-}
-
-.filter-tab {
-  font-size: 24rpx;
-  color: #666;
-  padding: 8rpx 16rpx;
-  border-radius: 16rpx;
-  background-color: #f8f8f8;
-}
-
-.filter-tab.active {
-  background-color: #007AFF;
-  color: #fff;
-}
-
-.list-container {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.list-item {
-  display: flex;
-  align-items: center;
-  padding: 20rpx;
-  border: 1rpx solid #eee;
-  border-radius: 12rpx;
-  background-color: #fafafa;
-}
-
-.list-item.selected {
-  border-color: #007AFF;
-  background-color: #f0f8ff;
-}
-
-.item-image {
-  width: 60rpx;
-  height: 60rpx;
-  border-radius: 6rpx;
-  margin-right: 16rpx;
-  background-color: #f0f0f0;
-}
-
-.item-info {
-  flex: 1;
-  margin-right: 16rpx;
-}
-
-.item-name {
-  font-size: 26rpx;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 4rpx;
-}
-
-.item-sku {
-  font-size: 22rpx;
-  color: #666;
-  margin-bottom: 2rpx;
-}
-
-.item-spec {
-  font-size: 22rpx;
-  color: #999;
-}
-
-.item-status {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8rpx;
-}
-
-.status-badge {
-  padding: 4rpx 12rpx;
-  border-radius: 10rpx;
-  font-size: 22rpx;
-  color: #fff;
-}
-
-.status-pending {
-  background-color: #FF9500;
-}
-
-.status-partial {
-  background-color: #007AFF;
-}
-
-.status-completed {
-  background-color: #34C759;
-}
-
-.quantity-progress {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4rpx;
-}
-
-.progress-text {
-  font-size: 22rpx;
-  color: #666;
-}
-
-.mini-progress {
-  width: 80rpx;
-  height: 4rpx;
-  background-color: #f0f0f0;
-  border-radius: 2rpx;
-  overflow: hidden;
-}
-
-.mini-progress-fill {
-  height: 100%;
-  background-color: #34C759;
-  border-radius: 2rpx;
-  transition: width 0.3s ease;
-}
-
-/* 底部操作 */
+/* 底部操作栏 */
 .bottom-actions {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: #fff;
-  padding: 20rpx 30rpx;
-  border-top: 1rpx solid #eee;
-  display: flex;
-  gap: 20rpx;
-  z-index: 100;
-}
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 100;
+	display: flex;
+	gap: 16rpx;
+	margin: 0;
+	padding: 16rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
+	background: rgba(13, 18, 32, .92);
+	border-top: 1rpx solid rgba(148, 163, 184, .09);
 
-.action-btn {
-  flex: 1;
-  height: 80rpx;
-  border-radius: 40rpx;
-  font-size: 28rpx;
-  font-weight: 500;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.action-btn.primary {
-  background-color: #007AFF;
-  color: #fff;
-}
-
-.action-btn.secondary {
-  background-color: #f8f8f8;
-  color: #007AFF;
-  border: 1rpx solid #007AFF;
-}
-
-.action-btn:disabled {
-  background-color: #ccc;
-  color: #999;
-  border-color: #ccc;
-}
-
-.action-btn:active:not(:disabled) {
-  opacity: 0.8;
+	.action-btn {
+		height: 84rpx;
+		line-height: 84rpx;
+		border-radius: 24rpx;
+		font-size: 27rpx;
+	}
 }
 </style>

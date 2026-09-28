@@ -654,6 +654,27 @@
 		font-size: 28rpx;
 	}
 
+	/* ---------- 字体图标（iconfont） ---------- */
+	.iconfont {
+		font-family: 'iconfont';
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+
+	.icon-search:before { content: '\e7e4'; }
+	.icon-check:before { content: '\e7fc'; }
+	.icon-close:before { content: '\e7e9'; }
+	.icon-filter:before { content: '\e7c1'; }
+	.icon-location:before { content: '\e7b8'; }
+	.icon-adjust:before { content: '\e7a1'; }
+	.icon-move:before { content: '\e7b7'; }
+	.icon-detail:before { content: '\e7a4'; }
+	.icon-freeze:before { content: '\e7cb'; }
+	.icon-empty:before { content: '\e7a6'; }
+	.icon-user:before { content: '\e7ae'; }
+	.icon-lock:before { content: '\e7a2'; }
+
 	/* ---------- 滚动条隐藏 ---------- */
 	::-webkit-scrollbar {
 		width: 0;
