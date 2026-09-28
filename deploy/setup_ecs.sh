@@ -10,8 +10,12 @@ set -e
 cd "$(dirname "$0")/.."
 
 echo "===== [1/5] 构建前端 dist（首次约 3-5 分钟）====="
-docker run --rm -v "$PWD/frontend":/app -w /app node:20-alpine sh -c \
-  "npm config set registry https://registry.npmmirror.com && npm install --no-audit --no-fund && npm run build"
+if [ -f frontend/dist/index.html ]; then
+  echo "frontend/dist 已存在，跳过构建（强制重建：rm -rf frontend/dist 后重跑）"
+else
+  docker run --rm -v "$PWD/frontend":/app -w /app node:20-alpine sh -c \
+    "npm config set registry https://registry.npmmirror.com && npm install --no-audit --no-fund && npm run build"
+fi
 ls frontend/dist/index.html
 
 echo ""
