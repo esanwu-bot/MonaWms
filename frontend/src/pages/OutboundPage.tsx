@@ -397,7 +397,6 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
               />
             </Form.Item>
           </Col>
-          </Col>
         </Row>
 
         {/* D2 领用信息 */}
