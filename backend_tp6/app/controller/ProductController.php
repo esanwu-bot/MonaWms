@@ -503,13 +503,24 @@ class ProductController extends BaseController
             
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             
+            // 不能用 header()+exit 直出：会绕过 Cors 中间件的响应头追加（$next 之后才加），
+            // 跨域 dev 环境下浏览器无法读取响应导致"下载失败"；改为临时文件 + File 响应走完管道
             $filename = '产品导入模板_' . date('YmdHis') . '.xlsx';
-            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            header('Content-Disposition: attachment;filename="' . $filename . '"');
-            header('Cache-Control: max-age=0');
+            $dir = runtime_path() . 'downloads';
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            $fullPath = $dir . DIRECTORY_SEPARATOR . $filename;
+            $writer->save($fullPath);
             
-            $writer->save('php://output');
-            exit;
+            // 清理 1 小时前的临时模板，避免堆积
+            foreach (glob($dir . DIRECTORY_SEPARATOR . '产品导入模板_*.xlsx') ?: [] as $old) {
+                if (is_file($old) && filemtime($old) < time() - 3600) {
+                    @unlink($old);
+                }
+            }
+            
+            return download($fullPath, $filename);
         } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('模板下载失败：' . $e->getMessage());
         }

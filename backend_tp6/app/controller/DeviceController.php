@@ -333,14 +333,16 @@ class DeviceController extends BaseController
             
             $writer = new Xlsx($spreadsheet);
             
-            // 设置响应头
+            // 同 ProductController：不能用 header()+exit 直出，否则绕过 Cors 中间件导致跨域下载失败
             $filename = '设备导入模板_' . date('YmdHis') . '.xlsx';
-            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            header('Content-Disposition: attachment;filename="' . $filename . '"');
-            header('Cache-Control: max-age=0');
+            $dir = runtime_path() . 'downloads';
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            $fullPath = $dir . DIRECTORY_SEPARATOR . $filename;
+            $writer->save($fullPath);
             
-            $writer->save('php://output');
-            exit;
+            return download($fullPath, $filename);
         } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return json([
                 'code' => 500,
