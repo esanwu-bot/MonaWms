@@ -641,42 +641,373 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
   );
 };
 
+// P9：入库单详情数据结构（后端 getDetailInfo 返回 snake_case）
+interface DetailOrderItem {
+  id: number;
+  product_id: number;
+  product?: { id: number; name: string; sku: string; unit?: string; measure_type?: string };
+  quantity: number;
+  received_quantity: number;
+  unit_price: number;
+  batch_number?: string | null;
+  expiry_date?: string | null;
+}
+
+interface DetailOrder {
+  id: string;
+  order_number: string;
+  status: string;
+  status_text?: string;
+  warehouse_id?: number;
+  warehouse_name?: string;
+  supplier_name?: string;
+  operator_name?: string;
+  source?: string;
+  received_at?: string | null;
+  expected_date?: string | null;
+  notes?: string;
+  items: DetailOrderItem[];
+  statistics?: {
+    total_items: number;
+    total_quantity: number | string;
+    received_quantity: number | string;
+    completion_rate: number;
+  };
+}
+
+// 状态机对齐后端：pending 待处理 → receiving 收货中 → completed 已完成 / cancelled 已取消
+const getInboundStatusTag = (status: string) => {
+  switch (status) {
+    case 'pending': return <Tag icon={<ClockCircleOutlined />} color="warning">待处理</Tag>;
+    case 'receiving': return <Tag icon={<SyncOutlined spin />} color="processing">收货中</Tag>;
+    case 'completed': return <Tag icon={<CheckOutlined />} color="success">已完成</Tag>;
+    case 'cancelled': return <Tag icon={<CloseCircleOutlined />} color="default">已取消</Tag>;
+    default: return <Tag>{status}</Tag>;
+  }
+};
+
+// P9：明细级收货登记弹窗 —— 计件类（measure_type=count）按件录 SN，散料录批次（留空自动生成）
+interface ReceivingDialogProps {
+  open: boolean;
+  order: DetailOrder | undefined;
+  onClose: () => void;
+}
+
+const ReceivingDialog: React.FC<ReceivingDialogProps> = ({ open, order, onClose }) => {
+  const queryClient = useQueryClient();
+  const [itemId, setItemId] = useState<number | null>(null);
+  const [quantity, setQuantity] = useState<number>(0);
+  const [locationId, setLocationId] = useState<number | undefined>(undefined);
+  const [batchNumber, setBatchNumber] = useState('');
+  const [expiryDate, setExpiryDate] = useState<string>('');
+  const [serialsText, setSerialsText] = useState('');
+
+  const items = order?.items || [];
+  const currentItem = items.find((it) => it.id === itemId);
+  // 计件类判定与后端 requiresSerial() 同口径：measure_type = count
+  const isCount = (currentItem?.product?.measure_type || 'count') === 'count';
+  const remaining = currentItem
+    ? Math.max(0, Number(currentItem.quantity) - Number(currentItem.received_quantity))
+    : 0;
+  // SN 支持换行/逗号/空格批量粘贴（与后端 preg_split 同口径）
+  const serialList = serialsText.split(/[\r\n,\s]+/).map((s) => s.trim()).filter(Boolean);
+  const serialsOk = !isCount || (serialList.length === Math.floor(quantity) && quantity > 0);
+
+  // 库位选项（按单据仓库过滤）
+  const { data: locationOptions } = useQuery({
+    queryKey: ['locations', 'options', order?.warehouse_id],
+    queryFn: async () => {
+      const response = await api.get('/locations/options', {
+        params: { warehouse_id: order?.warehouse_id },
+      });
+      return Array.isArray(response.data?.data) ? response.data.data : [];
+    },
+    enabled: open && !!order?.warehouse_id,
+  });
+
+  // 切换明细时重置表单，数量默认填剩余量
+  const selectItem = (it: DetailOrderItem) => {
+    setItemId(it.id);
+    setQuantity(Math.max(0, Number(it.quantity) - Number(it.received_quantity)));
+    setBatchNumber(it.batch_number || '');
+    setSerialsText('');
+  };
+
+  React.useEffect(() => {
+    if (open) {
+      if (items.length > 0 && (itemId === null || !items.some((it) => it.id === itemId))) {
+        // 默认选中第一条未收完的明细
+        const next = items.find((it) => Number(it.received_quantity) < Number(it.quantity));
+        if (next) selectItem(next);
+      }
+    } else {
+      setItemId(null);
+      setQuantity(0);
+      setLocationId(undefined);
+      setBatchNumber('');
+      setExpiryDate('');
+      setSerialsText('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, order]);
+
+  const receiveMutation = useMutation({
+    mutationFn: async (payload: Record<string, any>) => {
+      const response = await api.post(`/inbound-orders/${order?.id}/receive`, payload);
+      return response.data;
+    },
+    onSuccess: () => {
+      message.success('收货成功');
+      // 刷新详情（已收数量回显）与列表
+      queryClient.invalidateQueries({ queryKey: ['inbound-order-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['inbound-orders'] });
+      setSerialsText('');
+    },
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message || '收货失败');
+    },
+  });
+
+  const canSubmit =
+    !!currentItem && !!locationId && quantity > 0 && quantity <= remaining + 1e-9 && serialsOk;
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    receiveMutation.mutate({
+      item_id: currentItem!.id,
+      quantity,
+      location_id: locationId,
+      batch_number: batchNumber || undefined,
+      expiry_date: expiryDate || undefined,
+      // 计件类按件传 SN；散料类不传
+      serials: isCount ? serialList : undefined,
+    });
+  };
+
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      width={760}
+      title={
+        <Space>
+          <CheckOutlined />
+          <span>收货登记 - {order?.order_number}</span>
+        </Space>
+      }
+      footer={[
+        <Button key="close" onClick={onClose}>关闭</Button>,
+        <Button
+          key="submit"
+          type="primary"
+          onClick={handleSubmit}
+          loading={receiveMutation.isPending}
+          disabled={!canSubmit}
+        >
+          提交收货
+        </Button>,
+      ]}
+    >
+      <Alert
+        style={{ marginBottom: 16 }}
+        type="info"
+        showIcon
+        message={
+          isCount
+            ? '计件类物资：需按件录入序列号（SN），支持换行、逗号或空格分隔批量粘贴；总账与 SN 台账同事务更新'
+            : '散料类物资：按批次登记数量，批次号留空将自动生成；总账与批次台账同事务更新'
+        }
+      />
+
+      <Table
+        size="small"
+        dataSource={items}
+        rowKey="id"
+        pagination={false}
+        rowSelection={{
+          type: 'radio',
+          selectedRowKeys: itemId !== null ? [itemId] : [],
+          onSelect: (record) => selectItem(record as DetailOrderItem),
+        }}
+        onRow={(record) => ({ onClick: () => selectItem(record as DetailOrderItem) })}
+        columns={[
+          {
+            title: '产品',
+            dataIndex: ['product', 'name'],
+            render: (text, record: any) => (
+              <div>
+                <div>{text}</div>
+                <Text type="secondary">SKU: {record.product?.sku}</Text>
+              </div>
+            ),
+          },
+          {
+            title: '应收',
+            dataIndex: 'quantity',
+            align: 'right',
+            width: 100,
+            render: (text, record: any) => `${text} ${record.product?.unit || '件'}`,
+          },
+          {
+            title: '已收',
+            dataIndex: 'received_quantity',
+            align: 'right',
+            width: 90,
+            render: (text) => Number(text || 0),
+          },
+          {
+            title: '剩余',
+            align: 'right',
+            width: 80,
+            render: (_, record: any) =>
+              Math.max(0, Number(record.quantity) - Number(record.received_quantity)),
+          },
+        ]}
+      />
+
+      <Divider plain>收货信息</Divider>
+
+      {currentItem ? (
+        <Form layout="vertical">
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item label={isCount ? '收货数量（件）' : '收货数量'} required>
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={0}
+                  max={remaining}
+                  precision={isCount ? 0 : 4}
+                  step={isCount ? 1 : 0.0001}
+                  value={quantity}
+                  onChange={(v) => setQuantity(Number(v) || 0)}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="库位" required>
+                <Select
+                  placeholder="选择上架库位"
+                  showSearch
+                  optionFilterProp="children"
+                  value={locationId}
+                  onChange={setLocationId}
+                  allowClear
+                >
+                  {(locationOptions || []).map((loc: any) => (
+                    <Option key={loc.id} value={loc.id}>{loc.code}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="批次号" extra={isCount ? '计件类可留空' : '留空自动生成批次号'}>
+                <Input
+                  placeholder="如 B20260929-01"
+                  value={batchNumber}
+                  onChange={(e) => setBatchNumber(e.target.value)}
+                  maxLength={50}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {isCount ? (
+            <Form.Item
+              label="序列号（SN）"
+              required
+              validateStatus={serialsOk ? 'success' : 'error'}
+              help={
+                serialsOk
+                  ? `已录入 ${serialList.length} / 需 ${Math.floor(quantity)} 个`
+                  : `已录入 ${serialList.length} / 需 ${Math.floor(quantity)} 个，个数必须与收货数量一致`
+              }
+            >
+              <TextArea
+                rows={6}
+                placeholder={'每行一个 SN，支持换行、逗号或空格分隔批量粘贴\n例：\nSN20260929001\nSN20260929002\nSN20260929003'}
+                value={serialsText}
+                onChange={(e) => setSerialsText(e.target.value)}
+              />
+            </Form.Item>
+          ) : (
+            <Form.Item label="效期（可选）">
+              <DatePicker
+                style={{ width: '100%' }}
+                value={expiryDate ? dayjs(expiryDate) : null}
+                onChange={(_, dateStr) => setExpiryDate((dateStr as string) || '')}
+              />
+            </Form.Item>
+          )}
+        </Form>
+      ) : (
+        <Text type="secondary">请先在上方选择要收货的明细</Text>
+      )}
+    </Modal>
+  );
+};
+
 interface InboundOrderDetailDialogProps {
   open: boolean;
-  order?: InboundOrder;
+  orderId?: string;
   onClose: () => void;
-  onApprove?: (orderId: string) => void;
-  onReject?: (orderId: string) => void;
-  onReceive?: (orderId: string) => void;
+  onStartReceiving?: (orderId: string) => void;
+  onComplete?: (orderId: string) => void;
   loading?: boolean;
 }
 
 const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
   open,
-  order,
+  orderId,
   onClose,
-  onApprove,
-  onReject,
-  onReceive,
+  onStartReceiving,
+  onComplete,
   loading = false,
 }) => {
-  if (!order) return null;
+  const [receivingOpen, setReceivingOpen] = useState(false);
 
-  const getStatusTag = (status: string) => {
-    switch (status) {
-      case 'pending': return <Tag icon={<ClockCircleOutlined />} color="warning">待审核</Tag>;
-      case 'approved': return <Tag icon={<CheckCircleOutlined />} color="processing">已审核</Tag>;
-      case 'received': return <Tag icon={<CheckOutlined />} color="success">已收货</Tag>;
-      case 'rejected': return <Tag icon={<CloseCircleOutlined />} color="error">已拒绝</Tag>;
-      default: return <Tag>{status}</Tag>;
-    }
-  };
+  // 详情以 id 驱动实时拉取（收货后已收数量可即时回显）
+  const { data: order, isLoading: detailLoading } = useQuery({
+    queryKey: ['inbound-order-detail', orderId],
+    queryFn: async () => {
+      const response = await api.get(`/inbound-orders/${orderId}`);
+      return response.data?.data as DetailOrder;
+    },
+    enabled: open && !!orderId,
+  });
+
+  if (!orderId) return null;
 
   const steps = [
     { title: '创建', status: 'finish' },
-    { title: '审核', status: order.status === 'pending' ? 'wait' : 'finish' },
-    { title: '收货', status: order.status === 'received' ? 'finish' : 'wait' },
+    {
+      title: '收货',
+      status: order?.status === 'receiving' ? 'process'
+        : order?.status === 'completed' ? 'finish' : 'wait',
+    },
+    { title: '完成', status: order?.status === 'completed' ? 'finish' : 'wait' },
   ];
+
+  const totalQty = Number(order?.statistics?.total_quantity || 0);
+  const receivedQty = Number(order?.statistics?.received_quantity || 0);
+  const allReceived =
+    order && order.items.length > 0
+      ? order.items.every((it) => Number(it.received_quantity) >= Number(it.quantity))
+      : false;
+
+  // 未收完直接完成时二次确认，避免误操作截断收货
+  const handleComplete = () => {
+    if (order && !allReceived) {
+      Modal.confirm({
+        title: '仍有明细未收完',
+        content: `已收 ${receivedQty} / 应收 ${totalQty}，确认直接完成入库吗？未收部分将不再收货。`,
+        okText: '确认完成',
+        cancelText: '继续收货',
+        onOk: () => onComplete?.(order.id),
+      });
+    } else if (order) {
+      onComplete?.(order.id);
+    }
+  };
 
   return (
     <Modal
@@ -693,97 +1024,142 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
         <Button key="close" onClick={onClose}>
           关闭
         </Button>,
-        order.status === 'pending' && onApprove && onReject && (
-          <>
-            <Button
-              key="reject"
-              danger
-              onClick={() => onReject(order.id)}
-              loading={loading}
-            >
-              拒绝
-            </Button>,
-            <Button
-              key="approve"
-              type="primary"
-              onClick={() => onApprove(order.id)}
-              loading={loading}
-            >
-              审核通过
-            </Button>
-          </>
+        order?.status === 'pending' && onStartReceiving && (
+          <Button
+            key="start-receiving"
+            type="primary"
+            icon={<PlayCircleOutlined />}
+            onClick={() => onStartReceiving(order.id)}
+            loading={loading}
+          >
+            开始收货
+          </Button>
         ),
-        order.status === 'approved' && onReceive && (
+        order?.status === 'receiving' && (
           <Button
             key="receive"
             type="primary"
-            onClick={() => onReceive(order.id)}
+            icon={<CheckOutlined />}
+            onClick={() => setReceivingOpen(true)}
+          >
+            收货登记
+          </Button>
+        ),
+        order?.status === 'receiving' && onComplete && (
+          <Button
+            key="complete"
+            icon={<CheckCircleOutlined />}
+            onClick={handleComplete}
             loading={loading}
           >
-            确认收货
+            完成入库
           </Button>
-        )
+        ),
       ].filter(Boolean)}
     >
-      <Card title="基本信息" style={{ marginBottom: 24 }}>
-        <Descriptions column={2}>
-          <Descriptions.Item label="入库单号">{order.order_number}</Descriptions.Item>
-          <Descriptions.Item label="仓库">{order.warehouse?.name}</Descriptions.Item>
-          <Descriptions.Item label="来源">{getSourceText(order.source)}</Descriptions.Item>
-          <Descriptions.Item label="入库时间">
-            {order.received_at ? new Date(order.received_at).toLocaleString() : '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label="供应商">{order.supplierId}</Descriptions.Item>
-          {order.notes && (
-            <Descriptions.Item label="备注" span={2}>
-              {order.notes}
+      <Spin spinning={detailLoading && !order}>
+        <Card title="基本信息" style={{ marginBottom: 24 }}>
+          <Descriptions column={2}>
+            <Descriptions.Item label="入库单号">{order?.order_number}</Descriptions.Item>
+            <Descriptions.Item label="仓库">{order?.warehouse_name}</Descriptions.Item>
+            <Descriptions.Item label="来源">{getSourceText(order?.source)}</Descriptions.Item>
+            <Descriptions.Item label="入库时间">
+              {order?.received_at ? new Date(order.received_at).toLocaleString() : '-'}
             </Descriptions.Item>
-          )}
-          <Descriptions.Item label="状态">
-            {getStatusTag(order.status)}
-          </Descriptions.Item>
-        </Descriptions>
-      </Card>
+            <Descriptions.Item label="供应商">{order?.supplier_name || '-'}</Descriptions.Item>
+            <Descriptions.Item label="状态">
+              {order ? getInboundStatusTag(order.status) : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="收货进度">
+              {receivedQty} / {totalQty}（{order?.statistics?.completion_rate ?? 0}%）
+            </Descriptions.Item>
+            {order?.notes && (
+              <Descriptions.Item label="备注" span={2}>
+                {order.notes}
+              </Descriptions.Item>
+            )}
+          </Descriptions>
+        </Card>
 
-      <Card title="处理流程" style={{ marginBottom: 24 }}>
-        <Steps current={order.status === 'pending' ? 0 : order.status === 'approved' ? 1 : 2}>
-          {steps.map((step, index) => (
-            <Step key={index} title={step.title} status={step.status as any} />
-          ))}
-        </Steps>
-      </Card>
+        <Card title="处理流程" style={{ marginBottom: 24 }}>
+          <Steps current={order?.status === 'pending' ? 0 : order?.status === 'receiving' ? 1 : 2}>
+            {steps.map((step, index) => (
+              <Step key={index} title={step.title} status={step.status as any} />
+            ))}
+          </Steps>
+        </Card>
 
-      <Card title="产品明细">
-        <Table
-          size="small"
-          dataSource={order.items}
-          rowKey={(_, index) => `item-${index}`}
-          pagination={false}
-          columns={[
-            {
-              title: '产品',
-              dataIndex: ['product', 'name'],
-              render: (text, record) => (
-                <div>
-                  <div>{text}</div>
-                  <Text type="secondary">SKU: {record.product?.sku}</Text>
-                </div>
-              ),
-            },
-            {
-              title: '数量',
-              dataIndex: 'quantity',
-              align: 'right',
-              render: (text, record) => `${text} ${record.product?.unit || '件'}`,
-            },
-            {
-              title: '批次号',
-              dataIndex: 'batchNumber',
-              render: (text) => text || '-',
-            },
-          ]}
-        />
-      </Card>
+        <Card title="产品明细">
+          <Table
+            size="small"
+            dataSource={order?.items || []}
+            rowKey="id"
+            pagination={false}
+            columns={[
+              {
+                title: '产品',
+                dataIndex: ['product', 'name'],
+                render: (text, record: any) => (
+                  <div>
+                    <div>{text}</div>
+                    <Text type="secondary">SKU: {record.product?.sku}</Text>
+                  </div>
+                ),
+              },
+              {
+                title: '应收数量',
+                dataIndex: 'quantity',
+                align: 'right',
+                render: (text, record: any) => `${text} ${record.product?.unit || '件'}`,
+              },
+              {
+                title: '已收数量',
+                dataIndex: 'received_quantity',
+                align: 'right',
+                render: (text) => Number(text || 0),
+              },
+              {
+                title: '进度',
+                align: 'right',
+                width: 140,
+                render: (_, record: any) => {
+                  const q = Number(record.quantity);
+                  const r = Number(record.received_quantity || 0);
+                  return (
+                    <Text type={r >= q ? 'success' : r > 0 ? 'warning' : undefined}>
+                      {r >= q ? '已收齐' : r > 0 ? `部分收货 ${r}/${q}` : '未收货'}
+                    </Text>
+                  );
+                },
+              },
+              {
+                title: '单价',
+                dataIndex: 'unit_price',
+                align: 'right',
+                render: (text) => `¥${Number(text || 0).toFixed(2)}`,
+              },
+              {
+                title: '金额',
+                align: 'right',
+                render: (_, record: any) =>
+                  `¥${(Number(record.quantity) * Number(record.unit_price || 0)).toFixed(2)}`,
+              },
+              {
+                title: '批次号',
+                dataIndex: 'batch_number',
+                render: (text) => text || '-',
+              },
+            ]}
+          />
+        </Card>
+      </Spin>
+
+      {/* P9：明细级收货登记（嵌套弹窗，收货后自动刷新详情） */}
+      <ReceivingDialog
+        open={receivingOpen}
+        order={order}
+        onClose={() => setReceivingOpen(false)}
+      />
     </Modal>
   );
 };
@@ -876,42 +1252,35 @@ const InboundPage: React.FC = () => {
     },
   });
 
-  // 审核入库单
-  const approveMutation = useMutation({
+  // P9：开始收货（pending → receiving，收货真正加库存的动作在明细级 receive）
+  const startReceivingMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.post(`/inbound-orders/${id}/approve`);
+      const response = await api.post(`/inbound-orders/${id}/start-receiving`);
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inbound-orders'] });
-      setDetailDialogOpen(false);
-      message.success('入库单审核通过');
+      queryClient.invalidateQueries({ queryKey: ['inbound-order-detail'] });
+      message.success('已开始收货，请进行收货登记');
+    },
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message || '开始收货失败');
     },
   });
 
-  // 拒绝入库单
-  const rejectMutation = useMutation({
+  // P9：完成入库（receiving → completed）
+  const completeMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.post(`/inbound-orders/${id}/reject`);
+      const response = await api.post(`/inbound-orders/${id}/complete`);
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inbound-orders'] });
-      setDetailDialogOpen(false);
-      message.success('入库单已拒绝');
+      queryClient.invalidateQueries({ queryKey: ['inbound-order-detail'] });
+      message.success('入库完成');
     },
-  });
-
-  // 确认收货
-  const receiveMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await api.post(`/inbound-orders/${id}/receive`);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inbound-orders'] });
-      setDetailDialogOpen(false);
-      message.success('入库单收货成功');
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message || '完成入库失败');
     },
   });
 
@@ -995,16 +1364,6 @@ const InboundPage: React.FC = () => {
     setBatchImportOpen(true);
   };
 
-  const getStatusTag = (status: string) => {
-    switch (status) {
-      case 'pending': return <Tag icon={<ClockCircleOutlined />} color="warning">待审核</Tag>;
-      case 'approved': return <Tag icon={<CheckCircleOutlined />} color="processing">已审核</Tag>;
-      case 'received': return <Tag icon={<CheckOutlined />} color="success">已收货</Tag>;
-      case 'rejected': return <Tag icon={<CloseCircleOutlined />} color="error">已拒绝</Tag>;
-      default: return <Tag>{status}</Tag>;
-    }
-  };
-
   const orders = ordersData?.list || [];
   const total = ordersData?.pagination?.total || 0;
 
@@ -1032,10 +1391,10 @@ const InboundPage: React.FC = () => {
               onChange={setStatusFilter}
               allowClear
             >
-              <Option value="pending">待审核</Option>
-              <Option value="approved">已审核</Option>
-              <Option value="received">已收货</Option>
-              <Option value="rejected">已拒绝</Option>
+              <Option value="pending">待处理</Option>
+              <Option value="receiving">收货中</Option>
+              <Option value="completed">已完成</Option>
+              <Option value="cancelled">已取消</Option>
             </Select>
           </Col>
           <Col xs={24} sm={12} md={8} lg={6}>
@@ -1173,7 +1532,7 @@ const InboundPage: React.FC = () => {
             {
               title: '状态',
               dataIndex: 'status',
-              render: (status) => getStatusTag(status),
+              render: (status) => getInboundStatusTag(status),
             },
             {
               title: '创建时间',
@@ -1231,18 +1590,17 @@ const InboundPage: React.FC = () => {
         loading={createMutation.isPending || updateMutation.isPending}
       />
 
-      {/* 详情对话框 */}
+      {/* 详情对话框（P9：id 驱动 + 明细级收货流程） */}
       <InboundOrderDetailDialog
         open={detailDialogOpen}
-        order={selectedOrder}
+        orderId={selectedOrder?.id}
         onClose={() => {
           setDetailDialogOpen(false);
           setSelectedOrder(undefined);
         }}
-        onApprove={(id) => approveMutation.mutate(id)}
-        onReject={(id) => rejectMutation.mutate(id)}
-        onReceive={(id) => receiveMutation.mutate(id)}
-        loading={approveMutation.isPending || rejectMutation.isPending || receiveMutation.isPending}
+        onStartReceiving={(id) => startReceivingMutation.mutate(id)}
+        onComplete={(id) => completeMutation.mutate(id)}
+        loading={startReceivingMutation.isPending || completeMutation.isPending}
       />
 
       {/* 批量导入对话框 */}

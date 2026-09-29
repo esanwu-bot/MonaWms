@@ -45,6 +45,7 @@ import {
 } from '@ant-design/icons';
 import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
+import { useWarehouseStore } from '../store/warehouseStore';
 import type { Product, Category as CategoryType, CreateProductRequest, UpdateProductRequest, PaginatedResponse } from '../types/api';
 
 const { Title } = Typography;
@@ -720,8 +721,11 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
 const ProductsPage: React.FC = () => {
   // 支持从仓库页「管理产品」跳转：?warehouseId=&warehouseName= 按仓库过滤
   const [searchParams, setSearchParams] = useSearchParams();
-  const warehouseId = searchParams.get('warehouseId') || '';
+  const urlWarehouseId = searchParams.get('warehouseId') || '';
   const warehouseName = searchParams.get('warehouseName') || '';
+  // 全局仓库切换器（页头）：未带跳转参数时跟随当前仓库过滤产品列表
+  const currentWarehouse = useWarehouseStore((state) => state.currentWarehouse);
+  const warehouseId = urlWarehouseId || (currentWarehouse?.id != null ? String(currentWarehouse.id) : '');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -1081,10 +1085,10 @@ const ProductsPage: React.FC = () => {
         <Alert
           type="info"
           showIcon
-          closable
+          closable={!!urlWarehouseId}
           onClose={() => setSearchParams({})}
           style={{ marginBottom: 12 }}
-          message={`正在查看「${warehouseName || '指定仓库'}」下有库存/库存记录的产品`}
+          message={`正在查看「${warehouseName || currentWarehouse?.name || '当前仓库'}」下有库存/库存记录的产品${urlWarehouseId ? '' : '（跟随页头仓库切换器，可在右上角切换仓库）'}`}
         />
       )}
       <Card>
