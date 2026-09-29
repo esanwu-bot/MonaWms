@@ -55,7 +55,7 @@ interface SerialNumberFormData {
   manufactureDate?: dayjs.Dayjs;
   warrantyPeriod?: number;
   // B1：状态挂在单件实物上，对齐客户口径
-  status?: 'in_stock' | 'sold' | 'in_use' | 'repairing' | 'to_scrap' | 'scrapped';
+  status?: 'in_stock' | 'sold' | 'in_use' | 'repairing' | 'to_scrap';
   location?: string;
   notes?: string;
 }
@@ -331,14 +331,12 @@ const SerialNumbersPage: React.FC = () => {
         return 'orange';
       case 'to_scrap':
         return 'volcano';
-      case 'scrapped':
-        return 'red';
       default:
         return 'default';
     }
   };
 
-  // B1：在库 / 已出库 / 正在用 / 返修中 / 待报废 / 已报废
+  // B1：在库 / 已出库 / 正在用 / 返修中 / 待报废（待报废即坏件，无单独已报废状态）
   const getStatusText = (status: string) => {
     switch (status) {
       case 'in_stock':
@@ -351,8 +349,6 @@ const SerialNumbersPage: React.FC = () => {
         return '返修中';
       case 'to_scrap':
         return '待报废';
-      case 'scrapped':
-        return '已报废';
       default:
         return status;
     }
@@ -530,7 +526,6 @@ const SerialNumbersPage: React.FC = () => {
                 <Option value="in_use">正在用</Option>
                 <Option value="repairing">返修中</Option>
                 <Option value="to_scrap">待报废</Option>
-                <Option value="scrapped">已报废</Option>
               </Select>
             </Col>
             <Col xs={24} sm={12} md={8} lg={6}>
@@ -634,7 +629,7 @@ const SerialNumbersPage: React.FC = () => {
                   { min: 1, max: 100, message: '序列号长度应在1-100字符之间' },
                 ]}
               >
-                <Input.Group compact>
+                <Space.Compact>
                   <Input 
                     placeholder="请输入序列号或上传条码图片" 
                     style={{ width: 'calc(100% - 40px)' }}
@@ -652,7 +647,7 @@ const SerialNumbersPage: React.FC = () => {
                       title="上传条码图片"
                     />
                   </Upload>
-                </Input.Group>
+                </Space.Compact>
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -711,13 +706,12 @@ const SerialNumbersPage: React.FC = () => {
                 label="状态"
                 rules={[{ required: true, message: '请选择状态' }]}
               >
-                <Select placeholder="请选择状态（变更会留痕，待报废只能推进到已报废）">
+                <Select placeholder="请选择状态（变更会留痕，待报废为终态）">
                   <Option value="in_stock">在库</Option>
                   <Option value="sold">已出库</Option>
                   <Option value="in_use">正在用</Option>
                   <Option value="repairing">返修中</Option>
                   <Option value="to_scrap">待报废</Option>
-                  <Option value="scrapped">已报废</Option>
                 </Select>
               </Form.Item>
             </Col>

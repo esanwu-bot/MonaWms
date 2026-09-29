@@ -35,7 +35,6 @@ const mockDictionaryItems: DictionaryItem[] = [
   { id: 10, type_id: 4, type_code: 'device_status', code: 'normal', name: '正常', sort_order: 1, status: 'active' },
   { id: 11, type_id: 4, type_code: 'device_status', code: 'maintenance', name: '维护中', sort_order: 2, status: 'active' },
   { id: 12, type_id: 4, type_code: 'device_status', code: 'fault', name: '故障', sort_order: 3, status: 'active' },
-  { id: 13, type_id: 4, type_code: 'device_status', code: 'scrapped', name: '已报废', sort_order: 4, status: 'active' },
 ];
 
 // 判断是否使用模拟数据（实际项目中可根据环境变量或配置决定）

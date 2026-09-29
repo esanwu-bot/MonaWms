@@ -410,7 +410,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
       footer={getFooterButtons()}
       width={step === 'preview' ? 1000 : 600}
       maskClosable={false}
-      destroyOnClose
+      destroyOnHidden
     >
       {step === 'upload' && renderUploadStep()}
       {step === 'preview' && renderPreviewStep()}

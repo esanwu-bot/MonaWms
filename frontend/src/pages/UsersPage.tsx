@@ -472,7 +472,7 @@ const UsersPage: React.FC = () => {
         okText="保存"
         cancelText="取消"
         width={520}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -563,7 +563,7 @@ const UsersPage: React.FC = () => {
         okText="确认修改"
         cancelText="取消"
         width={420}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={passwordForm} layout="vertical">
           <Form.Item

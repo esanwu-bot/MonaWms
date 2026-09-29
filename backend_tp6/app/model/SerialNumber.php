@@ -47,7 +47,7 @@ class SerialNumber extends Model
         'manufacture_date',   // 生产日期
         'warranty_period',    // 保修期（月）
         'warranty_end_date',  // 保修截止日期
-        'status',             // 状态：in_stock（在库）, sold（已售出）, scrapped（已报废）
+        'status',             // 状态：in_stock（在库）, sold（已出库）, in_use（正在用）, repairing（返修中）, to_scrap（待报废=坏件）
         'location',           // 当前位置（如：仓库A-01-02，或客户现场）
         'notes',              // 备注
         'created_at',
@@ -59,25 +59,23 @@ class SerialNumber extends Model
      */
     const STATUS_IN_STOCK = 'in_stock';
     const STATUS_SOLD = 'sold';
-    const STATUS_SCRAPPED = 'scrapped';
     // P8 B1：对齐客户口径，状态挂在单件实物（SN）上
     const STATUS_IN_USE   = 'in_use';     // 正在用
     const STATUS_REPAIRING = 'repairing'; // 返修中
-    const STATUS_TO_SCRAP = 'to_scrap';   // 待报废
+    const STATUS_TO_SCRAP = 'to_scrap';   // 待报废（坏件，报废走 ScrapPage 流程，无单独"已报废"状态）
     
     /**
-     * 允许的状态流转（B3：待报废只能由管理员推进到已报废，不允许跳过）
+     * 允许的状态流转（B3：待报废为终态，坏件不再变更；实际报废走报废申请流程）
      * @return array
      */
     public static function statusTransitions(): array
     {
         return [
-            self::STATUS_IN_STOCK  => [self::STATUS_IN_USE, self::STATUS_REPAIRING, self::STATUS_TO_SCRAP, self::STATUS_SCRAPPED],
-            self::STATUS_SOLD      => [self::STATUS_IN_USE, self::STATUS_REPAIRING, self::STATUS_TO_SCRAP, self::STATUS_SCRAPPED],
-            self::STATUS_IN_USE    => [self::STATUS_REPAIRING, self::STATUS_TO_SCRAP, self::STATUS_SCRAPPED],
-            self::STATUS_REPAIRING => [self::STATUS_IN_USE, self::STATUS_TO_SCRAP, self::STATUS_SCRAPPED],
-            self::STATUS_TO_SCRAP  => [self::STATUS_SCRAPPED],
-            self::STATUS_SCRAPPED  => []
+            self::STATUS_IN_STOCK  => [self::STATUS_IN_USE, self::STATUS_REPAIRING, self::STATUS_TO_SCRAP],
+            self::STATUS_SOLD      => [self::STATUS_IN_USE, self::STATUS_REPAIRING, self::STATUS_TO_SCRAP],
+            self::STATUS_IN_USE    => [self::STATUS_REPAIRING, self::STATUS_TO_SCRAP],
+            self::STATUS_REPAIRING => [self::STATUS_IN_USE, self::STATUS_TO_SCRAP],
+            self::STATUS_TO_SCRAP  => []
         ];
     }
     
@@ -89,7 +87,6 @@ class SerialNumber extends Model
         $statuses = [
             self::STATUS_IN_STOCK  => '在库',
             self::STATUS_SOLD      => '已出库',
-            self::STATUS_SCRAPPED  => '已报废',
             self::STATUS_IN_USE    => '正在用',
             self::STATUS_REPAIRING => '返修中',
             self::STATUS_TO_SCRAP  => '待报废'
@@ -140,7 +137,7 @@ class SerialNumber extends Model
     
     /**
      * 变更单件状态并留痕（B2）
-     * 状态挂在单件实物上：在库 → 正在用 → 返修中 → 待报废 → 已报废
+     * 状态挂在单件实物上：在库 → 正在用 → 返修中 → 待报废（终态，坏件；实际报废走报废申请流程）
      * @param string $to 目标状态
      * @param int $operatorId 操作人
      * @param string $reason 原因
@@ -185,7 +182,6 @@ class SerialNumber extends Model
             self::STATUS_IN_USE    => 'install',
             self::STATUS_REPAIRING => 'repair',
             self::STATUS_TO_SCRAP  => 'repair',
-            self::STATUS_SCRAPPED  => 'scrap',
             self::STATUS_IN_STOCK  => 'return'
         ];
         return $map[$status] ?? 'return';

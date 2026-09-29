@@ -309,7 +309,7 @@ class ScrapController extends BaseController
                     'processing_notes' => $notes,
                 ]);
 
-                // 更新设备状态为已报废（如果Product模型有status字段）
+                // 报废走报废申请流程，不直接改 serial_numbers 状态（待报废 to_scrap 为终态）
                 $device = Product::find($scrapApplication->device_id);
                 if ($device && method_exists($device, 'markAsScrap')) {
                     $device->markAsScrap();

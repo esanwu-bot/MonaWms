@@ -268,7 +268,13 @@ class Product extends Model
      */
     public function searchCategoryIdAttr($query, $value)
     {
-        $query->where('category_id', $value);
+        // 支持按一级分类筛选：包含其下二级分类（产品精确挂在二级上）
+        $ids = [(int) $value];
+        $childIds = Category::where('parent_id', (int) $value)->column('id');
+        if ($childIds) {
+            $ids = array_merge($ids, array_map('intval', $childIds));
+        }
+        $query->whereIn('category_id', $ids);
     }
     
     /**
@@ -277,6 +283,18 @@ class Product extends Model
     public function searchStatusAttr($query, $value)
     {
         $query->where('status', $value);
+    }
+
+    /**
+     * 搜索器：综合搜索（前端搜索框，名称/SKU/条码任一模糊命中）
+     */
+    public function searchSearchAttr($query, $value)
+    {
+        $query->where(function ($q) use ($value) {
+            $q->where('name', 'like', '%' . $value . '%')
+              ->whereOr('sku', 'like', '%' . $value . '%')
+              ->whereOr('barcode', 'like', '%' . $value . '%');
+        });
     }
     
     /**

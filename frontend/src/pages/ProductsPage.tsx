@@ -21,7 +21,8 @@ import {
   Pagination,
   message,
   Spin,
-  Alert
+  Alert,
+  Cascader
 } from 'antd';
 import {
   PlusOutlined,
@@ -39,6 +40,52 @@ import type { Product, Category as CategoryType, CreateProductRequest, UpdatePro
 const { Title } = Typography;
 const { Option } = Select;
 
+// ===== 分类一二级工具（数据源 /categories/tree）=====
+
+/** 在分类树中按 id 查路径（如 ['2','7'] = 通信设备/基站设备），用于 Cascader 回显 */
+const findCategoryPath = (tree: CategoryType[], id?: string | number | null): string[] => {
+  if (!id) return [];
+  const target = String(id);
+  for (const node of tree) {
+    if (String(node.id) === target) return [String(node.id)];
+    const childPath = findCategoryPath(node.children || [], target);
+    if (childPath.length) return [String(node.id), ...childPath];
+  }
+  return [];
+};
+
+/** id → 完整分类名路径（如 "通信设备 / 基站设备"），用于列表列显示 */
+const categoryFullPath = (tree: CategoryType[], id?: string | number | null): string => {
+  const path = findCategoryPath(tree, id);
+  if (!path.length) return '';
+  const names = path.map((pid) => {
+    const node = findNodeById(tree, pid);
+    return node?.name || '';
+  }).filter(Boolean);
+  return names.join(' / ');
+};
+
+const findNodeById = (tree: CategoryType[], id: string): CategoryType | undefined => {
+  for (const node of tree) {
+    if (String(node.id) === id) return node;
+    const child = findNodeById(node.children || [], id);
+    if (child) return child;
+  }
+  return undefined;
+};
+
+/** 树展平为带层级标记的列表（筛选下拉用），二级加 └─ 前缀 */
+const flattenCategoryTree = (tree: CategoryType[], depth = 0): { id: string; label: string; depth: number }[] => {
+  const result: { id: string; label: string; depth: number }[] = [];
+  tree.forEach((cat) => {
+    result.push({ id: String(cat.id), label: cat.name, depth });
+    if (cat.children?.length) {
+      result.push(...flattenCategoryTree(cat.children, depth + 1));
+    }
+  });
+  return result;
+};
+
 // 表单验证模式
 const productSchema = z.object({
   sku: z.string().min(1, '请输入SKU').max(50, 'SKU不能超过50个字符'),
@@ -48,10 +95,11 @@ const productSchema = z.object({
   modelNumber: z.string().optional(),
   frequencyProtocol: z.string().optional(),
   firmwareVersion: z.string().optional(),
-  categoryId: z.string().min(1, '请选择分类'),
+  // 分类为级联路径（一级 → 二级），提交时取末位 id
+  categoryPath: z.array(z.string()).min(1, '请选择分类'),
   unit: z.string().min(1, '请选择计量单位').max(20, '单位不能超过20个字符'),
-  // A1：计量方式决定数量精度与是否需要序列号
-  measureType: z.enum(['count', 'length', 'weight', 'area', 'volume']).default('count'),
+  // A1：计量方式决定数量精度与是否需要序列号；取数据字典 measure_type（可后台维护）
+  measureType: z.string().min(1, '请选择计量方式'),
   unitPrice: z.number().min(0, '单价不能为负数'),
   minStock: z.number().min(0, '最小库存不能为负数'),
   maxStock: z.number().min(0, '最大库存不能为负数'),
@@ -61,13 +109,13 @@ const productSchema = z.object({
 
 type ProductFormData = z.infer<typeof productSchema>;
 
-// P8 A1 计量方式
-const MEASURE_TYPES = [
-  { value: 'count', label: '计件（件/个/台/套）' },
-  { value: 'length', label: '长度（米）' },
-  { value: 'weight', label: '重量（吨/千克）' },
-  { value: 'area', label: '面积（平方米）' },
-  { value: 'volume', label: '体积' },
+// P8 A1 计量方式兜底（字典可后台维护，失败时用内置兜底；code 须与后端 Product 常量一致）
+const MEASURE_TYPE_FALLBACK = [
+  { code: 'count', name: '计件（件/个/台/套）' },
+  { code: 'length', name: '长度（米）' },
+  { code: 'weight', name: '重量（吨/千克）' },
+  { code: 'area', name: '面积（平方米）' },
+  { code: 'volume', name: '体积' },
 ];
 
 // P8 A2 单位字典兜底（字典可后台维护）
@@ -100,7 +148,8 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
       sku: product?.sku || '',
       name: product?.name || '',
       description: product?.description || '',
-      categoryId: product?.category_id || '',
+      // 回显路径由下方 useEffect（依赖 categoryTree）注入，初值空数组
+      categoryPath: [] as string[],
       unit: product?.unit || '',
       measureType: (product?.measure_type as any) || 'count',
       unitPrice: product?.price || 0,
@@ -135,15 +184,50 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
     return merged;
   }, [unitDictData]);
 
-  // 获取分类列表
+  // 获取计量方式字典（A1：字典可后台维护，失败时用内置兜底）
+  const { data: measureTypeDictData } = useQuery({
+    queryKey: ['dictionary', 'items', 'measure_type'],
+    queryFn: async () => {
+      const response = await getDictionaryItemsByTypeCode('measure_type');
+      return Array.isArray(response?.data) ? response.data : [];
+    },
+    retry: false,
+  });
+  const measureTypeOptions = React.useMemo(() => {
+    const fromDict = Array.isArray(measureTypeDictData)
+      ? measureTypeDictData
+          .filter((item: any) => item.status !== 'inactive')
+          .map((item: any) => ({ value: item.code, label: item.name }))
+      : [];
+    // 兜底：count 必须存在（业务逻辑依赖），字典缺失时补齐内置项
+    const merged = [...fromDict];
+    MEASURE_TYPE_FALLBACK.forEach((m) => {
+      if (!merged.some((x) => x.value === m.code)) merged.push({ value: m.code, label: m.name });
+    });
+    return merged;
+  }, [measureTypeDictData]);
+
+  // 获取分类树（一二级级联数据源）
   const { data: categoriesData } = useQuery({
     queryKey: queryKeys.categories.all,
     queryFn: async () => {
-      const response = await api.get<CategoryType[]>('/categories');
+      const response = await api.get<CategoryType[]>('/categories/tree');
       return response.data.data;
     },
   });
-  
+  const categoryTree = Array.isArray(categoriesData) ? categoriesData : [];
+
+  // Cascader 选项（一级 → 二级）
+  const cascaderOptions = React.useMemo(() => {
+    return categoryTree.map((top) => ({
+      value: String(top.id),
+      label: top.name,
+      children: (top.children || []).map((child) => ({
+        value: String(child.id),
+        label: child.name,
+      })),
+    }));
+  }, [categoryTree]);
   // 获取项目列表
   const { data: projectsData } = useQuery({
     queryKey: queryKeys.projects?.all,
@@ -164,7 +248,7 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
         modelNumber: product?.model_number || '',
         frequencyProtocol: product?.frequency_protocol || '',
         firmwareVersion: product?.firmware_version || '',
-        categoryId: product?.category_id || '',
+        categoryPath: findCategoryPath(categoryTree, product?.category_id),
         unit: product?.unit || '',
         measureType: (product?.measure_type as any) || 'count',
         unitPrice: product?.price || 0,
@@ -174,7 +258,8 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
         projectId: product?.project_id || '',
       });
     }
-  }, [open, product, reset]);
+    // categoryTree 后加载完成时也要重新注入回显路径（Cascader 需要 id → 路径）
+  }, [open, product, reset, categoryTree]);
 
   const handleFormSubmit = (data: ProductFormData) => {
     onSubmit(data);
@@ -381,7 +466,7 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
                   control={control}
                   render={({ field }) => (
                     <Select {...field} placeholder="请选择计量方式" disabled={loading}>
-                      {MEASURE_TYPES.map((m) => (
+                      {measureTypeOptions.map((m) => (
                         <Option key={m.value} value={m.value}>{m.label}</Option>
                       ))}
                     </Select>
@@ -392,28 +477,21 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
             <Col span={12}>
               <Form.Item
                 label="分类"
-                validateStatus={errors.categoryId ? 'error' : ''}
-                help={errors.categoryId?.message}
+                validateStatus={errors.categoryPath ? 'error' : ''}
+                help={errors.categoryPath?.message}
                 required
               >
                 <Controller
-                  name="categoryId"
+                  name="categoryPath"
                   control={control}
                   render={({ field }) => (
-                    <Select
+                    <Cascader
                       {...field}
-                      placeholder="请选择分类"
+                      options={cascaderOptions}
+                      placeholder="请选择分类（一级 / 二级）"
                       disabled={loading}
-                    >
-                      {Array.isArray(categoriesData) ? categoriesData.map((category) => (
-                        <Option key={category.id} value={category.id}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <FilterOutlined />
-                            {category.name}
-                          </div>
-                        </Option>
-                      )) : []}
-                    </Select>
+                      changeOnSelect
+                    />
                   )}
                 />
               </Form.Item>
@@ -514,7 +592,8 @@ const ProductsPage: React.FC = () => {
         page: currentPage.toString(),
         limit: pageSize.toString(),
         ...(searchTerm && { search: searchTerm }),
-        ...(selectedCategory && { categoryId: selectedCategory }),
+        // 后端读 snake_case（category_id），选一级分类时需含其下二级
+        ...(selectedCategory && { category_id: selectedCategory }),
       });
       const response = await api.get<{
         list: Product[];
@@ -524,14 +603,15 @@ const ProductsPage: React.FC = () => {
     },
   });
 
-  // 获取分类列表
+  // 获取分类树（筛选下拉 + 分类列完整路径显示）
   const { data: categoriesData } = useQuery({
     queryKey: queryKeys.categories.all,
     queryFn: async () => {
-      const response = await api.get<CategoryType[]>('/categories');
+      const response = await api.get<CategoryType[]>('/categories/tree');
       return response.data.data;
     },
   });
+  const categoryTree = Array.isArray(categoriesData) ? categoriesData : [];
 
   // 创建产品
   const createMutation = useMutation({
@@ -594,7 +674,7 @@ const ProductsPage: React.FC = () => {
       model_number: data.modelNumber || null,
       frequency_protocol: data.frequencyProtocol || null,
       firmware_version: data.firmwareVersion || null,
-      category_id: data.categoryId,
+      category_id: data.categoryPath[data.categoryPath.length - 1],
       unit: data.unit,
       measure_type: data.measureType || 'count',   // A1
       price: data.unitPrice ?? 0,
@@ -643,9 +723,11 @@ const ProductsPage: React.FC = () => {
     },
     {
       title: '分类',
-      dataIndex: 'category_name',
       key: 'category_name',
-      width: 120,
+      width: 180,
+      // 一二级完整路径（如 通信设备 / 基站设备）；树未加载时兜底后端 category_name
+      render: (_, record) =>
+        categoryFullPath(categoryTree, record.category_id) || record.category_name || '-',
     },
     {
       title: '单位',
@@ -739,17 +821,17 @@ const ProductsPage: React.FC = () => {
             </Col>
             <Col span={6}>
               <Select
-                placeholder="选择分类"
+                placeholder="按分类筛选（一级含二级）"
                 value={selectedCategory}
                 onChange={setSelectedCategory}
                 allowClear
                 style={{ width: '100%' }}
               >
-                {Array.isArray(categoriesData) ? categoriesData.map((category) => (
-                  <Option key={category.id} value={category.id}>
-                    {category.name}
+                {flattenCategoryTree(categoryTree).map((cat) => (
+                  <Option key={cat.id} value={cat.id}>
+                    {cat.depth > 0 ? '└─ ' : ''}{cat.label}
                   </Option>
-                )) : []}
+                ))}
               </Select>
             </Col>
           </Row>

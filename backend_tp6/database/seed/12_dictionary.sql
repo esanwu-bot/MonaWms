@@ -10,7 +10,8 @@ INSERT INTO `dictionary_types` (`code`,`name`,`description`,`status`) VALUES
 ('order_priority','单据优先级','出入库单优先级','active'),
 ('scrap_reason','报废原因','报废申请原因分类','active'),
 ('project_status','项目状态','项目生命周期状态','active'),
-('wireless_type','无线备件类型','无线备件网络制式','active')
+('wireless_type','无线备件类型','无线备件网络制式','active'),
+('measure_type','计量方式','物资计量方式（计件/长度/重量等），驱动数量精度与序列号要求','active')
 ON DUPLICATE KEY UPDATE `name`=VALUES(`name`), `description`=VALUES(`description`), `status`=VALUES(`status`);
 
 INSERT INTO `dictionary_items` (`type_id`,`code`,`name`,`value`,`sort_order`,`status`) VALUES
@@ -43,5 +44,11 @@ INSERT INTO `dictionary_items` (`type_id`,`code`,`name`,`value`,`sort_order`,`st
 ((SELECT id FROM `dictionary_types` WHERE `code`='wireless_type'),'4g','4G','4G',2,'active'),
 ((SELECT id FROM `dictionary_types` WHERE `code`='wireless_type'),'3g','3G','3G',3,'active'),
 ((SELECT id FROM `dictionary_types` WHERE `code`='wireless_type'),'2g','2G','2G',4,'active'),
-((SELECT id FROM `dictionary_types` WHERE `code`='wireless_type'),'other','其他','other',5,'active')
+((SELECT id FROM `dictionary_types` WHERE `code`='wireless_type'),'other','其他','other',5,'active'),
+-- 计量方式：code 与后端 Product 常量一致（count 为计件需 SN+整数，其余允许小数）
+((SELECT id FROM `dictionary_types` WHERE `code`='measure_type'),'count','计件（件/个/台/套）','count',1,'active'),
+((SELECT id FROM `dictionary_types` WHERE `code`='measure_type'),'length','长度（米）','length',2,'active'),
+((SELECT id FROM `dictionary_types` WHERE `code`='measure_type'),'weight','重量（吨/千克）','weight',3,'active'),
+((SELECT id FROM `dictionary_types` WHERE `code`='measure_type'),'area','面积（平方米）','area',4,'active'),
+((SELECT id FROM `dictionary_types` WHERE `code`='measure_type'),'volume','体积','volume',5,'active')
 ON DUPLICATE KEY UPDATE `name`=VALUES(`name`), `value`=VALUES(`value`), `sort_order`=VALUES(`sort_order`), `status`=VALUES(`status`);

@@ -38,12 +38,12 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
-// 表单验证模式
+// 表单验证模式（后端字段 snake_case：parent_id）
 const categorySchema = z.object({
   code: z.string().min(1, '请输入分类编码').max(50, '编码不能超过50个字符'),
   name: z.string().min(1, '请输入分类名称').max(100, '名称不能超过100个字符'),
   description: z.string().optional(),
-  parentId: z.string().optional(),
+  parent_id: z.string().optional(),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -77,15 +77,15 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
       code: category?.code || '',
       name: category?.name || '',
       description: category?.description || '',
-      parentId: category?.parentId || parentCategory?.id || '',
+      parent_id: category?.parent_id || parentCategory?.id || '',
     },
   });
 
-  // 获取分类列表（用于选择父分类）
-  const { data: categoriesData } = useQuery({
-    queryKey: ['categories'],
+  // 获取分类树（一二级层级，供父分类下拉选择）
+  const { data: categoriesTree } = useQuery({
+    queryKey: ['categories', 'tree'],
     queryFn: async () => {
-      const response = await api.get<CategoryType[]>('/categories');
+      const response = await api.get<CategoryType[]>('/categories/tree');
       return response.data.data;
     },
   });
@@ -96,13 +96,13 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
         code: category?.code || '',
         name: category?.name || '',
         description: category?.description || '',
-        parentId: category?.parentId || parentCategory?.id || '',
+        parent_id: category?.parent_id || parentCategory?.id || '',
       });
       form.setFieldsValue({
         code: category?.code || '',
         name: category?.name || '',
         description: category?.description || '',
-        parentId: category?.parentId || parentCategory?.id || '',
+        parent_id: category?.parent_id || parentCategory?.id || '',
       });
     }
   }, [open, category, parentCategory, reset, form]);
@@ -111,21 +111,31 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
     onSubmit(data);
   };
 
-  // 过滤掉当前分类及其子分类（避免循环引用）
-  const getAvailableParentCategories = (categories: CategoryType[], currentCategoryId?: string): CategoryType[] => {
-    if (!currentCategoryId) return categories;
-    
-    const isDescendant = (cat: CategoryType, ancestorId: string): boolean => {
-      if (cat.id === ancestorId) return true;
-      if (cat.parentId === ancestorId) return true;
-      const parent = categories.find(c => c.id === cat.parentId);
-      return parent ? isDescendant(parent, ancestorId) : false;
-    };
-
-    return categories.filter(cat => !isDescendant(cat, currentCategoryId));
+  // 树展平为带层级的平铺列表（父分类下拉用，最多两级）
+  const flattenTree = (tree: CategoryType[], depth = 0): (CategoryType & { _depth: number })[] => {
+    const result: (CategoryType & { _depth: number })[] = [];
+    tree.forEach((cat) => {
+      const node = { ...cat, _depth: depth };
+      result.push(node);
+      if (cat.children?.length) {
+        result.push(...flattenTree(cat.children, depth + 1));
+      }
+    });
+    return result;
   };
 
-  const availableParentCategories = getAvailableParentCategories(Array.isArray(categoriesData) ? categoriesData : [], category?.id);
+  // 过滤掉当前分类及其子孙（避免循环引用）
+  const getAvailableParentCategories = (tree: CategoryType[], currentCategoryId?: string): (CategoryType & { _depth: number })[] => {
+    const isDescendant = (cat: CategoryType, ancestorId: string): boolean => {
+      if (cat.id === ancestorId) return true;
+      if (cat.parent_id === ancestorId) return true;
+      return (cat.children || []).some((child) => isDescendant(child, ancestorId));
+    };
+
+    return flattenTree(tree).filter((cat) => !isDescendant(cat, currentCategoryId));
+  };
+
+  const availableParentCategories = getAvailableParentCategories(Array.isArray(categoriesTree) ? categoriesTree : [], category?.id);
 
   return (
     <Modal
@@ -195,7 +205,7 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
 
         <Form.Item
           label="父分类"
-          name="parentId"
+          name="parent_id"
         >
           <Select placeholder="请选择父分类" disabled={loading}>
             <Option value="">
@@ -205,7 +215,8 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
               <Option key={cat.id} value={cat.id}>
                 <Space>
                   <FolderOutlined />
-                  {'  '.repeat(cat.level)}{cat.name}
+                  {cat._depth > 0 ? '└─ ' : ''}{cat.name}
+                  {cat._depth === 0 && cat.children?.length ? <Tag style={{ marginLeft: 4 }}>一级</Tag> : null}
                 </Space>
               </Option>
             ))}
@@ -216,82 +227,76 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
   );
 };
 
-interface CategoryTreeItemProps {
-  category: CategoryType;
-  onEdit: (category: CategoryType) => void;
-  onDelete: (category: CategoryType) => void;
-  onAddChild: (parentCategory: CategoryType) => void;
+// AntD 5 Tree 必须用 treeData（Tree.TreeNode 已废弃）
+interface CategoryTreeDataNode {
+  key: string;
+  title: React.ReactNode;
+  children?: CategoryTreeDataNode[];
 }
 
-const CategoryTreeItem: React.FC<CategoryTreeItemProps> = ({
-  category,
-  onEdit,
-  onDelete,
-  onAddChild,
-}) => {
-  const hasChildren = category.children && category.children.length > 0;
+const buildCategoryNode = (
+  category: CategoryType,
+  onEdit: (c: CategoryType) => void,
+  onDelete: (c: CategoryType) => void,
+  onAddChild: (c: CategoryType) => void,
+): CategoryTreeDataNode => {
+  const hasChildren = !!(category.children && category.children.length > 0);
 
-  return (
-    <Tree.TreeNode
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Space>
-            {hasChildren ? <FolderOpenOutlined /> : <FolderOutlined />}
-            <Text strong>{category.name}</Text>
-            <Tag color="default">{category.code}</Tag>
-            <Tag color={category.isActive ? 'success' : 'default'}>
-              {category.isActive ? '启用' : '禁用'}
-            </Tag>
-          </Space>
-          <Space>
-            <Tooltip title="添加子分类">
-              <Button
-                type="text"
-                size="small"
-                icon={<PlusOutlined />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddChild(category);
-                }}
-              />
-            </Tooltip>
-            <Tooltip title="编辑">
-              <Button
-                type="text"
-                size="small"
-                icon={<EditOutlined />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(category);
-                }}
-              />
-            </Tooltip>
-            <Tooltip title="删除">
-              <Button
-                type="text"
-                size="small"
-                icon={<DeleteOutlined />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(category);
-                }}
-              />
-            </Tooltip>
-          </Space>
-        </div>
-      }
-    >
-      {category.children?.map((child) => (
-        <CategoryTreeItem
-          key={child.id}
-          category={child}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onAddChild={onAddChild}
-        />
-      ))}
-    </Tree.TreeNode>
+  const title = (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 8 }}>
+      <Space>
+        {hasChildren ? <FolderOpenOutlined /> : <FolderOutlined />}
+        <Text strong={hasChildren}>{category.name}</Text>
+        <Tag color="default">{category.code}</Tag>
+        <Tag color={category.status === 'active' ? 'success' : 'default'}>
+          {category.status === 'active' ? '启用' : '禁用'}
+        </Tag>
+      </Space>
+      <Space>
+        <Tooltip title="添加子分类">
+          <Button
+            type="text"
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddChild(category);
+            }}
+          />
+        </Tooltip>
+        <Tooltip title="编辑">
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(category);
+            }}
+          />
+        </Tooltip>
+        <Tooltip title="删除">
+          <Button
+            type="text"
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(category);
+            }}
+          />
+        </Tooltip>
+      </Space>
+    </div>
   );
+
+  return {
+    key: String(category.id),
+    title,
+    children: hasChildren
+      ? category.children!.map((child) => buildCategoryNode(child, onEdit, onDelete, onAddChild))
+      : undefined,
+  };
 };
 
 const CategoriesPage: React.FC = () => {
@@ -305,11 +310,11 @@ const CategoriesPage: React.FC = () => {
 
   const queryClient = useQueryClient();
 
-  // 获取分类列表
+  // 获取分类树（/categories/tree 直接返回一二级层级结构）
   const { data: categoriesData, isLoading } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ['categories', 'tree'],
     queryFn: async () => {
-      const response = await api.get<CategoryType[]>('/categories');
+      const response = await api.get<CategoryType[]>('/categories/tree');
       return response.data.data;
     },
   });
@@ -390,10 +395,13 @@ const CategoriesPage: React.FC = () => {
   };
 
   const handleSubmit = (data: CategoryFormData) => {
+    // 后端读 snake_case；空父分类不提交（保持 NULL，避免空串写库变 0）
+    const payload: any = { ...data };
+    if (!payload.parent_id) delete payload.parent_id;
     if (selectedCategory) {
-      updateMutation.mutate({ id: selectedCategory.id, data });
+      updateMutation.mutate({ id: selectedCategory.id, data: payload });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(payload);
     }
   };
 
@@ -403,27 +411,32 @@ const CategoriesPage: React.FC = () => {
     }
   };
 
-  // 构建树形结构
+  // 树结构适配：/categories/tree 已返回 children 层级；
+  // 若个别节点缺 children（旧缓存/接口变化），按 parent_id 重建兜底
   const buildCategoryTree = (categories: CategoryType[]): CategoryType[] => {
     const categoryMap = new Map<string, CategoryType>();
     const rootCategories: CategoryType[] = [];
 
-    // 创建映射
     categories.forEach(category => {
-      categoryMap.set(category.id, { ...category, children: [] });
+      categoryMap.set(category.id, { ...category, children: category.children || [] });
     });
 
-    // 构建树形结构
     categories.forEach(category => {
       const categoryNode = categoryMap.get(category.id)!;
-      if (category.parentId) {
-        const parent = categoryMap.get(category.parentId);
+      if (categoryNode.children && categoryNode.children.length > 0) {
+        // 已带子节点，直接挂（不重复构建）
+      } else if (category.parent_id) {
+        const parent = categoryMap.get(category.parent_id);
         if (parent) {
           parent.children = parent.children || [];
           parent.children.push(categoryNode);
         }
-      } else {
-        rootCategories.push(categoryNode);
+      }
+    });
+
+    categories.forEach(category => {
+      if (!category.parent_id) {
+        rootCategories.push(categoryMap.get(category.id)!);
       }
     });
 
@@ -508,17 +521,10 @@ const CategoriesPage: React.FC = () => {
             expandedKeys={expandedKeys}
             onExpand={(keys) => setExpandedKeys(keys as string[])}
             blockNode
-          >
-            {filteredTree.map((category) => (
-              <CategoryTreeItem
-                key={category.id}
-                category={category}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onAddChild={handleAddChild}
-              />
-            ))}
-          </Tree>
+            treeData={filteredTree.map((category) =>
+              buildCategoryNode(category, handleEdit, handleDelete, handleAddChild)
+            )}
+          />
         )}
       </Card>
 

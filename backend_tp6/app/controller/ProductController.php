@@ -60,25 +60,16 @@ class ProductController extends BaseController
             
             $query = Product::with(['category']);
             
-            // 搜索条件
-            if (!empty($params['sku'])) {
-                $query->searchSku($params['sku']);
+            // 搜索条件：TP6 搜索器必须经 withSearch 触发模型 searchXxxAttr，
+            // 直接 $query->searchXxx() 是无效魔法调用会 500
+            $search = [];
+            foreach (['sku', 'name', 'barcode', 'category_id', 'status', 'search'] as $field) {
+                if (!empty($params[$field])) {
+                    $search[$field] = $params[$field];
+                }
             }
-            
-            if (!empty($params['name'])) {
-                $query->searchName($params['name']);
-            }
-            
-            if (!empty($params['barcode'])) {
-                $query->searchBarcode($params['barcode']);
-            }
-            
-            if (!empty($params['category_id'])) {
-                $query->searchCategoryId($params['category_id']);
-            }
-            
-            if (!empty($params['status'])) {
-                $query->searchStatus($params['status']);
+            if ($search) {
+                $query->withSearch(array_keys($search), $search);
             }
             
             // 分页查询

@@ -139,12 +139,17 @@ export interface Category {
   name: string;
   description?: string;
   parentId?: string;
+  /** 后端原始字段：父分类ID（一级分类为 null） */
+  parent_id?: string | null;
   level: number;
   path: string;
-  isActive: boolean;
-  status_text: '启用' | '禁用';
+  isActive?: boolean;
+  /** 后端原始字段：active/inactive */
+  status?: 'active' | 'inactive';
+  status_text?: string;
   created_at: string;
   updated_at: string;
+  /** 子分类（/categories/tree 返回） */
   children?: Category[];
   parent?: Category;
 }
@@ -296,6 +301,8 @@ export interface InventoryQueryParams extends QueryParams {
 export interface InboundOrder {
   id: string;
   orderNumber: string;
+  /** 入库单号（后端原始 snake_case 字段，列表/详情直接取该值渲染） */
+  order_number?: string;
   warehouseId: string;
   warehouse?: Warehouse;
   supplierId?: string;
@@ -304,7 +311,11 @@ export interface InboundOrder {
   source_text?: string;
   /** P8 C1 入库时间（业务发生时间，精确到时分秒） */
   receivedAt?: string | null;
-  status_text: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  received_at?: string | null;
+  /** 单据状态码（后端原始值：pending/approved/received/rejected） */
+  status?: string;
+  /** 状态中文文本（后端 getStatusTextAttr 输出） */
+  status_text?: string;
   totalQuantity: number;
   totalAmount: number;
   notes?: string;
@@ -414,7 +425,10 @@ export interface OutboundOrder {
   receiverPhone?: string;
   /** P8 C2 出库时间（业务发生时间，精确到时分秒） */
   shippedAt?: string | null;
-  status_text: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  /** 单据状态码（后端原始值：pending/approved/picking/picked/packed/shipped/completed/delivered/cancelled/rejected） */
+  status?: string;
+  /** 状态中文文本（后端 getStatusTextAttr 输出） */
+  status_text?: string;
   totalQuantity: number;
   totalAmount: number;
   notes?: string;
@@ -564,7 +578,7 @@ export interface SerialNumber {
   manufactureDate?: string;
   warrantyPeriod?: number;
   warrantyEndDate?: string;
-  status: 'in_stock' | 'sold' | 'scrapped';
+  status: 'in_stock' | 'sold' | 'in_use' | 'repairing' | 'to_scrap';
   status_text: string;
   location?: string;
   notes?: string;
@@ -577,7 +591,7 @@ export interface CreateSerialNumberRequest {
   productId: string;
   manufactureDate?: string;
   warrantyPeriod?: number;
-  status?: 'in_stock' | 'sold' | 'scrapped';
+  status?: 'in_stock' | 'sold' | 'in_use' | 'repairing' | 'to_scrap';
   location?: string;
   notes?: string;
 }

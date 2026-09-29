@@ -512,7 +512,7 @@ const BatchPickingDialog: React.FC<BatchPickingDialogProps> = ({
       onCancel={handleClose}
       footer={null}
       width={800}
-      destroyOnClose
+      destroyOnHidden
     >
       <Steps current={currentStep} style={{ marginBottom: 24 }}>
         {steps.map(item => (

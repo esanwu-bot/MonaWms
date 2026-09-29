@@ -102,8 +102,8 @@ class SerialNumberController extends BaseController
             'product_id' => 'require|integer',
             'manufacture_date' => 'date',
             'warranty_period' => 'integer',
-            // B1：对齐客户口径 在库/已出库/正在用/返修中/待报废/已报废
-            'status' => 'in:in_stock,sold,in_use,repairing,to_scrap,scrapped',
+            // B1：对齐客户口径 在库/已出库/正在用/返修中/待报废（无已报废，待报废即坏件）
+            'status' => 'in:in_stock,sold,in_use,repairing,to_scrap',
             'location' => 'max:200',
             'notes' => 'max:500'
         ]);
@@ -162,8 +162,8 @@ class SerialNumberController extends BaseController
             'product_id' => 'integer',
             'manufacture_date' => 'date',
             'warranty_period' => 'integer',
-            // B1：对齐客户口径 在库/已出库/正在用/返修中/待报废/已报废
-            'status' => 'in:in_stock,sold,in_use,repairing,to_scrap,scrapped',
+            // B1：对齐客户口径 在库/已出库/正在用/返修中/待报废（无已报废，待报废即坏件）
+            'status' => 'in:in_stock,sold,in_use,repairing,to_scrap',
             'location' => 'max:200',
             'notes' => 'max:500'
         ]);

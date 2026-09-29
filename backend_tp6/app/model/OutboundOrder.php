@@ -78,6 +78,7 @@ class OutboundOrder extends Model
     const STATUS_PACKED = 'packed';         // 已打包
     const STATUS_SHIPPED = 'shipped';       // 已发货
     const STATUS_DELIVERED = 'delivered';   // 已送达
+    const STATUS_COMPLETED = 'completed';   // 已完成（历史数据口径，与 delivered 同级终态）
     const STATUS_CANCELLED = 'cancelled';   // 已取消
     
     /**
@@ -107,6 +108,7 @@ class OutboundOrder extends Model
             self::STATUS_PACKED => '已打包',
             self::STATUS_SHIPPED => '已发货',
             self::STATUS_DELIVERED => '已送达',
+            self::STATUS_COMPLETED => '已完成',
             self::STATUS_CANCELLED => '已取消'
         ];
         

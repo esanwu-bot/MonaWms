@@ -702,7 +702,7 @@ const DevicesPage: React.FC = () => {
         showIcon
         style={{ marginBottom: 16 }}
         message="设备已并入物资主数据（products）"
-        description="单件设备的在库 / 正在用 / 返修中 / 待报废 / 已报废状态统一在「序列号管理」维护，本页仅保留台账查询。"
+        description="单件设备的在库 / 正在用 / 返修中 / 待报废状态统一在「序列号管理」维护，本页仅保留台账查询。"
       />
       <Card>
         <Tabs
@@ -922,7 +922,7 @@ const DevicesPage: React.FC = () => {
                 name="serialNumber"
                 rules={[{ required: true, message: '请输入序列号' }]}
               >
-                <Input.Group compact>
+                <Space.Compact>
                   <Input 
                     placeholder="请输入序列号或上传条码图片" 
                     style={{ width: 'calc(100% - 40px)' }}
@@ -940,7 +940,7 @@ const DevicesPage: React.FC = () => {
                       title="上传条码图片"
                     />
                   </Upload>
-                </Input.Group>
+                </Space.Compact>
               </Form.Item>
             </Col>
             <Col span={12}>

@@ -111,7 +111,7 @@ const inboundOrderItemSchema = z.object({
 const inboundOrderSchema = z.object({
   orderNumber: z.string().min(1, '请输入订单号'),
   warehouseId: z.string().min(1, '请选择仓库'),
-  source: z.string().default('purchase'),   // I2：来源
+  source: z.string().min(1, '请选择来源'),   // I2：来源（defaultValues 兜底 purchase）
   supplierId: z.string().optional(),
   receivedAt: z.string().optional(),        // C1：入库时间
   notes: z.string().optional(),
@@ -638,8 +638,8 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
 
   const steps = [
     { title: '创建', status: 'finish' },
-    { title: '审核', status: order.status_text === 'PENDING' ? 'wait' : 'finish' },
-    { title: '收货', status: order.status_text === 'COMPLETED' ? 'finish' : 'wait' },
+    { title: '审核', status: order.status === 'pending' ? 'wait' : 'finish' },
+    { title: '收货', status: order.status === 'received' ? 'finish' : 'wait' },
   ];
 
   return (
@@ -657,7 +657,7 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
         <Button key="close" onClick={onClose}>
           关闭
         </Button>,
-        order.status_text === 'PENDING' && onApprove && onReject && (
+        order.status === 'pending' && onApprove && onReject && (
           <>
             <Button
               key="reject"
@@ -677,7 +677,7 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
             </Button>
           </>
         ),
-        order.status_text === 'IN_PROGRESS' && onReceive && (
+        order.status === 'approved' && onReceive && (
           <Button
             key="receive"
             type="primary"
@@ -691,11 +691,11 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
     >
       <Card title="基本信息" style={{ marginBottom: 24 }}>
         <Descriptions column={2}>
-          <Descriptions.Item label="入库单号">{order.orderNumber}</Descriptions.Item>
+          <Descriptions.Item label="入库单号">{order.order_number}</Descriptions.Item>
           <Descriptions.Item label="仓库">{order.warehouse?.name}</Descriptions.Item>
           <Descriptions.Item label="来源">{getSourceText(order.source)}</Descriptions.Item>
           <Descriptions.Item label="入库时间">
-            {order.receivedAt ? new Date(order.receivedAt).toLocaleString() : '-'}
+            {order.received_at ? new Date(order.received_at).toLocaleString() : '-'}
           </Descriptions.Item>
           <Descriptions.Item label="供应商">{order.supplierId}</Descriptions.Item>
           {order.notes && (
@@ -704,13 +704,13 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
             </Descriptions.Item>
           )}
           <Descriptions.Item label="状态">
-            {getStatusTag(order.status_text)}
+            {getStatusTag(order.status)}
           </Descriptions.Item>
         </Descriptions>
       </Card>
 
       <Card title="处理流程" style={{ marginBottom: 24 }}>
-        <Steps current={order.status_text === 'PENDING' ? 0 : order.status_text === 'IN_PROGRESS' ? 1 : 2}>
+        <Steps current={order.status === 'pending' ? 0 : order.status === 'approved' ? 1 : 2}>
           {steps.map((step, index) => (
             <Step key={index} title={step.title} status={step.status as any} />
           ))}
@@ -721,6 +721,7 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
         <Table
           size="small"
           dataSource={order.items}
+          rowKey={(_, index) => `item-${index}`}
           pagination={false}
           columns={[
             {
@@ -1105,10 +1106,11 @@ const InboundPage: React.FC = () => {
         <Table
           loading={isLoading}
           dataSource={orders}
+          rowKey="id"
           columns={[
             {
               title: '入库单号',
-              dataIndex: 'orderNumber',
+              dataIndex: 'order_number',
               render: (text, record) => (
                 <Space>
                   <Text strong>{text}</Text>
@@ -1131,13 +1133,13 @@ const InboundPage: React.FC = () => {
             },
             {
               title: '入库时间',
-              dataIndex: 'receivedAt',
+              dataIndex: 'received_at',
               render: (text) => (text ? new Date(text).toLocaleString() : '-'),
             },
             {
               title: '预期到货日期',
-              dataIndex: 'expectedDate',
-              render: (text) => new Date(text).toLocaleDateString(),
+              dataIndex: 'expected_date',
+              render: (text) => (text ? new Date(text).toLocaleDateString() : '-'),
             },
             {
               title: '状态',
@@ -1146,8 +1148,8 @@ const InboundPage: React.FC = () => {
             },
             {
               title: '创建时间',
-              dataIndex: 'createdAt',
-              render: (text) => new Date(text).toLocaleDateString(),
+              dataIndex: 'created_at',
+              render: (text) => (text ? new Date(text).toLocaleDateString() : '-'),
             },
             {
               title: '操作',
@@ -1159,7 +1161,7 @@ const InboundPage: React.FC = () => {
                     icon={<EyeOutlined />}
                     onClick={() => handleView(record)}
                   />
-                  {record.status_text === 'PENDING' && (
+                  {record.status === 'pending' && (
                     <Button
                       type="text"
                       icon={<EditOutlined />}

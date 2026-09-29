@@ -44,7 +44,7 @@ INSERT INTO `serial_numbers`
 ('SN-OLT-2026-0002',(SELECT id FROM `products` WHERE `sku`='SKU-OLT-MA5683T'),'2025-12-20',36,'2028-12-20','in_stock','B区-01','00:1A:2B:00:03:02','备用局端机',NOW(),NOW()),
 ('SN-ONU-2026-0101',(SELECT id FROM `products` WHERE `sku`='SKU-ONU-HG8245H'),'2025-12-01',24,'2027-12-01','in_stock','B区-02','00:1A:2B:00:04:01','批次 B20260110',NOW(),NOW()),
 ('SN-ONU-2026-0102',(SELECT id FROM `products` WHERE `sku`='SKU-ONU-HG8245H'),'2025-12-01',24,'2027-12-01','shipped','XX乡镇-王村','00:1A:2B:00:04:02','已发放到户',NOW(),NOW()),
-('SN-ONU-2026-0103',(SELECT id FROM `products` WHERE `sku`='SKU-ONU-HG8245H'),'2025-12-01',24,'2027-12-01','scrapped','报废区','00:1A:2B:00:04:03','雷击损坏已报废',NOW(),NOW()),
+('SN-ONU-2026-0103',(SELECT id FROM `products` WHERE `sku`='SKU-ONU-HG8245H'),'2025-12-01',24,'2027-12-01','to_scrap','报废区','00:1A:2B:00:04:03','雷击损坏待报废',NOW(),NOW()),
 ('SN-SFP28-2026-0101',(SELECT id FROM `products` WHERE `sku`='SKU-OPT-SFP28'),'2026-01-05',12,'2027-01-05','in_stock','B区-02',NULL,'批次 B20260201',NOW(),NOW()),
 ('SN-SFP28-2026-0102',(SELECT id FROM `products` WHERE `sku`='SKU-OPT-SFP28'),'2026-01-05',12,'2027-01-05','reserved','B区-02',NULL,'已被出库单占用',NOW(),NOW()),
 ('SN-SW-2026-0001',(SELECT id FROM `products` WHERE `sku`='SKU-SW-S5720'),'2025-09-10',36,'2028-09-10','installed','XX高新区-厂房A','00:1A:2B:00:05:01','园区项目在用',NOW(),NOW()),
@@ -56,7 +56,7 @@ INSERT INTO `serial_numbers`
 ('SN-ANT-2026-0001',(SELECT id FROM `products` WHERE `sku`='SKU-ANT-700M'),'2026-03-01',24,'2028-03-01','shipped','XX市铁塔-XX站','00:1A:2B:00:09:01','铁塔站点交付',NOW(),NOW()),
 ('SN-PWR-2026-0001',(SELECT id FROM `products` WHERE `sku`='SKU-PWR-EPU4840'),'2025-10-20',24,'2027-10-20','in_stock','D区-02',NULL,'整流模块',NOW(),NOW()),
 ('SN-BAT-2026-0001',(SELECT id FROM `products` WHERE `sku`='SKU-BAT-LI48'),'2025-10-20',36,'2028-10-20','in_stock','D区-02',NULL,'备电电池组',NOW(),NOW()),
-('SN-EOL-2019-0088',(SELECT id FROM `products` WHERE `sku`='SKU-ONU-HG8245H'),'2019-05-01',36,'2022-05-01','scrapped','报废区','00:1A:2B:00:99:88','超期服役已报废',NOW(),NOW())
+('SN-EOL-2019-0088',(SELECT id FROM `products` WHERE `sku`='SKU-ONU-HG8245H'),'2019-05-01',36,'2022-05-01','to_scrap','报废区','00:1A:2B:00:99:88','超期服役待报废',NOW(),NOW())
 ON DUPLICATE KEY UPDATE
   `product_id`=VALUES(`product_id`), `status`=VALUES(`status`), `location`=VALUES(`location`),
   `mac_address`=VALUES(`mac_address`), `notes`=VALUES(`notes`), `updated_at`=NOW();
@@ -79,7 +79,7 @@ JOIN (
   UNION ALL SELECT 'SN-SFP28-2026-0102','inbound',NULL,'reserved','inbound_order','IN202602030003','operator','入库后即被占用','2026-02-03 14:20:00'
   UNION ALL SELECT 'SN-FW-2026-0001','inbound',NULL,'in_stock','inbound_order','IN202603200006','admin','防火墙到货入库','2026-03-20 09:05:00'
   UNION ALL SELECT 'SN-RTR-2026-0002','repair','in_stock','returned','outbound_order','OUT202605060005','admin','风扇告警返修','2026-05-20 09:05:00'
-  UNION ALL SELECT 'SN-EOL-2019-0088','scrap','in_stock','scrapped','inbound_order','IN202601050001','admin','超期服役报废','2026-01-20 10:00:00'
+  UNION ALL SELECT 'SN-EOL-2019-0088','repair','in_stock','to_scrap','inbound_order','IN202601050001','admin','超期服役待报废','2026-01-20 10:00:00'
 ) x ON x.sn = s.`serial_number`
 LEFT JOIN `inbound_orders` io ON io.`order_number` = x.`ono`
 WHERE NOT EXISTS (

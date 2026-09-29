@@ -737,8 +737,12 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
       case 'approved': return 'processing';
       case 'picking': return 'processing';
       case 'picked': return 'processing';
+      case 'packed': return 'processing';
       case 'shipped': return 'success';
+      case 'completed': return 'success';
+      case 'delivered': return 'success';
       case 'rejected': return 'error';
+      case 'cancelled': return 'default';
       default: return 'default';
     }
   };
@@ -749,8 +753,12 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
       case 'approved': return '已审核';
       case 'picking': return '拣货中';
       case 'picked': return '已拣货';
+      case 'packed': return '已打包';
       case 'shipped': return '已发货';
+      case 'completed': return '已完成';
+      case 'delivered': return '已送达';
       case 'rejected': return '已拒绝';
+      case 'cancelled': return '已取消';
       default: return status;
     }
   };
@@ -761,8 +769,12 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
       case 'approved': return <CheckCircleOutlined />;
       case 'picking': return <SyncOutlined spin />;
       case 'picked': return <CheckCircleOutlined />;
+      case 'packed': return <CheckCircleOutlined />;
       case 'shipped': return <CarOutlined />;
+      case 'completed': return <CheckCircleOutlined />;
+      case 'delivered': return <CheckCircleOutlined />;
       case 'rejected': return <CloseCircleOutlined />;
+      case 'cancelled': return <CloseCircleOutlined />;
       default: return <InfoCircleOutlined />;
     }
   };
@@ -774,12 +786,15 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
       case 'approved': return 1;
       case 'picking': return 2;
       case 'picked': return 2;
+      case 'packed': return 2;
       case 'shipped': return 3;
+      case 'completed': return 3;
+      case 'delivered': return 3;
       default: return 0;
     }
   };
 
-  const activeStep = getActiveStep(order.status_text);
+  const activeStep = getActiveStep(order.status);
 
   // 计算拣货进度
   const calculatePickingProgress = () => {
@@ -804,13 +819,13 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
           出库单详情
         </div>
       }
-      destroyOnClose
+      destroyOnHidden
       footer={
         <Space>
           <Button onClick={onClose}>
             关闭
           </Button>
-          {order.status_text === 'PENDING' && onApprove && onReject && (
+          {order.status === 'pending' && onApprove && onReject && (
             <>
               <Button
                 onClick={() => onReject(order.id)}
@@ -828,7 +843,7 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
               </Button>
             </>
           )}
-          {order.status_text === 'IN_PROGRESS' && onPick && (
+          {(order.status === 'approved' || order.status === 'picking') && onPick && (
             <Button
               onClick={() => onPick(order.id)}
               type="primary"
@@ -837,7 +852,7 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
               {loading ? '开始拣货...' : '开始拣货'}
             </Button>
           )}
-          {order.status_text === 'COMPLETED' && onShip && (
+          {(order.status === 'picked' || order.status === 'packed') && onShip && (
             <Button
               onClick={() => onShip(order.id)}
               type="primary"
@@ -1195,8 +1210,12 @@ const OutboundPage: React.FC = () => {
       case 'approved': return 'processing';
       case 'picking': return 'processing';
       case 'picked': return 'processing';
+      case 'packed': return 'processing';
       case 'shipped': return 'success';
+      case 'completed': return 'success';
+      case 'delivered': return 'success';
       case 'rejected': return 'error';
+      case 'cancelled': return 'default';
       default: return 'default';
     }
   };
@@ -1207,8 +1226,12 @@ const OutboundPage: React.FC = () => {
       case 'approved': return '已审核';
       case 'picking': return '拣货中';
       case 'picked': return '已拣货';
+      case 'packed': return '已打包';
       case 'shipped': return '已发货';
+      case 'completed': return '已完成';
+      case 'delivered': return '已送达';
       case 'rejected': return '已拒绝';
+      case 'cancelled': return '已取消';
       default: return status;
     }
   };
@@ -1246,6 +1269,8 @@ const OutboundPage: React.FC = () => {
               <Option value="picking">拣货中</Option>
               <Option value="picked">已拣货</Option>
               <Option value="shipped">已发货</Option>
+              <Option value="completed">已完成</Option>
+              <Option value="cancelled">已取消</Option>
               <Option value="rejected">已拒绝</Option>
             </Select>
           </Col>
@@ -1348,14 +1373,14 @@ const OutboundPage: React.FC = () => {
               setSelectedRowKeys(newSelectedRowKeys);
             },
             getCheckboxProps: (record: OutboundOrder) => ({
-              disabled: !['PENDING', 'IN_PROGRESS'].includes(record.status_text),
+              disabled: !['pending', 'approved', 'picking'].includes(record.status),
             }),
           }}
           columns={[
             {
               title: '出库单号',
-              dataIndex: 'orderNumber',
-              key: 'orderNumber',
+              dataIndex: 'order_number',
+              key: 'order_number',
               render: (text: string, record: OutboundOrder) => (
                 <Space>
                   <Button type="link" onClick={() => handleView(record)}>
@@ -1376,30 +1401,30 @@ const OutboundPage: React.FC = () => {
               key: 'customer' 
             },
             { 
-              title: '领用单位', 
-              dataIndex: 'receiverUnit', 
-              key: 'receiverUnit',
+              title: '领用单位',
+              dataIndex: 'receiver_unit',
+              key: 'receiver_unit',
               render: (text: string) => text || '-'
             },
-            { 
-              title: '领用人', 
-              dataIndex: 'receiverName', 
-              key: 'receiverName',
+            {
+              title: '领用人',
+              dataIndex: 'receiver_name',
+              key: 'receiver_name',
               render: (text: string, record: any) => (
-                text ? `${text}${record.receiverPhone ? ' / ' + record.receiverPhone : ''}` : '-'
+                text ? `${text}${record.receiver_phone ? ' / ' + record.receiver_phone : ''}` : '-'
               )
             },
-            { 
-              title: '出库时间', 
-              dataIndex: 'shippedAt', 
-              key: 'shippedAt',
+            {
+              title: '出库时间',
+              dataIndex: 'shipped_at',
+              key: 'shipped_at',
               render: (text: string) => (text ? new Date(text).toLocaleString() : '-')
             },
-            { 
-              title: '预期发货日期', 
-              dataIndex: 'expectedDate', 
-              key: 'expectedDate',
-              render: (date: string) => new Date(date).toLocaleDateString()
+            {
+              title: '预期发货日期',
+              dataIndex: 'expected_date',
+              key: 'expected_date',
+              render: (date: string) => (date ? new Date(date).toLocaleDateString() : '-')
             },
             { 
               title: '状态', 
@@ -1411,11 +1436,11 @@ const OutboundPage: React.FC = () => {
                 </Tag>
               )
             },
-            { 
-              title: '创建时间', 
-              dataIndex: 'createdAt', 
-              key: 'createdAt',
-              render: (date: string) => new Date(date).toLocaleDateString()
+            {
+              title: '创建时间',
+              dataIndex: 'created_at',
+              key: 'created_at',
+              render: (date: string) => (date ? new Date(date).toLocaleDateString() : '-')
             },
             { 
               title: '操作', 
@@ -1429,7 +1454,7 @@ const OutboundPage: React.FC = () => {
                       onClick={() => handleView(record)}
                     />
                   </Tooltip>
-                  {record.status_text === 'PENDING' && (
+                  {record.status === 'pending' && (
                     <Tooltip title="编辑">
                       <Button
                         type="text"

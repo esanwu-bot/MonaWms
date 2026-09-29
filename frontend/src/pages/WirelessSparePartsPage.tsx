@@ -705,7 +705,7 @@ const WirelessSparePartsPage: React.FC = () => {
                 name="serialNumber"
                 rules={[{ required: true, message: '请输入序列号' }]}
               >
-                <Input.Group compact>
+                <Space.Compact>
                   <Input 
                     placeholder="请输入序列号或上传条码图片" 
                     style={{ width: 'calc(100% - 40px)' }}
@@ -723,7 +723,7 @@ const WirelessSparePartsPage: React.FC = () => {
                       title="上传条码图片"
                     />
                   </Upload>
-                </Input.Group>
+                </Space.Compact>
               </Form.Item>
             </Col>
             <Col span={12}>
