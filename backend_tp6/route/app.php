@@ -69,6 +69,7 @@ Route::group('api', function () {
             Route::get('barcode/:barcode', 'ProductController/findByBarcode'); // 根据条码查找
             Route::get('download-template', 'ProductController/downloadTemplate'); // 下载导入模板（须在 :id 之前）
             Route::post('batch-import', 'ProductController/batchImport');          // 批量导入
+            Route::post('upload-barcode-image', 'ProductController/uploadBarcodeImage'); // 上传条码图片
             Route::get(':id', 'ProductController/read');            // 产品详情
             Route::put(':id', 'ProductController/update');          // 更新产品
             Route::delete(':id', 'ProductController/delete');       // 删除产品

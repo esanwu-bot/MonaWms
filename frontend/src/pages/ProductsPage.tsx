@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import dayjs from 'dayjs';
 import { getDictionaryItemsByTypeCode } from '../services/dictionaryService';
 import PageHeader from '../components/ui/PageHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -27,7 +28,9 @@ import {
   Progress,
   Divider,
   Statistic,
-  Cascader
+  Cascader,
+  DatePicker,
+  InputNumber
 } from 'antd';
 import {
   PlusOutlined,
@@ -100,6 +103,9 @@ const productSchema = z.object({
   description: z.string().optional(),
   deviceType: z.string().optional(),
   modelNumber: z.string().optional(),
+  brand: z.string().optional(),
+  productionDate: z.string().optional(),
+  warrantyMonths: z.number().min(0, '保修期不能为负').optional(),
   frequencyProtocol: z.string().optional(),
   firmwareVersion: z.string().optional(),
   // 分类为级联路径（一级 → 二级），提交时取末位 id
@@ -111,6 +117,7 @@ const productSchema = z.object({
   minStock: z.number().min(0, '最小库存不能为负数'),
   maxStock: z.number().min(0, '最大库存不能为负数'),
   barcode: z.string().optional(),
+  barcodeImage: z.string().optional(),
   projectId: z.string().optional(),
 });
 
@@ -168,6 +175,7 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
 
   const minStock = watch('minStock');
   const watchMeasureType = watch('measureType');
+  const watchBarcodeImage = watch('barcodeImage');
 
   // 获取计量单位字典（A2：字典可后台维护，失败时用内置兜底）
   const { data: unitDictData } = useQuery({
@@ -253,6 +261,9 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
         description: product?.description || '',
         deviceType: product?.device_type || '',
         modelNumber: product?.model_number || '',
+        brand: (product as any)?.brand || '',
+        productionDate: (product as any)?.production_date || '',
+        warrantyMonths: (product as any)?.warranty_months ?? 0,
         frequencyProtocol: product?.frequency_protocol || '',
         firmwareVersion: product?.firmware_version || '',
         categoryPath: findCategoryPath(categoryTree, product?.category_id),
@@ -262,6 +273,7 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
         minStock: product?.min_stock || 0,
         maxStock: product?.max_stock || 0,
         barcode: product?.barcode || '',
+        barcodeImage: (product as any)?.barcode_image || '',
         projectId: product?.project_id || '',
       });
     }
@@ -301,10 +313,10 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
         <Row gutter={16}>
           <Col span={12}>
               <Form.Item
-                label="SKU"
+                label="设备来源"
                 required
                 validateStatus={errors.sku ? 'error' : ''}
-                help={errors.sku?.message}
+                help={errors.sku?.message || '原「设备编号 / SKU」，用于标识来源或资产编号'}
               >
                 <Controller
                   name="sku"
@@ -339,7 +351,7 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
             </Col>
             <Col span={24}>
               <Form.Item
-                label="描述"
+                label="备注"
                 validateStatus={errors.description ? 'error' : ''}
                 help={errors.description?.message}
               >
@@ -388,6 +400,65 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
                     <Input
                       {...field}
                       placeholder="如：HUAWEI MA5683T"
+                      disabled={loading}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="品牌"
+                validateStatus={errors.brand ? 'error' : ''}
+                help={errors.brand?.message}
+              >
+                <Controller
+                  name="brand"
+                  control={control}
+                  render={({ field }) => (
+                    <Input {...field} placeholder="如：华为、中兴、海康" disabled={loading} />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="生产日期"
+                validateStatus={errors.productionDate ? 'error' : ''}
+                help={errors.productionDate?.message}
+              >
+                <Controller
+                  name="productionDate"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePicker
+                      {...field}
+                      style={{ width: '100%' }}
+                      placeholder="请选择生产日期"
+                      disabled={loading}
+                      value={field.value ? dayjs(field.value) : undefined}
+                      onChange={(d) => field.onChange(d ? d.format('YYYY-MM-DD') : '')}
+                    />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="保修期（月）"
+                validateStatus={errors.warrantyMonths ? 'error' : ''}
+                help={errors.warrantyMonths?.message}
+              >
+                <Controller
+                  name="warrantyMonths"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      {...field}
+                      min={0}
+                      max={600}
+                      style={{ width: '100%' }}
+                      placeholder="0 表示无保修"
                       disabled={loading}
                     />
                   )}
@@ -528,9 +599,9 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
             </Col>
             <Col span={12}>
               <Form.Item
-                label="条形码"
+                label="序列号"
                 validateStatus={errors.barcode ? 'error' : ''}
-                help={errors.barcode?.message}
+                help={errors.barcode?.message || '原「条形码」，单件设备可填 SN'}
               >
                 <Controller
                   name="barcode"
@@ -539,9 +610,71 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
                     <Input
                       {...field}
                       prefix={<QrcodeOutlined />}
-                      placeholder="请输入条形码"
+                      placeholder="请输入序列号 / 条码"
                       disabled={loading}
                     />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="条码图片"
+                help={watchBarcodeImage ? '已上传，可点击预览或重新上传' : '支持 jpg / png，≤5MB'}
+              >
+                <Controller
+                  name="barcodeImage"
+                  control={control}
+                  render={({ field }) => (
+                    <Space>
+                      <Upload
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.bmp"
+                        maxCount={1}
+                        showUploadList={false}
+                        beforeUpload={(file) => {
+                          const isLt5M = file.size / 1024 / 1024 < 5;
+                          if (!isLt5M) {
+                            message.error('图片不能超过 5MB');
+                            return Upload.LIST_IGNORE;
+                          }
+                          const formData = new FormData();
+                          formData.append('image', file);
+                          fetch(`${import.meta.env.VITE_API_BASE_URL}/products/upload-barcode-image`, {
+                            method: 'POST',
+                            body: formData,
+                            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                          })
+                            .then((r) => r.json())
+                            .then((res) => {
+                              const url = res?.data?.url;
+                              if (url) {
+                                field.onChange(url);
+                                message.success('条码图片上传成功');
+                              } else {
+                                message.error(res?.message || '上传失败');
+                              }
+                            })
+                            .catch(() => message.error('上传失败，请重试'));
+                          return false;
+                        }}
+                      >
+                        <Button icon={<UploadOutlined />} disabled={loading}>上传条码图片</Button>
+                      </Upload>
+                      {watchBarcodeImage && (
+                        <>
+                          <Button
+                            type="link"
+                            href={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}${watchBarcodeImage}`}
+                            target="_blank"
+                          >
+                            预览
+                          </Button>
+                          <Button type="link" danger onClick={() => field.onChange('')} disabled={loading}>
+                            移除
+                          </Button>
+                        </>
+                      )}
+                    </Space>
                   )}
                 />
               </Form.Item>
@@ -775,6 +908,9 @@ const ProductsPage: React.FC = () => {
       description: data.description || '',
       device_type: data.deviceType || null,
       model_number: data.modelNumber || null,
+      brand: data.brand || null,
+      production_date: data.productionDate || null,
+      warranty_months: data.warrantyMonths ?? 0,
       frequency_protocol: data.frequencyProtocol || null,
       firmware_version: data.firmwareVersion || null,
       category_id: data.categoryPath[data.categoryPath.length - 1],
@@ -784,6 +920,7 @@ const ProductsPage: React.FC = () => {
       min_stock: data.minStock ?? 0,
       max_stock: data.maxStock ?? 0,
       barcode: data.barcode || null,
+      barcode_image: data.barcodeImage || null,
       status: 'active',
       ...(data.projectId ? { project_id: Number(data.projectId) } : {}),
     };
@@ -831,6 +968,20 @@ const ProductsPage: React.FC = () => {
       // 一二级完整路径（如 通信设备 / 基站设备）；树未加载时兜底后端 category_name
       render: (_, record) =>
         categoryFullPath(categoryTree, record.category_id) || record.category_name || '-',
+    },
+    {
+      title: '品牌',
+      dataIndex: 'brand',
+      key: 'brand',
+      width: 110,
+      render: (text: string) => text || '-',
+    },
+    {
+      title: '序列号',
+      dataIndex: 'barcode',
+      key: 'barcode',
+      width: 140,
+      render: (text: string) => text || '-',
     },
     {
       title: '单位',

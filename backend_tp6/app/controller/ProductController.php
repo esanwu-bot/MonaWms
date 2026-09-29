@@ -143,10 +143,14 @@ class ProductController extends BaseController
             'description' => 'max:500',
             'device_type' => 'max:50',
             'model_number' => 'max:100',
+            'brand' => 'max:100',
+            'production_date' => 'date',
+            'warranty_months' => 'integer|>=:0',
             'frequency_protocol' => 'max:100',
             'firmware_version' => 'max:50',
             'category_id' => 'require|integer',
             'barcode' => 'max:50|unique:products',
+            'barcode_image' => 'max:255',
             'price' => 'float|>=:0',
             'unit' => 'max:20',
             'measure_type' => 'in:count,length,weight,area,volume',   // A1：计量方式
@@ -184,10 +188,14 @@ class ProductController extends BaseController
             $product->description = $data['description'] ?? '';
             $product->device_type = $data['device_type'] ?? '';
             $product->model_number = $data['model_number'] ?? '';
+            $product->brand = $data['brand'] ?? '';
+            $product->production_date = $data['production_date'] ?? null;
+            $product->warranty_months = $data['warranty_months'] ?? 0;
             $product->frequency_protocol = $data['frequency_protocol'] ?? '';
             $product->firmware_version = $data['firmware_version'] ?? '';
             $product->category_id = $data['category_id'];
             $product->barcode = $data['barcode'] ?? '';
+            $product->barcode_image = $data['barcode_image'] ?? '';
             $product->price = $data['price'] ?? 0;
             $product->unit = $data['unit'] ?? '件';
             $product->measure_type = $data['measure_type'] ?? Product::MEASURE_COUNT;
@@ -232,10 +240,14 @@ class ProductController extends BaseController
             'description' => 'max:500',
             'device_type' => 'max:50',
             'model_number' => 'max:100',
+            'brand' => 'max:100',
+            'production_date' => 'date',
+            'warranty_months' => 'integer|>=:0',
             'frequency_protocol' => 'max:100',
             'firmware_version' => 'max:50',
             'category_id' => 'integer',
             'barcode' => 'max:50|unique:products,barcode,' . $id,
+            'barcode_image' => 'max:255',
             'price' => 'float|>=:0',
             'unit' => 'max:20',
             'measure_type' => 'in:count,length,weight,area,volume',   // A1
@@ -277,9 +289,10 @@ class ProductController extends BaseController
             
             // 更新字段
             $updateFields = [
-                'sku', 'name', 'description', 'category_id', 'barcode',
+                'sku', 'name', 'description', 'category_id', 'barcode', 'barcode_image',
                 'price', 'unit', 'measure_type', 'weight', 'length', 'width', 'height',
                 'min_stock', 'max_stock', 'status', 'device_type', 'model_number',
+                'brand', 'production_date', 'warranty_months',
                 'frequency_protocol', 'firmware_version', 'project_id'
             ];
             
@@ -430,6 +443,46 @@ class ProductController extends BaseController
     /**
      * 获取商品选项列表（用于下拉选择）
      */
+    /**
+     * 上传条码图片（产品表单「上传条码图片」）
+     * 返回可访问 URL，前端将其写入 barcode_image 字段
+     */
+    public function uploadBarcodeImage(Request $request)
+    {
+        Grant::assert('product:write');
+        try {
+            $file = $request->file('image') ?: $request->file('file');
+            if (!$file) {
+                return Response::error('未选择图片文件');
+            }
+            if (!$file->isValid()) {
+                return Response::error('文件上传失败');
+            }
+
+            $allowedExt = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+            $ext = strtolower($file->getOriginalExtension());
+            if (!in_array($ext, $allowedExt, true)) {
+                return Response::error('仅支持 jpg / png / gif / webp / bmp 图片');
+            }
+            if ($file->getSize() > 5 * 1024 * 1024) {
+                return Response::error('图片不能超过 5MB');
+            }
+
+            $dir = public_path() . 'uploads/barcodes/' . date('Ymd');
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            $filename = uniqid('barcode_', true) . '.' . $ext;
+            $file->move($dir, $filename);
+
+            $url = '/uploads/barcodes/' . date('Ymd') . '/' . $filename;
+            return Response::success(['url' => $url], '条码图片上传成功');
+
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
+            return Response::serverError('条码图片上传失败：' . $e->getMessage());
+        }
+    }
+
     public function options(Request $request)
     {
         try {

@@ -35,6 +35,7 @@ class Product extends Model
         'height' => 'float',
         'min_stock' => 'integer',
         'max_stock' => 'integer',
+        'warranty_months' => 'integer',
         'project_id' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
@@ -51,10 +52,14 @@ class Product extends Model
         'description',
         'device_type',       // 设备类型(如：基站、路由器、光模块)
         'model_number',      // 具体型号(如：HUAWEI MA5683T)
+        'brand',             // 品牌
+        'production_date',   // 生产日期
+        'warranty_months',   // 保修期（月）
         'frequency_protocol', // 频段/协议(如：5G 700MHz, WiFi 6)
         'firmware_version',  // 固件版本
         'category_id',
-        'barcode',
+        'barcode',           // 序列号（原条码）
+        'barcode_image',     // 条码图片 URL
         'price',
         'cost_price',
         'unit',
