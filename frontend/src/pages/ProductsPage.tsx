@@ -1055,7 +1055,7 @@ const ProductsPage: React.FC = () => {
     <div>
       <PageHeader
         title="产品管理"
-        sub="商品主数据、SKU 编码与库存阈值维护"
+        sub="商品主数据、设备来源与库存阈值维护"
         extra={
           <Space>
             <Button
