@@ -225,6 +225,7 @@ class InboundOrderItem extends Model
             $this->save();
 
             // 更新库存总账（并发安全：行锁，禁止先查后改）
+            $warehouseId = (int) ($this->inboundOrder->warehouse_id ?? 0);
             if ($this->location_id) {
                 $inventory = Inventory::where([
                     'product_id'   => $this->product_id,
@@ -239,6 +240,7 @@ class InboundOrderItem extends Model
                 } else {
                     $inventory = Inventory::create([
                         'product_id' => $this->product_id,
+                        'warehouse_id' => $warehouseId,
                         'location_id' => $this->location_id,
                         'quantity' => $quantity,
                         'reserved_quantity' => 0,
@@ -249,7 +251,6 @@ class InboundOrderItem extends Model
                 }
 
                 // P9：明细账分流登记 —— 计件写 SN 台账，散料写批次台账
-                $warehouseId = (int) ($this->inboundOrder->warehouse_id ?? 0);
                 if ($isPiece) {
                     foreach ($serials as $snCode) {
                         $snCode = trim((string) $snCode);

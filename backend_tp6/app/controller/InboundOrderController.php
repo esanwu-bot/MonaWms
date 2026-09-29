@@ -966,8 +966,11 @@ class InboundOrderController extends BaseController
             
             Grant::assert('inbound:write', (int) $order->warehouse_id);
             
-            $order->cancel($data['reason']);
+            // P9：走 Service 取消 —— 已收货的单必须回退库存总账 + SN 台账/批次台账，
+            // 模型 cancel() 只改状态，直接调用会导致账实背离（死账）
+            (new \app\service\InboundOrderService())->cancel((int) $id, (int) Current::idOrNull(), $data['reason']);
             
+            $order = InboundOrder::find($id);
             return Response::success([
                 'id' => $order->id,
                 'status' => $order->status,

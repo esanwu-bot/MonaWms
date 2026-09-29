@@ -176,6 +176,7 @@ class InventoryService
                 // 创建新的库存记录
                 $inventory = Inventory::create([
                     'product_id' => $productId,
+                    'warehouse_id' => (int) ($location->warehouse_id ?? 0),
                     'location_id' => $locationId,
                     'quantity' => 0,
                     'reserved_quantity' => 0,
@@ -470,6 +471,7 @@ class InventoryService
             if (!$targetInventory) {
                 $targetInventory = Inventory::create([
                     'product_id' => $sourceInventory->product_id,
+                    'warehouse_id' => (int) ($sourceInventory->warehouse_id ?? 0),
                     'location_id' => $targetLocationId,
                     'quantity' => 0,
                     'reserved_quantity' => 0,

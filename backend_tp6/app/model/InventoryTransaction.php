@@ -49,6 +49,7 @@ class InventoryTransaction extends Model
         'balance_quantity',
         'operator_id',
         'reason',
+        'remark',        // P9+：备注（调整/转移说明）
         'reference_type',
         'reference_id',
         'created_at'
@@ -61,6 +62,8 @@ class InventoryTransaction extends Model
     const TYPE_OUT = 'out';         // 出库
     const TYPE_TRANSFER = 'transfer'; // 移库
     const TYPE_ADJUST = 'adjust';   // 调整
+    const TYPE_ADJUST_IN = 'adjust_in';   // 调整增加
+    const TYPE_ADJUST_OUT = 'adjust_out'; // 调整减少
     const TYPE_CHECK = 'check';     // 盘点
     
     /**
@@ -214,6 +217,7 @@ class InventoryTransaction extends Model
         // 设置默认值
         $data['created_at'] = $data['created_at'] ?? date('Y-m-d H:i:s');
         $data['reason'] = $data['reason'] ?? '';
+        $data['remark'] = $data['remark'] ?? '';
         $data['reference_type'] = $data['reference_type'] ?? self::REFERENCE_MANUAL;
         
         return self::create($data);

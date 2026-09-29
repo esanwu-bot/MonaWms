@@ -8,6 +8,7 @@ use app\common\Grant;
 use app\model\Inventory;
 use app\model\Product;
 use app\model\Location;
+use app\model\Warehouse;
 use app\model\InventoryTransaction;
 use app\common\library\Response;
 use think\Request;
@@ -30,26 +31,27 @@ class InventoryController extends BaseController
             $limit = $params['limit'] ?? 15;
             
             $query = Inventory::with(['product', 'location']);
-            
-            // 搜索条件
+
+            // 搜索条件（withSearch 触发模型搜索器；直接调 searchXxx() 魔法方法在 think-orm 不存在）
+            $search = [];
             if (!empty($params['product_id'])) {
-                $query->searchProductId($params['product_id']);
+                $search['product_id'] = $params['product_id'];
             }
-            
             if (!empty($params['location_id'])) {
-                $query->searchLocationId($params['location_id']);
+                $search['location_id'] = $params['location_id'];
             }
-            
             if (!empty($params['batch_number'])) {
-                $query->searchBatchNumber($params['batch_number']);
+                $search['batch_number'] = $params['batch_number'];
             }
-            
             if (!empty($params['expiry_date'])) {
-                $query->searchExpiryDate($params['expiry_date']);
+                $search['expiry_date'] = $params['expiry_date'];
             }
-            
             if (isset($params['is_expired'])) {
-                $query->searchExpired($params['is_expired']);
+                // 搜索器名为 searchExpiredAttr，withSearch 键必须用 expired
+                $search['expired'] = $params['is_expired'];
+            }
+            if ($search) {
+                $query->withSearch(array_keys($search), $search);
             }
             
             // 只显示有库存的记录
@@ -206,6 +208,374 @@ class InventoryController extends BaseController
     }
     
     /**
+     * 库存调整（按仓库维度：产品 + 仓库 + 增减数量 + 调整原因 + 备注）
+     * POST /api/inventory/adjustment
+     */
+    public function adjustment(Request $request)
+    {
+        $data = $request->post();
+
+        $validate = Validate::rule([
+            'product_id'   => 'require|integer',
+            'warehouse_id' => 'require|integer',
+            'type'         => 'require|in:increase,decrease',
+            'quantity'     => 'require|float|>:0',
+            'reason'       => 'require|max:255',
+            'remark'       => 'max:500'
+        ]);
+
+        if (!$validate->check($data)) {
+            return Response::validateError($validate->getError());
+        }
+
+        $warehouseId = (int) $data['warehouse_id'];
+        Grant::assert('inventory:adjust', $warehouseId);
+
+        try {
+            $product = Product::find($data['product_id']);
+            if (!$product) {
+                return Response::error('产品不存在');
+            }
+            if (!Warehouse::find($warehouseId)) {
+                return Response::error('仓库不存在');
+            }
+
+            $quantity   = (float) $data['quantity'];
+            $increase   = $data['type'] === 'increase';
+            $reason     = (string) $data['reason'];
+            $remark     = (string) ($data['remark'] ?? '');
+            $operatorId = $this->getCurrentUserId($request);
+            $affected   = 0;
+
+            Db::startTrans();
+            try {
+                if ($increase) {
+                    $inventory = $this->pickInventoryOfWarehouse((int) $product->id, $warehouseId, false);
+                    if (!$inventory) {
+                        $location = $this->defaultLocationOf($warehouseId);
+                        if (!$location) {
+                            throw new \app\common\BizException('LOCATION_MISSING', '该仓库暂无可用库位，请先在仓库管理中维护库位');
+                        }
+                        $inventory = new Inventory();
+                        $inventory->product_id      = $product->id;
+                        $inventory->warehouse_id    = $warehouseId;
+                        $inventory->location_id     = $location->id;
+                        $inventory->quantity        = 0;
+                        $inventory->reserved_quantity = 0;
+                        $inventory->batch_number    = '';
+                    }
+                    $inventory->quantity = bcadd((string) $inventory->quantity, (string) $quantity, 4);
+                    $inventory->save();
+                    $this->writeStockTransaction(
+                        $inventory,
+                        InventoryTransaction::TYPE_ADJUST_IN,
+                        $quantity,
+                        $reason,
+                        $remark,
+                        $operatorId,
+                        InventoryTransaction::REFERENCE_ADJUST
+                    );
+                    $affected = 1;
+                } else {
+                    $affected = $this->deductFromWarehouse(
+                        (int) $product->id,
+                        $warehouseId,
+                        $quantity,
+                        $reason,
+                        $remark,
+                        $operatorId,
+                        InventoryTransaction::TYPE_ADJUST_OUT,
+                        InventoryTransaction::REFERENCE_ADJUST
+                    );
+                }
+
+                Db::commit();
+            } catch (\app\common\BizException $e) {
+                Db::rollback();
+                throw $e;
+            } catch (\Exception $e) {
+                Db::rollback();
+                throw $e;
+            }
+
+            return Response::success([
+                'product_id'       => (int) $product->id,
+                'warehouse_id'     => $warehouseId,
+                'affected_records' => $affected
+            ], '库存调整成功');
+
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
+            return Response::serverError('库存调整失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 库存转移（仓库 → 仓库：源仓库扣减 + 目标仓库增加，同事务）
+     * POST /api/inventory/transfer
+     */
+    public function transfer(Request $request)
+    {
+        $data = $request->post();
+
+        $validate = Validate::rule([
+            'product_id'        => 'require|integer',
+            'from_warehouse_id' => 'require|integer',
+            'to_warehouse_id'   => 'require|integer',
+            'quantity'          => 'require|float|>:0',
+            'reason'            => 'require|max:255',
+            'remark'            => 'max:500'
+        ]);
+
+        if (!$validate->check($data)) {
+            return Response::validateError($validate->getError());
+        }
+
+        $fromWarehouseId = (int) $data['from_warehouse_id'];
+        $toWarehouseId   = (int) $data['to_warehouse_id'];
+
+        if ($fromWarehouseId === $toWarehouseId) {
+            return Response::error('源仓库与目标仓库不能相同');
+        }
+
+        Grant::assert('inventory:transfer', $fromWarehouseId);
+        Grant::assert('inventory:transfer', $toWarehouseId);
+
+        try {
+            $product = Product::find($data['product_id']);
+            if (!$product) {
+                return Response::error('产品不存在');
+            }
+            if (!Warehouse::find($fromWarehouseId)) {
+                return Response::error('源仓库不存在');
+            }
+            if (!Warehouse::find($toWarehouseId)) {
+                return Response::error('目标仓库不存在');
+            }
+
+            $quantity   = (float) $data['quantity'];
+            $reason     = (string) $data['reason'];
+            $remark     = (string) ($data['remark'] ?? '');
+            $operatorId = $this->getCurrentUserId($request);
+
+            Db::startTrans();
+            try {
+                // 1) 源仓库按库存记录依次扣减（余量扣减，同事务）
+                $this->deductFromWarehouse(
+                    (int) $product->id,
+                    $fromWarehouseId,
+                    $quantity,
+                    $reason,
+                    $remark,
+                    $operatorId,
+                    InventoryTransaction::TYPE_OUT,
+                    InventoryTransaction::REFERENCE_TRANSFER
+                );
+
+                // 2) 目标仓库增加（并入已有记录，否则落到目标仓库默认库位）
+                $target = $this->pickInventoryOfWarehouse((int) $product->id, $toWarehouseId, false);
+                if (!$target) {
+                    $location = $this->defaultLocationOf($toWarehouseId);
+                    if (!$location) {
+                        throw new \app\common\BizException('LOCATION_MISSING', '目标仓库暂无可用库位，请先在仓库管理中维护库位');
+                    }
+                    $target = new Inventory();
+                    $target->product_id        = $product->id;
+                    $target->warehouse_id      = $toWarehouseId;
+                    $target->location_id       = $location->id;
+                    $target->quantity          = 0;
+                    $target->reserved_quantity = 0;
+                    $target->batch_number      = '';
+                }
+                $target->quantity = bcadd((string) $target->quantity, (string) $quantity, 4);
+                $target->save();
+
+                $this->writeStockTransaction(
+                    $target,
+                    InventoryTransaction::TYPE_IN,
+                    $quantity,
+                    $reason,
+                    $remark,
+                    $operatorId,
+                    InventoryTransaction::REFERENCE_TRANSFER
+                );
+
+                Db::commit();
+            } catch (\app\common\BizException $e) {
+                Db::rollback();
+                throw $e;
+            } catch (\Exception $e) {
+                Db::rollback();
+                throw $e;
+            }
+
+            return Response::success([
+                'product_id'        => (int) $product->id,
+                'from_warehouse_id' => $fromWarehouseId,
+                'to_warehouse_id'   => $toWarehouseId,
+                'quantity'          => $quantity
+            ], '库存转移成功');
+
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
+            return Response::serverError('库存转移失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 某产品在某仓库的库存（调整/转移弹窗的「当前库存」提示）
+     * GET /api/inventory/product/:product_id/warehouse/:warehouse_id
+     */
+    public function productWarehouseStock(Request $request, $product_id, $warehouse_id)
+    {
+        try {
+            $productId   = (int) $product_id;
+            $warehouseId = (int) $warehouse_id;
+
+            $rows = Inventory::where('product_id', $productId)
+                ->where('warehouse_id', $warehouseId)
+                ->select();
+
+            $quantity = '0';
+            $reserved = '0';
+            foreach ($rows as $row) {
+                $quantity = bcadd($quantity, (string) $row->quantity, 4);
+                $reserved = bcadd($reserved, (string) $row->reserved_quantity, 4);
+            }
+
+            $product = Product::find($productId);
+
+            return Response::success([
+                'product_id'         => $productId,
+                'warehouse_id'       => $warehouseId,
+                'quantity'           => $quantity,
+                'reserved_quantity'  => $reserved,
+                'available_quantity' => bcsub($quantity, $reserved, 4),
+                'unit'               => $product->unit ?? '件',
+                'measure_type'       => $product->measure_type ?? 'count'
+            ]);
+
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
+            return Response::serverError('获取库存失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 取某仓库下某产品的库存记录（$withLock=true 行锁，防并发超卖）
+     */
+    private function pickInventoryOfWarehouse(int $productId, int $warehouseId, bool $withLock = true): ?Inventory
+    {
+        $query = Inventory::where('product_id', $productId)
+            ->where('warehouse_id', $warehouseId);
+
+        if ($withLock) {
+            $query->lock(true);
+        }
+
+        return $query->order('id', 'asc')->find();
+    }
+
+    /**
+     * 取仓库默认（第一个）库位
+     */
+    private function defaultLocationOf(int $warehouseId): ?Location
+    {
+        return Location::where('warehouse_id', $warehouseId)->order('id', 'asc')->find();
+    }
+
+    /**
+     * 从某仓库扣减库存（跨库位/批次依次扣减），库存不足抛业务异常
+     *
+     * @return int 受影响的库存记录数
+     */
+    private function deductFromWarehouse(
+        int $productId,
+        int $warehouseId,
+        float $quantity,
+        string $reason,
+        string $remark,
+        int $operatorId,
+        string $transactionType,
+        string $referenceType
+    ): int {
+        $rows = Inventory::where('product_id', $productId)
+            ->where('warehouse_id', $warehouseId)
+            ->order('id', 'asc')
+            ->lock(true)
+            ->select();
+
+        $total = '0';
+        foreach ($rows as $row) {
+            $total = bcadd($total, (string) $row->quantity, 4);
+        }
+
+        if (bccomp($total, (string) $quantity, 4) < 0) {
+            throw new \app\common\BizException(
+                'STOCK_NOT_ENOUGH',
+                '该仓库库存不足，当前库存：' . $total,
+                ['warehouse_id' => $warehouseId, 'product_id' => $productId, 'stock' => $total]
+            );
+        }
+
+        $remaining = (string) $quantity;
+        $affected  = 0;
+
+        foreach ($rows as $row) {
+            if (bccomp($remaining, '0', 4) <= 0) {
+                break;
+            }
+            $available = (string) $row->quantity;
+            if (bccomp($available, '0', 4) <= 0) {
+                continue;
+            }
+
+            $take = bccomp($available, $remaining, 4) >= 0 ? $remaining : $available;
+            $row->quantity = bcsub($available, $take, 4);
+            $row->save();
+
+            $this->writeStockTransaction(
+                $row,
+                $transactionType,
+                (float) $take,
+                $reason,
+                $remark,
+                $operatorId,
+                $referenceType
+            );
+
+            $remaining = bcsub($remaining, $take, 4);
+            $affected++;
+        }
+
+        return $affected;
+    }
+
+    /**
+     * 写库存变动流水（含备注）
+     */
+    private function writeStockTransaction(
+        Inventory $inventory,
+        string $type,
+        float $quantity,
+        string $reason,
+        string $remark,
+        int $operatorId,
+        string $referenceType
+    ): void {
+        InventoryTransaction::createTransaction([
+            'product_id'       => $inventory->product_id,
+            'location_id'      => $inventory->location_id,
+            'inventory_id'     => $inventory->id,
+            'type'             => $type,
+            'quantity'         => $quantity,
+            'balance_quantity' => $inventory->quantity,
+            'operator_id'      => $operatorId,
+            'reason'           => $reason,
+            'remark'           => $remark,
+            'reference_type'   => $referenceType,
+            'reference_id'     => null
+        ]);
+    }
+
+    /**
      * 库存预留
      */
     public function reserve(Request $request)
@@ -339,29 +709,41 @@ class InventoryController extends BaseController
     public function reconcile(Request $request)
     {
         try {
+            // 传了 warehouse_id 就只对账该仓库（不传则全仓对账，admin 用于巡检）
+            $reconcileWarehouseId = (int) ($request->get('warehouse_id') ?? 0);
+
             // 按商品 × 仓库聚合总账
-            $ledger = Db::name('inventory')
+            $ledgerQuery = Db::name('inventory')
                 ->field('product_id, warehouse_id, SUM(quantity) as total_qty')
-                ->group('product_id, warehouse_id')
-                ->select()->toArray();
+                ->group('product_id, warehouse_id');
+            if ($reconcileWarehouseId > 0) {
+                $ledgerQuery->where('warehouse_id', $reconcileWarehouseId);
+            }
+            $ledger = $ledgerQuery->select()->toArray();
 
             // 计件类明细账：SN 在库计数（忽略 warehouse 为 NULL 的存量 SN——无归属无法对账，单独列出）
-            $snCount = Db::name('serial_numbers')
+            $snQuery = Db::name('serial_numbers')
                 ->field('product_id, warehouse_id, COUNT(*) as cnt')
                 ->where('status', 'in_stock')
                 ->where('warehouse_id', '>', 0)
-                ->group('product_id, warehouse_id')
-                ->select()->toArray();
+                ->group('product_id, warehouse_id');
+            if ($reconcileWarehouseId > 0) {
+                $snQuery->where('warehouse_id', $reconcileWarehouseId);
+            }
+            $snCount = $snQuery->select()->toArray();
             $snMap = [];
             foreach ($snCount as $row) {
                 $snMap[$row['product_id'] . '-' . $row['warehouse_id']] = $row['cnt'];
             }
 
             // 散料明细账：批次余量合计
-            $batchSum = Db::name('inventory_batches')
+            $batchQuery = Db::name('inventory_batches')
                 ->field('product_id, warehouse_id, SUM(remaining_quantity) as total_remaining')
-                ->group('product_id, warehouse_id')
-                ->select()->toArray();
+                ->group('product_id, warehouse_id');
+            if ($reconcileWarehouseId > 0) {
+                $batchQuery->where('warehouse_id', $reconcileWarehouseId);
+            }
+            $batchSum = $batchQuery->select()->toArray();
             $batchMap = [];
             foreach ($batchSum as $row) {
                 $batchMap[$row['product_id'] . '-' . $row['warehouse_id']] = $row['total_remaining'];

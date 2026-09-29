@@ -11,6 +11,8 @@ use app\model\Warehouse;
 use app\model\Customer;
 use app\model\Product;
 use app\model\Location;
+use app\model\Inventory;
+use app\model\SerialNumber;
 use app\common\library\Response;
 use think\Request;
 use think\facade\Validate;
@@ -241,7 +243,46 @@ class OutboundOrderController extends BaseController
                 $item->quantity = (string) $itemData['quantity'];
                 $item->picked_quantity = 0;
                 $item->unit_price = $itemData['unit_price'] ?? 0;
+                $item->batch_number = (string) ($itemData['batch_number'] ?? ''); // P9：统一 '' 口径
                 $item->notes = $itemData['notes'] ?? '';
+
+                // P9：计件明细自动定位计划库位——预留必须落到具体库位行，且要与 SN 实际所在库位一致，
+                // 否则 start-picking 的预留行与 pick 的扣减行对不上（预留泄漏 + 回滚错行）。
+                // 因此优先按"在库 SN 数量最多的库位"定位；散料 FIFO 跨批次，无需计划库位。
+                $locationId = $itemData['location_id'] ?? null;
+                if ($item->requires_serial && !$locationId) {
+                    // value() 会覆盖 fieldRaw 导致 ORDER BY 别名丢失，改用 find() 取聚合行
+                    $snRow = SerialNumber::where('product_id', $product->id)
+                        ->where('warehouse_id', (int) $data['warehouse_id'])
+                        ->where('status', SerialNumber::STATUS_IN_STOCK)
+                        ->fieldRaw('location_id, COUNT(*) AS sn_cnt')
+                        ->group('location_id')
+                        ->order('sn_cnt', 'desc')
+                        ->find();
+                    if ($snRow && $snRow->location_id) {
+                        $locationId = (int) $snRow->location_id;
+                        $rowBatch = Inventory::where('product_id', $product->id)
+                            ->where('location_id', $snRow->location_id)
+                            ->value('batch_number');
+                        if ($item->batch_number === '') {
+                            $item->batch_number = (string) ($rowBatch ?: '');
+                        }
+                    } else {
+                        // 无在库 SN 兜底：可用量最大的库存行（历史数据无 SN 台账时）
+                        $row = Inventory::where('product_id', $product->id)
+                            ->where('warehouse_id', (int) $data['warehouse_id'])
+                            ->whereRaw('quantity - reserved_quantity > 0')
+                            ->orderRaw('quantity - reserved_quantity DESC')
+                            ->find();
+                        if ($row) {
+                            $locationId = $row->location_id;
+                            if ($item->batch_number === '') {
+                                $item->batch_number = (string) ($row->batch_number ?: '');
+                            }
+                        }
+                    }
+                }
+                $item->location_id = $locationId ?: null;
                 $item->save();
             }
             
@@ -384,8 +425,10 @@ class OutboundOrderController extends BaseController
             
             Grant::assert('outbound:write', (int) $order->warehouse_id);
             
-            $order->startPicking();
+            // P9：走 Service —— 库存校验 + 计件预留 + 状态流转（模型版无预留，直接调会跳过预留）
+            (new \app\service\OutboundOrderService())->startPicking((int) $id, (int) Current::idOrNull());
             
+            $order = OutboundOrder::find($id);
             return Response::success([
                 'id' => $order->id,
                 'status' => $order->status,
@@ -453,9 +496,8 @@ class OutboundOrderController extends BaseController
                 is_array($serials) ? array_values(array_filter(array_map('trim', $serials))) : [],
                 (int) Current::idOrNull()
             );
-            
-            // 检查是否完成拣货
-            $order->checkAndPack();
+
+            // P9：拣完不自动流转状态——是否终结拣货阶段由「打包」决定（打包时释放未拣预留）
             
             return Response::success([
                 'item_id' => $item->id,
@@ -485,8 +527,10 @@ class OutboundOrderController extends BaseController
             
             Grant::assert('outbound:write', (int) $order->warehouse_id);
             
-            $order->pack();
+            // P9：走 Service —— 打包终结拣货阶段，未拣完部分释放预留（模型版无释放逻辑）
+            (new \app\service\OutboundOrderService())->pack((int) $id, (int) Current::idOrNull());
             
+            $order = OutboundOrder::find($id);
             return Response::success([
                 'id' => $order->id,
                 'status' => $order->status,
@@ -590,41 +634,10 @@ class OutboundOrderController extends BaseController
                         continue;
                     }
                     
-                    // 检查库存是否充足
-                    $items = OutboundOrderItem::where('outbound_order_id', $orderId)->select();
-                    $stockCheckFailed = false;
-                    $stockMessage = '';
-                    
-                    foreach ($items as $item) {
-                        $product = Product::find($item->product_id);
-                        if (!$product) {
-                            $stockCheckFailed = true;
-                            $stockMessage = '商品不存在';
-                            break;
-                        }
-                        
-                        $availableStock = $product->getAvailableStock();
-                        if ($availableStock < $item->quantity) {
-                            $stockCheckFailed = true;
-                            $stockMessage = '商品 ' . $product->name . ' 库存不足，需要：' . $item->quantity . '，可用：' . $availableStock;
-                            break;
-                        }
-                    }
-                    
-                    if ($stockCheckFailed) {
-                        $results[] = [
-                            'order_id' => $orderId,
-                            'order_number' => $order->order_number,
-                            'success' => false,
-                            'message' => $stockMessage
-                        ];
-                        $failCount++;
-                        continue;
-                    }
-                    
-                    // 开始拣货
-                    $order->startPicking();
-                    
+                    // P9：统一走 Service —— 库存校验（计件行级/散料仓库聚合）+ 计件预留 + 状态流转
+                    (new \app\service\OutboundOrderService())->startPicking((int) $orderId, (int) Current::idOrNull());
+                    $order = OutboundOrder::find($orderId);
+
                     $results[] = [
                         'order_id' => $orderId,
                         'order_number' => $order->order_number,
@@ -662,34 +675,36 @@ class OutboundOrderController extends BaseController
     }
     
     /**
-     * 批量完成拣货
+     * 批量完成拣货（P9：语义 = 批量打包终结拣货阶段）
+     *
+     * 原实现"自动拣完剩余数量"不可行：计件类必须逐件扫 SN，无法自动代拣；
+     * 且 Location 查询使用了不存在的字段。改为对拣货中单据统一走 Service pack：
+     * 未拣完部分释放预留，按实际拣货量终结出库。
      */
     public function batchCompletePicking(Request $request)
     {
         $data = $request->post();
-        
+
         // 验证参数
         $validate = Validate::rule([
             'order_ids' => 'require|array',
             'order_ids.*' => 'integer|>:0'
         ]);
-        
+
         if (!$validate->check($data)) {
             return Response::validateError($validate->getError());
         }
-        
+
         try {
-            Db::startTrans();
-            
             $orderIds = $data['order_ids'];
             $results = [];
             $successCount = 0;
             $failCount = 0;
-            
+
             foreach ($orderIds as $orderId) {
                 try {
                     $order = OutboundOrder::find($orderId);
-                    
+
                     if (!$order) {
                         $results[] = [
                             'order_id' => $orderId,
@@ -700,54 +715,32 @@ class OutboundOrderController extends BaseController
                         $failCount++;
                         continue;
                     }
-                    
-                    // 检查状态是否可以完成拣货
-                    if ($order->status !== OutboundOrder::STATUS_PICKING) {
-                        $results[] = [
-                            'order_id' => $orderId,
-                            'order_number' => $order->order_number,
-                            'success' => false,
-                            'message' => '出库单状态不正确，当前状态：' . $order->status_text
-                        ];
-                        $failCount++;
-                        continue;
-                    }
-                    
-                    // 自动完成所有未拣货的商品
-                    $items = OutboundOrderItem::where('outbound_order_id', $orderId)
-                        ->where('picked_quantity', '<', 'quantity')
-                        ->select();
-                    
-                    foreach ($items as $item) {
-                        $remainingQuantity = $item->quantity - $item->picked_quantity;
-                        if ($remainingQuantity > 0) {
-                            // 获取商品的默认库位
-                            $product = Product::find($item->product_id);
-                            $location = Location::where('product_id', $item->product_id)
-                                ->where('quantity', '>', 0)
-                                ->order('quantity', 'desc')
-                                ->find();
-                            
-                            if ($location) {
-                                $item->pick($remainingQuantity, $location->id);
-                            }
-                        }
-                    }
-                    
-                    // 检查并打包
-                    $order->checkAndPack();
-                    
+
+                    Grant::assert('outbound:write', (int) $order->warehouse_id);
+
+                    // P9：统一走 Service pack（释放未拣预留 + packed）
+                    (new \app\service\OutboundOrderService())->pack((int) $orderId, (int) Current::idOrNull());
+                    $order = OutboundOrder::find($orderId);
+
                     $results[] = [
                         'order_id' => $orderId,
                         'order_number' => $order->order_number,
                         'success' => true,
-                        'message' => '完成拣货成功',
+                        'message' => '完成打包成功',
                         'status' => $order->status,
                         'status_text' => $order->status_text
                     ];
                     $successCount++;
-                    
-                } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
+
+                } catch (\app\common\BizException $e) {
+                    $results[] = [
+                        'order_id' => $orderId,
+                        'order_number' => $order->order_number ?? '',
+                        'success' => false,
+                        'message' => $e->getMessage()
+                    ];
+                    $failCount++;
+                } catch (\Exception $e) {
                     $results[] = [
                         'order_id' => $orderId,
                         'order_number' => $order->order_number ?? '',
@@ -757,19 +750,16 @@ class OutboundOrderController extends BaseController
                     $failCount++;
                 }
             }
-            
-            Db::commit();
-            
+
             return Response::success([
                 'total' => count($orderIds),
                 'success_count' => $successCount,
                 'fail_count' => $failCount,
                 'results' => $results
-            ], "批量完成拣货，成功：{$successCount}个，失败：{$failCount}个");
-            
+            ], "批量完成打包，成功：{$successCount}个，失败：{$failCount}个");
+
         } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
-            Db::rollback();
-            return Response::serverError('批量完成拣货失败：' . $e->getMessage());
+            return Response::serverError('批量完成打包失败：' . $e->getMessage());
         }
     }
     
@@ -823,8 +813,11 @@ class OutboundOrderController extends BaseController
             
             Grant::assert('outbound:write', (int) $order->warehouse_id);
             
-            $order->cancel($data['reason']);
+            // P9：走 Service 取消 —— 已拣货的单必须三方回退（总账 + SN 台账 + 预留），
+            // 模型 cancel() 只改状态，直接调用会导致账实背离（死账）
+            (new \app\service\OutboundOrderService())->cancel((int) $id, (int) Current::idOrNull(), $data['reason']);
             
+            $order = OutboundOrder::find($id);
             return Response::success([
                 'id' => $order->id,
                 'status' => $order->status,

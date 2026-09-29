@@ -26,6 +26,7 @@ class Inventory extends Model
     protected $type = [
         'id' => 'integer',
         'product_id' => 'integer',
+        'warehouse_id' => 'integer',
         'location_id' => 'integer',
         // P8: DECIMAL(18,4) 一律按 string 处理，禁止 float 累加
         'quantity' => 'string',
@@ -34,14 +35,15 @@ class Inventory extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];
-    
+
     // 只读字段
     protected $readonly = ['id', 'created_at'];
-    
+
     // 字段映射
     protected $field = [
         'id',
         'product_id',
+        'warehouse_id',
         'location_id',
         'quantity',
         'reserved_quantity',

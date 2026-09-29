@@ -264,27 +264,27 @@ export interface InventoryItem {
   updated_at: string;
 }
 
+/** 库存调整请求（POST /inventory/adjustment，后端按仓库维度扣减/增加） */
 export interface InventoryAdjustmentRequest {
-  productId: string;
-  warehouseId: string;
-  adjustmentType: 'increase' | 'decrease';
+  product_id: number;
+  warehouse_id: number;
+  /** increase 增加 / decrease 减少 */
+  type: 'increase' | 'decrease';
   quantity: number;
   reason: string;
-  location?: string;
-  batchNumber?: string;
-  notes?: string;
+  /** P9+ 备注 */
+  remark?: string;
 }
 
+/** 库存转移请求（POST /inventory/transfer，仓库到仓库） */
 export interface InventoryTransferRequest {
-  productId: string;
-  fromWarehouseId: string;
-  toWarehouseId: string;
+  product_id: number;
+  from_warehouse_id: number;
+  to_warehouse_id: number;
   quantity: number;
   reason: string;
-  fromLocation?: string;
-  toLocation?: string;
-  batchNumber?: string;
-  notes?: string;
+  /** P9+ 备注 */
+  remark?: string;
 }
 
 export interface InventoryQueryParams extends QueryParams {

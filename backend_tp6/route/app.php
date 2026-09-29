@@ -82,8 +82,11 @@ Route::group('api', function () {
             Route::get('statistics', 'InventoryController/statistics'); // 库存统计
             Route::get('expiring', 'InventoryController/expiring'); // 即将过期库存
             Route::get('reconcile', 'InventoryController/reconcile'); // P9: 总账与明细账对账
+            Route::get('product/:product_id/warehouse/:warehouse_id', 'InventoryController/productWarehouseStock'); // 产品在某仓库的库存（须在 :id 之前）
             Route::get(':id', 'InventoryController/read');          // 库存详情
-            Route::post('adjust', 'InventoryController/adjust');    // 库存调整
+            Route::post('adjust', 'InventoryController/adjust');    // 库存调整（按库位）
+            Route::post('adjustment', 'InventoryController/adjustment'); // 库存调整（按仓库，含备注）
+            Route::post('transfer', 'InventoryController/transfer');     // 库存转移（仓库到仓库，含备注）
             Route::post('reserve', 'InventoryController/reserve');  // 预留库存
             Route::post('release', 'InventoryController/release');  // 释放预留
         })->middleware(['warehouse_scope']);
@@ -113,6 +116,8 @@ Route::group('api', function () {
             Route::delete(':id', 'OutboundOrderController/delete'); // 删除出库订单
             Route::post(':id/start-picking', 'OutboundOrderController/startPicking'); // 开始拣货
             Route::post(':id/pick', 'OutboundOrderController/pick'); // 拣货
+            Route::post('batch-picking', 'OutboundOrderController/batchPicking'); // 批量开始拣货（须在 :id 之前）
+            Route::post('batch-complete-picking', 'OutboundOrderController/batchCompletePicking'); // 批量完成打包（须在 :id 之前）
             Route::post(':id/pack', 'OutboundOrderController/pack'); // 打包
             Route::post(':id/ship', 'OutboundOrderController/ship'); // 发货
             Route::post(':id/deliver', 'OutboundOrderController/deliver'); // 确认送达

@@ -130,18 +130,18 @@ const BatchPickingDialog: React.FC<BatchPickingDialogProps> = ({
       queryClient.invalidateQueries({ queryKey: ['outbound', 'list'] });
       
       if (data.success_count > 0) {
-        message.success(`批量完成拣货，成功：${data.success_count}个，失败：${data.fail_count}个`);
+        message.success(`批量完成打包，成功：${data.success_count}个，失败：${data.fail_count}个`);
       } else if (data.fail_count > 0) {
-        message.error(`批量完成拣货失败，所有${data.fail_count}个出库单都处理失败`);
+        message.error(`批量完成打包失败，所有${data.fail_count}个出库单都处理失败`);
       }
-      
+
       if (onSuccess) {
         onSuccess();
       }
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.message || error.message || '网络请求失败';
-      message.error('批量完成拣货失败：' + errorMessage);
+      message.error('批量完成打包失败：' + errorMessage);
       setErrorDetails([errorMessage]);
       setCurrentStep(0);
       setProgress(0);
@@ -360,7 +360,7 @@ const BatchPickingDialog: React.FC<BatchPickingDialogProps> = ({
           loading={batchCompletePickingMutation.isPending}
           disabled={selectedOrders.length === 0}
         >
-          完成拣货
+          完成打包
         </Button>
         <Button onClick={handleClose}>
           取消

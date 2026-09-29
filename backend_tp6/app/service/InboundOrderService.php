@@ -353,7 +353,8 @@ class InboundOrderService
                 $item->location_id,
                 $receivedQuantity,
                 $item->batch_number,
-                $item->expiry_date
+                $item->expiry_date,
+                (int) ($order->warehouse_id ?? 0)
             );
 
             // 记录库存事务
@@ -585,7 +586,7 @@ class InboundOrderService
      * @param string $expiryDate 过期日期
      * @return void
      */
-    private function updateInventory(int $productId, int $locationId, $quantity, string $batchNumber = null, string $expiryDate = null): void
+    private function updateInventory(int $productId, int $locationId, $quantity, string $batchNumber = null, string $expiryDate = null, int $warehouseId = 0): void
     {
         // 并发安全：行锁，禁止先查后改
         $inventory = Inventory::where('product_id', $productId)
@@ -602,6 +603,7 @@ class InboundOrderService
         } else {
             Inventory::create([
                 'product_id' => $productId,
+                'warehouse_id' => $warehouseId,
                 'location_id' => $locationId,
                 'quantity' => (string) $quantity,
                 'reserved_quantity' => 0,

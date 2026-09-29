@@ -234,8 +234,15 @@ class InboundOrder extends Model
     {
         $prefix = 'IN';
         $date = date('Ymd');
-        $sequence = str_pad(self::whereTime('created_at', 'today')->count() + 1, 4, '0', STR_PAD_LEFT);
-        
+        // 取当日最大单号序号 +1（必须含软删行——唯一键对已归档单同样生效）；
+        // 不能用 count()+1：取消归档后计数回退会生成已存在的单号，撞 order_number 唯一键。
+        // 注意不能用 max()：think-orm 的 max() 默认 force=true 强转数字，字符串单号会变成 0
+        $max = self::withTrashed()
+            ->where('order_number', 'like', $prefix . $date . '%')
+            ->order('order_number', 'desc')
+            ->value('order_number');
+        $sequence = str_pad((string)((int)substr((string)$max, -4) + 1), 4, '0', STR_PAD_LEFT);
+
         return $prefix . $date . $sequence;
     }
     

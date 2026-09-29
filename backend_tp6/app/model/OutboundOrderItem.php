@@ -188,6 +188,15 @@ class OutboundOrderItem extends Model
         // P9：batch_number 统一口径
         $batchNumber = trim((string) ($batchNumber ?? ''));
 
+        // P9：计件类必须在计划库位拣货——预留落在计划库位行上，跨库位拣货会导致
+        // 预留行与扣减行对不上（预留泄漏 + 取消回滚错行）。SN 实际库位须与计划库位一致。
+        if ($needSerial && $locationId && $this->location_id && (int) $locationId !== (int) $this->location_id) {
+            throw new \app\common\BizException(
+                'SERIAL_NOT_AVAILABLE',
+                '拣货库位与计划库位不一致（计划库位#' . $this->location_id . '），请按计划库位拣货或调整出库单'
+            );
+        }
+
         $this->startTrans();
         try {
             // 更新拣货数量
@@ -196,7 +205,8 @@ class OutboundOrderItem extends Model
             if ($locationId) {
                 $this->location_id = $locationId;
             }
-            if ($batchNumber !== '') {
+            // 计件类批次口径锁定为计划批次（预留/扣减同一行）；散料允许指定批次
+            if ($batchNumber !== '' && !$needSerial) {
                 $this->batch_number = $batchNumber;
             }
 
@@ -267,8 +277,8 @@ class OutboundOrderItem extends Model
                     }
                     $batch->save();
 
-                    // 总账按批次实际库位扣减
-                    $this->decreaseInventory((int)$batch->location_id, (string)$batch->batch_no, $take, $operatorId);
+                    // 总账按批次实际库位扣减（散料未预留：按行可用量校验、不动 reserved）
+                    $this->decreaseInventory((int)$batch->location_id, (string)$batch->batch_no, $take, $operatorId, false);
 
                     $pickedBatches[] = [
                         'batch_id'   => (int)$batch->id,
@@ -312,10 +322,11 @@ class OutboundOrderItem extends Model
     /**
      * P9：总账扣减（行锁）+ 预留联动释放 + 流水
      *
-     * startPicking 按整单预留了 reserved；拣货即消耗——本次拣多少，quantity 和 reserved 同步减多少。
-     * reserved 为 UNSIGNED，残留脏数据不足时 clamp 到 0，不抛错（对账任务兜底暴露）。
+     * @param bool $consumeReserved true=计件：本单在 startPicking 已预留，本次拣货消耗自身预留，
+     *                              可用性看物理库存是否覆盖（不能再用 quantity-reserved 校验，否则自锁）；
+     *                              false=散料：本单未预留（FIFO 扣减行不定），按行可用量校验，不动 reserved
      */
-    private function decreaseInventory(int $locationId, string $batchNumber, string $quantity, int $operatorId): void
+    private function decreaseInventory(int $locationId, string $batchNumber, string $quantity, int $operatorId, bool $consumeReserved = true): void
     {
         $inventory = Inventory::where([
             'product_id'   => $this->product_id,
@@ -331,8 +342,10 @@ class OutboundOrderItem extends Model
             ]]);
         }
 
-        // 可用库存 = 现有 - 预留；不足时抛缺料明细
-        $available = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
+        // 可用性校验：计件看物理库存（消耗自身预留）；散料看行可用量（quantity - reserved）
+        $available = $consumeReserved
+            ? (string) $inventory->quantity
+            : bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
         if (bccomp($available, $quantity, 4) < 0) {
             throw new \app\common\BizException('STOCK_INSUFFICIENT', '可用库存不足', [[
                 'product_id'   => $this->product_id,
@@ -345,11 +358,13 @@ class OutboundOrderItem extends Model
         }
 
         $inventory->quantity = bcsub((string)$inventory->quantity, $quantity, 4);
-        // P9：释放对应预留（拣货即消耗预留）
-        if (bccomp((string)$inventory->reserved_quantity, $quantity, 4) >= 0) {
-            $inventory->reserved_quantity = bcsub((string)$inventory->reserved_quantity, $quantity, 4);
-        } else {
-            $inventory->reserved_quantity = '0';
+        if ($consumeReserved) {
+            // P9：消耗本单预留（拣货即消耗预留）；reserved 为 UNSIGNED，残留脏数据 clamp 到 0
+            if (bccomp((string)$inventory->reserved_quantity, $quantity, 4) >= 0) {
+                $inventory->reserved_quantity = bcsub((string)$inventory->reserved_quantity, $quantity, 4);
+            } else {
+                $inventory->reserved_quantity = '0';
+            }
         }
         $inventory->available_quantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
         $inventory->save();

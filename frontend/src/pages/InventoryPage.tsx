@@ -6,6 +6,8 @@ import {
   Typography,
   Button,
   Input,
+  InputNumber,
+  AutoComplete,
   Select,
   Table,
   Tabs,
@@ -28,51 +30,66 @@ import {
   DatabaseOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
 import type {
   InventoryItem,
   Warehouse,
   Product,
-  InventoryAdjustmentRequest,
-  InventoryTransferRequest,
   InventoryQueryParams,
 } from '../types/api';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-// 库存调整表单验证
-const adjustmentSchema = z.object({
-  productId: z.string().min(1, '请选择产品'),
-  warehouseId: z.string().min(1, '请选择仓库'),
-  adjustmentType: z.enum(['increase', 'decrease'], { message: '请选择调整类型' }),
-  quantity: z.number().min(1, '数量必须大于0'),
-  reason: z.string().min(1, '请输入调整原因'),
-  remark: z.string().optional(),
-});
+// 库存调整表单值（产品用 AutoComplete 检索，单独维护选中态）
+interface AdjustmentFormValues {
+  productId: number;
+  warehouseId: number;
+  adjustmentType: 'increase' | 'decrease';
+  quantity: number;
+  reason: string;
+  remark?: string;
+}
 
-// 库存转移表单验证
-const transferSchema = z.object({
-  productId: z.string().min(1, '请选择产品'),
-  fromWarehouseId: z.string().min(1, '请选择源仓库'),
-  toWarehouseId: z.string().min(1, '请选择目标仓库'),
-  quantity: z.number().min(1, '数量必须大于0'),
-  reason: z.string().min(1, '请输入转移原因'),
-  remark: z.string().optional(),
-});
+// 库存转移表单值
+interface TransferFormValues {
+  productId: number;
+  fromWarehouseId: number;
+  toWarehouseId: number;
+  quantity: number;
+  reason: string;
+  remark?: string;
+}
 
-type AdjustmentFormData = z.infer<typeof adjustmentSchema>;
-type TransferFormData = z.infer<typeof transferSchema>;
+// 产品检索：名称 / 设备来源(sku) / 序列号(barcode) / 型号
+const filterProducts = (list: Product[], keyword: string): Product[] => {
+  const source = Array.isArray(list) ? list : [];
+  const k = keyword.trim().toLowerCase();
+  if (!k) return source.slice(0, 50);
+  return source
+    .filter((p: any) =>
+      [p.name, p.sku, p.barcode, p.model_number]
+        .some((v) => String(v || '').toLowerCase().includes(k)))
+    .slice(0, 50);
+};
+
+const productOptionLabel = (p: any) => (
+  <div>
+    <div>{p.name}</div>
+    <Text type="secondary">
+      设备来源: {p.sku || '-'} ｜ 序列号: {p.barcode || '-'} ｜ 型号: {p.model_number || '-'}
+    </Text>
+  </div>
+);
 
 interface InventoryAdjustmentDialogProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: AdjustmentFormData) => void;
+  onSubmit: (data: AdjustmentFormValues) => void;
   loading?: boolean;
+  products: Product[];
+  warehouses: Warehouse[];
 }
 
 const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
@@ -80,74 +97,65 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
   onClose,
   onSubmit,
   loading = false,
+  products,
+  warehouses,
 }) => {
   const [form] = Form.useForm();
-  const {
-    handleSubmit,
-    reset,
-  } = useForm<AdjustmentFormData>({
-    resolver: zodResolver(adjustmentSchema),
-    defaultValues: {
-      productId: '',
-      warehouseId: '',
-      adjustmentType: 'increase',
-      quantity: 1,
-      reason: '',
-      remark: '',
-    },
-  });
+  const [productId, setProductId] = useState<number | undefined>(undefined);
+  const [productText, setProductText] = useState('');
+  const [productKeyword, setProductKeyword] = useState('');
+  const [productError, setProductError] = useState('');
 
-  const [selectedProductId, setSelectedProductId] = useState('');
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
-  
-  // 监听表单值变化
-  React.useEffect(() => {
-    // 使用 Ant Design Form 的 onValuesChange 来监听变化
-    // 这里暂时注释掉，因为 Ant Design Form 没有 watch 方法
-    // const subscription = form.watch((value) => {
-    //   if (value.productId) setSelectedProductId(value.productId);
-    //   if (value.warehouseId) setSelectedWarehouseId(value.warehouseId);
-    // });
-    // return () => subscription.unsubscribe();
-  }, [form]);
+  const warehouseId = Form.useWatch('warehouseId', form);
+  const adjustmentType = Form.useWatch('adjustmentType', form);
 
-  // 获取产品列表
-  const { data: productsData } = useQuery({
-    queryKey: queryKeys.products.all,
-    queryFn: async () => {
-      const response = await api.get<Product[]>('/products');
-      return response.data.data;
-    },
-  });
+  const selectedProduct = React.useMemo(
+    () => (Array.isArray(products) ? products.find((p) => String(p.id) === String(productId)) : undefined),
+    [products, productId]
+  );
+  const isCount = (selectedProduct?.measure_type || 'count') === 'count';
+  const unit = selectedProduct?.unit || '件';
 
-  // 获取仓库列表
-  const { data: warehousesData } = useQuery({
-    queryKey: queryKeys.warehouses.all,
-    queryFn: async () => {
-      const response = await api.get('/warehouses');
-      return response.data.data.list;
-    },
-  });
-
-  // 获取当前库存
+  // 当前库存（产品 + 仓库，后端聚合该仓库全部库位/批次）
   const { data: currentStock } = useQuery({
-    queryKey: ['inventory', 'current', selectedProductId, selectedWarehouseId],
+    queryKey: ['inventory', 'stock', productId, warehouseId],
     queryFn: async () => {
-      if (!selectedProductId || !selectedWarehouseId) return null;
-      const response = await api.get<InventoryItem>(
-        `/inventory/${selectedProductId}/${selectedWarehouseId}`
-      );
+      const response = await api.get(`/inventory/product/${productId}/warehouse/${warehouseId}`);
       return response.data.data;
     },
-    enabled: !!selectedProductId && !!selectedWarehouseId,
+    enabled: !!productId && !!warehouseId,
   });
 
   React.useEffect(() => {
     if (open) {
-      reset();
       form.resetFields();
+      setProductId(undefined);
+      setProductText('');
+      setProductKeyword('');
+      setProductError('');
     }
-  }, [open, reset, form]);
+  }, [open, form]);
+
+  const handleOk = async () => {
+    if (!productId) {
+      setProductError('请输入关键字检索并选择产品');
+      return;
+    }
+    let values: any;
+    try {
+      values = await form.validateFields();
+    } catch {
+      return;
+    }
+    onSubmit({
+      productId: Number(productId),
+      warehouseId: Number(values.warehouseId),
+      adjustmentType: values.adjustmentType,
+      quantity: Number(values.quantity),
+      reason: values.reason,
+      remark: values.remark || '',
+    });
+  };
 
 
 
@@ -170,11 +178,7 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
           key="submit"
           type="primary"
           loading={loading}
-          onClick={() => {
-            form.validateFields().then(values => {
-              handleSubmit(onSubmit)(values);
-            });
-          }}
+          onClick={handleOk}
         >
           确认调整
         </Button>,
@@ -183,22 +187,47 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
       <Form
         form={form}
         layout="vertical"
+        initialValues={{ adjustmentType: 'increase', quantity: 1 }}
       >
         <Form.Item
           label="产品"
-          name="productId"
-          rules={[{ required: true, message: '请选择产品' }]}
+          required
+          validateStatus={productError ? 'error' : ''}
+          help={productError || '输入名称 / 设备来源 / 序列号 / 型号检索'}
         >
-          <Select placeholder="请选择产品" loading={loading}>
-            {Array.isArray(productsData) ? productsData.map((product) => (
-              <Option key={product.id} value={product.id}>
-                <Space>
-                  {product.name}
-                  <Tag>{product.sku}</Tag>
-                </Space>
-              </Option>
-            )) : []}
-          </Select>
+          <AutoComplete
+            style={{ width: '100%' }}
+            value={productText}
+            disabled={loading}
+            allowClear
+            placeholder="输入名称 / 设备来源 / 序列号 / 型号检索"
+            options={filterProducts(products, productKeyword).map((p: any) => ({
+              value: `${p.name}（${p.sku || '-'}）`,
+              productId: p.id,
+              label: productOptionLabel(p),
+            }))}
+            onSearch={(kw) => {
+              setProductKeyword(kw);
+              if (productId) setProductId(undefined);
+            }}
+            onChange={(val) => {
+              setProductText(String(val || ''));
+              if (!val) {
+                setProductId(undefined);
+                setProductError('');
+              }
+            }}
+            onSelect={(_val, option: any) => {
+              setProductId(Number(option.productId));
+              setProductText(String(option.value));
+              setProductError('');
+            }}
+            onClear={() => {
+              setProductId(undefined);
+              setProductText('');
+              setProductError('');
+            }}
+          />
         </Form.Item>
 
         <Form.Item
@@ -207,7 +236,7 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
           rules={[{ required: true, message: '请选择仓库' }]}
         >
           <Select placeholder="请选择仓库" loading={loading}>
-            {Array.isArray(warehousesData) ? warehousesData.map((warehouse) => (
+            {Array.isArray(warehouses) ? warehouses.map((warehouse) => (
               <Option key={warehouse.id} value={warehouse.id}>
                 <Space>
                   <DatabaseOutlined />
@@ -221,7 +250,7 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
 
         {currentStock && (
           <Alert
-            message={`当前库存：${currentStock.quantity} ${currentStock.product?.unit || '件'}`}
+            message={`当前库存：${currentStock.quantity} ${currentStock.unit || '件'}（可用 ${currentStock.available_quantity ?? currentStock.quantity}）`}
             type="info"
             showIcon
             style={{ marginBottom: 16 }}
@@ -254,10 +283,35 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
           name="quantity"
           rules={[
             { required: true, message: '请输入调整数量' },
-            { type: 'number', min: 1, message: '数量必须大于0' }
+            {
+              validator: (_, value) => {
+                if (value === undefined || value === null || value === '') {
+                  return Promise.resolve();
+                }
+                const num = Number(value);
+                if (!(num > 0)) {
+                  return Promise.reject(new Error('数量必须大于0'));
+                }
+                if (adjustmentType === 'decrease' && currentStock) {
+                  const available = Number(currentStock.available_quantity ?? currentStock.quantity ?? 0);
+                  if (num > available) {
+                    return Promise.reject(new Error(`不能大于该仓库当前库存 ${currentStock.quantity} ${currentStock.unit || ''}`));
+                  }
+                }
+                return Promise.resolve();
+              }
+            }
           ]}
         >
-          <Input type="number" placeholder="请输入调整数量" disabled={loading} />
+          <InputNumber
+            style={{ width: '100%' }}
+            min={isCount ? 1 : 0.0001}
+            step={isCount ? 1 : 0.0001}
+            precision={isCount ? 0 : 4}
+            addonAfter={unit}
+            placeholder="请输入调整数量"
+            disabled={loading}
+          />
         </Form.Item>
 
         <Form.Item
@@ -271,8 +325,9 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
         <Form.Item
           label="备注"
           name="remark"
+          rules={[{ max: 500, message: '备注最多500字' }]}
         >
-          <Input.TextArea rows={3} placeholder="请输入备注" disabled={loading} />
+          <Input.TextArea rows={3} placeholder="请输入备注（可填写依据、经手人等信息）" disabled={loading} />
         </Form.Item>
       </Form>
     </Modal>
@@ -282,8 +337,10 @@ const InventoryAdjustmentDialog: React.FC<InventoryAdjustmentDialogProps> = ({
 interface InventoryTransferDialogProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: TransferFormData) => void;
+  onSubmit: (data: TransferFormValues) => void;
   loading?: boolean;
+  products: Product[];
+  warehouses: Warehouse[];
 }
 
 const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
@@ -291,70 +348,68 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
   onClose,
   onSubmit,
   loading = false,
+  products,
+  warehouses,
 }) => {
   const [form] = Form.useForm();
-  const {
-    handleSubmit,
-    reset,
-    watch,
-  } = useForm<TransferFormData>({
-    resolver: zodResolver(transferSchema),
-    defaultValues: {
-      productId: '',
-      fromWarehouseId: '',
-      toWarehouseId: '',
-      quantity: 1,
-      reason: '',
-      remark: '',
-    },
-  });
+  const [productId, setProductId] = useState<number | undefined>(undefined);
+  const [productText, setProductText] = useState('');
+  const [productKeyword, setProductKeyword] = useState('');
+  const [productError, setProductError] = useState('');
 
-  const selectedProductId = watch('productId');
-  const selectedFromWarehouseId = watch('fromWarehouseId');
+  const fromWarehouseId = Form.useWatch('fromWarehouseId', form);
 
-  // 获取产品列表
-  const { data: productsData } = useQuery({
-    queryKey: queryKeys.products.all,
-    queryFn: async () => {
-        const response = await api.get<Product[]>('/products');
-        return response.data.data;
-      },
-  });
+  const selectedProduct = React.useMemo(
+    () => (Array.isArray(products) ? products.find((p) => String(p.id) === String(productId)) : undefined),
+    [products, productId]
+  );
+  const isCount = (selectedProduct?.measure_type || 'count') === 'count';
+  const unit = selectedProduct?.unit || '件';
 
-  // 获取仓库列表
-  const { data: warehousesData } = useQuery({
-    queryKey: queryKeys.warehouses.all,
-    queryFn: async () => {
-      const response = await api.get('/warehouses');
-      return response.data.data.list;
-    },
-  });
-
-  // 获取源仓库库存
+  // 源仓库库存（产品 + 源仓库，后端聚合该仓库全部库位/批次）
   const { data: sourceStock } = useQuery({
-    queryKey: ['inventory', 'source', selectedProductId, selectedFromWarehouseId],
+    queryKey: ['inventory', 'stock', productId, fromWarehouseId],
     queryFn: async () => {
-      if (!selectedProductId || !selectedFromWarehouseId) return null;
-      const response = await api.get<InventoryItem>(
-        `/inventory/${selectedProductId}/${selectedFromWarehouseId}`
-      );
+      const response = await api.get(`/inventory/product/${productId}/warehouse/${fromWarehouseId}`);
       return response.data.data;
     },
-    enabled: !!selectedProductId && !!selectedFromWarehouseId,
+    enabled: !!productId && !!fromWarehouseId,
   });
 
   React.useEffect(() => {
     if (open) {
-      reset();
       form.resetFields();
+      setProductId(undefined);
+      setProductText('');
+      setProductKeyword('');
+      setProductError('');
     }
-  }, [open, reset, form]);
+  }, [open, form]);
 
-
+  const handleOk = async () => {
+    if (!productId) {
+      setProductError('请输入关键字检索并选择产品');
+      return;
+    }
+    let values: any;
+    try {
+      values = await form.validateFields();
+    } catch {
+      return;
+    }
+    onSubmit({
+      productId: Number(productId),
+      fromWarehouseId: Number(values.fromWarehouseId),
+      toWarehouseId: Number(values.toWarehouseId),
+      quantity: Number(values.quantity),
+      reason: values.reason,
+      remark: values.remark || '',
+    });
+  };
 
   // 过滤目标仓库（不能选择源仓库）
-  const availableToWarehouses = Array.isArray(warehousesData) ? warehousesData.filter(
-    (warehouse) => warehouse.id !== selectedFromWarehouseId
+  const availableToWarehouses = Array.isArray(warehouses) ? warehouses.filter(
+    (warehouse) => String(warehouse.id) !== String(fromWarehouseId)
   ) : [];
 
   return (
@@ -376,11 +431,7 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
           key="submit"
           type="primary"
           loading={loading}
-          onClick={() => {
-            form.validateFields().then(values => {
-              handleSubmit(onSubmit)(values);
-            });
-          }}
+          onClick={handleOk}
         >
           确认转移
         </Button>,
@@ -389,22 +440,47 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
       <Form
         form={form}
         layout="vertical"
+        initialValues={{ quantity: 1 }}
       >
         <Form.Item
           label="产品"
-          name="productId"
-          rules={[{ required: true, message: '请选择产品' }]}
+          required
+          validateStatus={productError ? 'error' : ''}
+          help={productError || '输入名称 / 设备来源 / 序列号 / 型号检索'}
         >
-          <Select placeholder="请选择产品" loading={loading}>
-            {Array.isArray(productsData) ? productsData.map((product) => (
-              <Option key={product.id} value={product.id}>
-                <Space>
-                  {product.name}
-                  <Tag>{product.sku}</Tag>
-                </Space>
-              </Option>
-            )) : []}
-          </Select>
+          <AutoComplete
+            style={{ width: '100%' }}
+            value={productText}
+            disabled={loading}
+            allowClear
+            placeholder="输入名称 / 设备来源 / 序列号 / 型号检索"
+            options={filterProducts(products, productKeyword).map((p: any) => ({
+              value: `${p.name}（${p.sku || '-'}）`,
+              productId: p.id,
+              label: productOptionLabel(p),
+            }))}
+            onSearch={(kw) => {
+              setProductKeyword(kw);
+              if (productId) setProductId(undefined);
+            }}
+            onChange={(val) => {
+              setProductText(String(val || ''));
+              if (!val) {
+                setProductId(undefined);
+                setProductError('');
+              }
+            }}
+            onSelect={(_val, option: any) => {
+              setProductId(Number(option.productId));
+              setProductText(String(option.value));
+              setProductError('');
+            }}
+            onClear={() => {
+              setProductId(undefined);
+              setProductText('');
+              setProductError('');
+            }}
+          />
         </Form.Item>
 
         <Form.Item
@@ -412,8 +488,12 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
           name="fromWarehouseId"
           rules={[{ required: true, message: '请选择源仓库' }]}
         >
-          <Select placeholder="请选择源仓库" loading={loading}>
-            {Array.isArray(warehousesData) ? warehousesData.map((warehouse) => (
+          <Select
+            placeholder="请选择源仓库"
+            loading={loading}
+            onChange={() => form.setFieldValue('toWarehouseId', undefined)}
+          >
+            {Array.isArray(warehouses) ? warehouses.map((warehouse) => (
               <Option key={warehouse.id} value={warehouse.id}>
                 <Space>
                   <DatabaseOutlined />
@@ -445,7 +525,7 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
 
         {sourceStock && (
           <Alert
-            message={`源仓库库存：${sourceStock.quantity} ${sourceStock.product?.unit || '件'}`}
+            message={`源仓库库存：${sourceStock.quantity} ${sourceStock.unit || '件'}（可用 ${sourceStock.available_quantity ?? sourceStock.quantity}）`}
             type="info"
             showIcon
             style={{ marginBottom: 16 }}
@@ -457,14 +537,34 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
           name="quantity"
           rules={[
             { required: true, message: '请输入转移数量' },
-            { type: 'number', min: 1, message: '数量必须大于0' }
+            {
+              validator: (_, value) => {
+                if (value === undefined || value === null || value === '') {
+                  return Promise.resolve();
+                }
+                const num = Number(value);
+                if (!(num > 0)) {
+                  return Promise.reject(new Error('数量必须大于0'));
+                }
+                if (sourceStock) {
+                  const available = Number(sourceStock.available_quantity ?? sourceStock.quantity ?? 0);
+                  if (num > available) {
+                    return Promise.reject(new Error(`不能大于源仓库当前库存 ${sourceStock.quantity} ${sourceStock.unit || ''}`));
+                  }
+                }
+                return Promise.resolve();
+              }
+            }
           ]}
         >
-          <Input 
-            type="number" 
-            placeholder="请输入转移数量" 
+          <InputNumber
+            style={{ width: '100%' }}
+            min={isCount ? 1 : 0.0001}
+            step={isCount ? 1 : 0.0001}
+            precision={isCount ? 0 : 4}
+            addonAfter={unit}
+            placeholder="请输入转移数量"
             disabled={loading}
-            max={sourceStock?.quantity}
           />
         </Form.Item>
 
@@ -479,8 +579,9 @@ const InventoryTransferDialog: React.FC<InventoryTransferDialogProps> = ({
         <Form.Item
           label="备注"
           name="remark"
+          rules={[{ max: 500, message: '备注最多500字' }]}
         >
-          <Input.TextArea rows={3} placeholder="请输入备注" disabled={loading} />
+          <Input.TextArea rows={3} placeholder="请输入备注（可填写依据、经手人等信息）" disabled={loading} />
         </Form.Item>
       </Form>
     </Modal>

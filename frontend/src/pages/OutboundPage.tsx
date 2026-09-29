@@ -28,6 +28,9 @@ import {
   DatePicker,
   Badge,
   Avatar,
+  Descriptions,
+  InputNumber,
+  Spin,
 } from 'antd';
 import {
   PlusOutlined,
@@ -47,6 +50,8 @@ import {
   CloseCircleOutlined,
   InfoCircleOutlined,
   AppstoreAddOutlined,
+  CheckOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
 import BatchPickingDialog from '../components/BatchPickingDialog';
 import { queryKeys } from '../utils/queryClient';
@@ -684,105 +689,375 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
   );
 };
 
+// P9：出库单详情数据结构（后端 getDetailInfo 返回 snake_case）
+interface OutboundDetailItem {
+  id: number;
+  product_id: number;
+  product?: { id: number; name: string; sku: string; unit?: string; measure_type?: string };
+  quantity: number;
+  picked_quantity: number;
+  unit_price: number;
+  batch_number?: string | null;
+  notes?: string;
+}
+
+interface OutboundDetail {
+  id: string;
+  order_number: string;
+  status: string;
+  status_text?: string;
+  warehouse_id?: number;
+  warehouse_name?: string;
+  customer_name?: string;
+  receiver_unit?: string | null;
+  receiver_name?: string | null;
+  expected_date?: string | null;
+  notes?: string;
+  items: OutboundDetailItem[];
+  statistics?: {
+    total_items: number;
+    total_quantity: number | string;
+    picked_quantity: number | string;
+    completion_rate: number;
+  };
+}
+
+// 状态机对齐后端：pending → picking → packed → shipped → delivered / cancelled
+const getOutboundStatusTag = (status: string) => {
+  switch (status) {
+    case 'pending': return <Tag icon={<ClockCircleOutlined />} color="warning">待处理</Tag>;
+    case 'picking': return <Tag icon={<SyncOutlined spin />} color="processing">拣货中</Tag>;
+    case 'packed': return <Tag icon={<CheckCircleOutlined />} color="processing">已打包</Tag>;
+    case 'shipped': return <Tag icon={<CarOutlined />} color="success">已发货</Tag>;
+    case 'delivered': return <Tag icon={<CheckCircleOutlined />} color="success">已送达</Tag>;
+    case 'cancelled': return <Tag icon={<CloseCircleOutlined />} color="default">已取消</Tag>;
+    default: return <Tag>{status}</Tag>;
+  }
+};
+
+// P9：明细级拣货弹窗 —— 计件类扫 SN 出库（后端校验本仓在库并联动 SN 台账），散料指定批次或留空走 FIFO 扣余量
+interface PickingDialogProps {
+  open: boolean;
+  order: OutboundDetail | undefined;
+  onClose: () => void;
+}
+
+const PickingDialog: React.FC<PickingDialogProps> = ({ open, order, onClose }) => {
+  const queryClient = useQueryClient();
+  const [itemId, setItemId] = useState<number | null>(null);
+  const [quantity, setQuantity] = useState<number>(0);
+  const [locationId, setLocationId] = useState<number | undefined>(undefined);
+  const [batchNumber, setBatchNumber] = useState('');
+  const [serialsText, setSerialsText] = useState('');
+
+  const items = order?.items || [];
+  const currentItem = items.find((it) => it.id === itemId);
+  // 计件类判定与后端 requiresSerial() 同口径：measure_type = count
+  const isCount = (currentItem?.product?.measure_type || 'count') === 'count';
+  const remaining = currentItem
+    ? Math.max(0, Number(currentItem.quantity) - Number(currentItem.picked_quantity))
+    : 0;
+  // SN 支持换行/逗号/空格批量粘贴（与后端 preg_split 同口径）
+  const serialList = serialsText.split(/[\r\n,\s]+/).map((s) => s.trim()).filter(Boolean);
+  const serialsOk = !isCount || (serialList.length === Math.floor(quantity) && quantity > 0);
+
+  // 库位选项（按单据仓库过滤）
+  const { data: locationOptions } = useQuery({
+    queryKey: ['locations', 'options', order?.warehouse_id],
+    queryFn: async () => {
+      const response = await api.get('/locations/options', {
+        params: { warehouse_id: order?.warehouse_id },
+      });
+      return Array.isArray(response.data?.data) ? response.data.data : [];
+    },
+    enabled: open && !!order?.warehouse_id,
+  });
+
+  // 切换明细时重置表单，数量默认填剩余量
+  const selectItem = (it: OutboundDetailItem) => {
+    setItemId(it.id);
+    setQuantity(Math.max(0, Number(it.quantity) - Number(it.picked_quantity)));
+    setBatchNumber(it.batch_number || '');
+    setSerialsText('');
+  };
+
+  React.useEffect(() => {
+    if (open) {
+      if (items.length > 0 && (itemId === null || !items.some((it) => it.id === itemId))) {
+        // 默认选中第一条未拣完的明细
+        const next = items.find((it) => Number(it.picked_quantity) < Number(it.quantity));
+        if (next) selectItem(next);
+      }
+    } else {
+      setItemId(null);
+      setQuantity(0);
+      setLocationId(undefined);
+      setBatchNumber('');
+      setSerialsText('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, order]);
+
+  const pickMutation = useMutation({
+    mutationFn: async (payload: Record<string, any>) => {
+      const response = await api.post(`/outbound-orders/${order?.id}/pick`, payload);
+      return response.data;
+    },
+    onSuccess: () => {
+      message.success('拣货成功');
+      // 刷新详情（已拣数量回显）与列表
+      queryClient.invalidateQueries({ queryKey: ['outbound-order-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['outbound-orders'] });
+      setSerialsText('');
+    },
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message || '拣货失败');
+    },
+  });
+
+  const canSubmit =
+    !!currentItem && !!locationId && quantity > 0 && quantity <= remaining + 1e-9 && serialsOk;
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    pickMutation.mutate({
+      item_id: currentItem!.id,
+      quantity,
+      location_id: locationId,
+      // 散料留空走 FIFO 自动扣减；计件类不传批次
+      batch_number: !isCount && batchNumber ? batchNumber : undefined,
+      // 计件类按件传 SN；散料类不传
+      serials: isCount ? serialList : undefined,
+    });
+  };
+
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      width={760}
+      title={
+        <Space>
+          <CheckOutlined />
+          <span>拣货登记 - {order?.order_number}</span>
+        </Space>
+      }
+      footer={[
+        <Button key="close" onClick={onClose}>关闭</Button>,
+        <Button
+          key="submit"
+          type="primary"
+          onClick={handleSubmit}
+          loading={pickMutation.isPending}
+          disabled={!canSubmit}
+        >
+          提交拣货
+        </Button>,
+      ]}
+    >
+      <Alert
+        style={{ marginBottom: 16 }}
+        type="info"
+        showIcon
+        message={
+          isCount
+            ? '计件类物资：需按件录入序列号（SN）出库，系统校验 SN 归属本仓且在库；总账与 SN 台账同事务更新'
+            : '散料类物资：批次号留空按先进先出（FIFO）自动扣减，也可指定批次/卷号；总账与批次台账同事务更新'
+        }
+      />
+
+      <Table
+        size="small"
+        dataSource={items}
+        rowKey="id"
+        pagination={false}
+        rowSelection={{
+          type: 'radio',
+          selectedRowKeys: itemId !== null ? [itemId] : [],
+          onSelect: (record) => selectItem(record as OutboundDetailItem),
+        }}
+        onRow={(record) => ({ onClick: () => selectItem(record as OutboundDetailItem) })}
+        columns={[
+          {
+            title: '产品',
+            dataIndex: ['product', 'name'],
+            render: (text, record: any) => (
+              <div>
+                <div>{text}</div>
+                <Typography.Text type="secondary">SKU: {record.product?.sku}</Typography.Text>
+              </div>
+            ),
+          },
+          {
+            title: '应拣',
+            dataIndex: 'quantity',
+            align: 'right',
+            width: 100,
+            render: (text, record: any) => `${text} ${record.product?.unit || '件'}`,
+          },
+          {
+            title: '已拣',
+            dataIndex: 'picked_quantity',
+            align: 'right',
+            width: 90,
+            render: (text) => Number(text || 0),
+          },
+          {
+            title: '剩余',
+            align: 'right',
+            width: 80,
+            render: (_, record: any) =>
+              Math.max(0, Number(record.quantity) - Number(record.picked_quantity)),
+          },
+        ]}
+      />
+
+      <Divider plain>拣货信息</Divider>
+
+      {currentItem ? (
+        <Form layout="vertical">
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item label={isCount ? '拣货数量（件）' : '拣货数量'} required>
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={0}
+                  max={remaining}
+                  precision={isCount ? 0 : 4}
+                  step={isCount ? 1 : 0.0001}
+                  value={quantity}
+                  onChange={(v) => setQuantity(Number(v) || 0)}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="拣货库位" required>
+                <Select
+                  placeholder="选择拣货库位"
+                  showSearch
+                  optionFilterProp="children"
+                  value={locationId}
+                  onChange={setLocationId}
+                  allowClear
+                >
+                  {(locationOptions || []).map((loc: any) => (
+                    <Select.Option key={loc.id} value={loc.id}>{loc.code}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            {!isCount && (
+              <Col span={8}>
+                <Form.Item label="批次/卷号" extra="留空按 FIFO 自动扣减">
+                  <Input
+                    placeholder="如 B20260929-01"
+                    value={batchNumber}
+                    onChange={(e) => setBatchNumber(e.target.value)}
+                    maxLength={50}
+                  />
+                </Form.Item>
+              </Col>
+            )}
+          </Row>
+
+          {isCount && (
+            <Form.Item
+              label="序列号（SN）"
+              required
+              validateStatus={serialsOk ? 'success' : 'error'}
+              help={
+                serialsOk
+                  ? `已录入 ${serialList.length} / 需 ${Math.floor(quantity)} 个`
+                  : `已录入 ${serialList.length} / 需 ${Math.floor(quantity)} 个，个数必须与拣货数量一致`
+              }
+            >
+              <Input.TextArea
+                rows={6}
+                placeholder={'每行一个 SN，支持换行、逗号或空格分隔批量粘贴\n例：\nSN20260929001\nSN20260929002\nSN20260929003'}
+                value={serialsText}
+                onChange={(e) => setSerialsText(e.target.value)}
+              />
+            </Form.Item>
+          )}
+        </Form>
+      ) : (
+        <Typography.Text type="secondary">请先在上方选择要拣货的明细</Typography.Text>
+      )}
+    </Modal>
+  );
+};
+
 interface OutboundOrderDetailDialogProps {
   open: boolean;
-  order?: OutboundOrder;
+  orderId?: string;
   onClose: () => void;
-  onApprove?: (orderId: string) => void;
-  onReject?: (orderId: string) => void;
-  onPick?: (orderId: string) => void;
+  onStartPicking?: (orderId: string) => void;
+  onPack?: (orderId: string) => void;
   onShip?: (orderId: string) => void;
+  onDeliver?: (orderId: string) => void;
   loading?: boolean;
 }
 
 const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
   open,
-  order,
+  orderId,
   onClose,
-  onApprove,
-  onReject,
-  onPick,
+  onStartPicking,
+  onPack,
   onShip,
+  onDeliver,
   loading = false,
 }) => {
-  if (!order) return null;
+  const [pickingOpen, setPickingOpen] = useState(false);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'warning';
-      case 'approved': return 'processing';
-      case 'picking': return 'processing';
-      case 'picked': return 'processing';
-      case 'packed': return 'processing';
-      case 'shipped': return 'success';
-      case 'completed': return 'success';
-      case 'delivered': return 'success';
-      case 'rejected': return 'error';
-      case 'cancelled': return 'default';
-      default: return 'default';
-    }
-  };
+  // 详情以 id 驱动实时拉取（拣货后已拣数量可即时回显）
+  const { data: order, isLoading: detailLoading } = useQuery({
+    queryKey: ['outbound-order-detail', orderId],
+    queryFn: async () => {
+      const response = await api.get(`/outbound-orders/${orderId}`);
+      return response.data?.data as OutboundDetail;
+    },
+    enabled: open && !!orderId,
+  });
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'pending': return '待审核';
-      case 'approved': return '已审核';
-      case 'picking': return '拣货中';
-      case 'picked': return '已拣货';
-      case 'packed': return '已打包';
-      case 'shipped': return '已发货';
-      case 'completed': return '已完成';
-      case 'delivered': return '已送达';
-      case 'rejected': return '已拒绝';
-      case 'cancelled': return '已取消';
-      default: return status;
-    }
-  };
+  if (!orderId) return null;
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending': return <ClockCircleOutlined />;
-      case 'approved': return <CheckCircleOutlined />;
-      case 'picking': return <SyncOutlined spin />;
-      case 'picked': return <CheckCircleOutlined />;
-      case 'packed': return <CheckCircleOutlined />;
-      case 'shipped': return <CarOutlined />;
-      case 'completed': return <CheckCircleOutlined />;
-      case 'delivered': return <CheckCircleOutlined />;
-      case 'rejected': return <CloseCircleOutlined />;
-      case 'cancelled': return <CloseCircleOutlined />;
-      default: return <InfoCircleOutlined />;
-    }
-  };
-
-  const steps = ['创建', '审核', '拣货', '发货'];
-  const getActiveStep = (status: string) => {
+  const steps = ['创建', '拣货', '打包', '发货'];
+  const getActiveStep = (status?: string) => {
     switch (status) {
       case 'pending': return 0;
-      case 'approved': return 1;
-      case 'picking': return 2;
-      case 'picked': return 2;
+      case 'picking': return 1;
       case 'packed': return 2;
       case 'shipped': return 3;
-      case 'completed': return 3;
       case 'delivered': return 3;
       default: return 0;
     }
   };
 
-  const activeStep = getActiveStep(order.status);
+  const activeStep = getActiveStep(order?.status);
 
-  // 计算拣货进度
-  const calculatePickingProgress = () => {
-    if (!order.items || order.items.length === 0) return 0;
-    const totalItems = order.items.length;
-    const pickedItems = order.items.filter(item => 
-      (item.pickedQuantity || 0) >= item.quantity
-    ).length;
-    return (pickedItems / totalItems) * 100;
+  const totalQty = Number(order?.statistics?.total_quantity || 0);
+  const pickedQty = Number(order?.statistics?.picked_quantity || 0);
+  const allPicked =
+    order && order.items.length > 0
+      ? order.items.every((it) => Number(it.picked_quantity) >= Number(it.quantity))
+      : false;
+  const pickingProgress = totalQty > 0 ? (pickedQty / totalQty) * 100 : 0;
+
+  // 未拣完直接打包时二次确认，避免误操作截断拣货
+  const handlePack = () => {
+    if (order && !allPicked) {
+      Modal.confirm({
+        title: '仍有明细未拣完',
+        content: `已拣 ${pickedQty} / 应拣 ${totalQty}，确认直接完成打包吗？未拣部分将不再拣货。`,
+        okText: '确认打包',
+        cancelText: '继续拣货',
+        onOk: () => onPack?.(order.id),
+      });
+    } else if (order) {
+      onPack?.(order.id);
+    }
   };
-
-  const pickingProgress = calculatePickingProgress();
 
   return (
     <Modal
@@ -801,180 +1076,189 @@ const OutboundOrderDetailDialog: React.FC<OutboundOrderDetailDialogProps> = ({
           <Button onClick={onClose}>
             关闭
           </Button>
-          {order.status === 'pending' && onApprove && onReject && (
-            <>
-              <Button
-                onClick={() => onReject(order.id)}
-                danger
-                disabled={loading}
-              >
-                拒绝
-              </Button>
-              <Button
-                onClick={() => onApprove(order.id)}
-                type="primary"
-                loading={loading}
-              >
-                {loading ? '审核中...' : '审核通过'}
-              </Button>
-            </>
-          )}
-          {(order.status === 'approved' || order.status === 'picking') && onPick && (
+          {order?.status === 'pending' && onStartPicking && (
             <Button
-              onClick={() => onPick(order.id)}
+              onClick={() => onStartPicking(order.id)}
               type="primary"
+              icon={<PlayCircleOutlined />}
               loading={loading}
             >
-              {loading ? '开始拣货...' : '开始拣货'}
+              开始拣货
             </Button>
           )}
-          {(order.status === 'picked' || order.status === 'packed') && onShip && (
+          {order?.status === 'picking' && (
+            <Button
+              onClick={() => setPickingOpen(true)}
+              type="primary"
+              icon={<CheckOutlined />}
+            >
+              拣货登记
+            </Button>
+          )}
+          {order?.status === 'picking' && onPack && (
+            <Button
+              onClick={handlePack}
+              icon={<CheckCircleOutlined />}
+              loading={loading}
+            >
+              完成打包
+            </Button>
+          )}
+          {order?.status === 'packed' && onShip && (
             <Button
               onClick={() => onShip(order.id)}
               type="primary"
+              icon={<CarOutlined />}
               loading={loading}
             >
-              {loading ? '发货中...' : '确认发货'}
+              确认发货
+            </Button>
+          )}
+          {order?.status === 'shipped' && onDeliver && (
+            <Button
+              onClick={() => onDeliver(order.id)}
+              type="primary"
+              icon={<CheckCircleOutlined />}
+              loading={loading}
+            >
+              确认送达
             </Button>
           )}
         </Space>
       }
     >
-      <div style={{ padding: '24px 0' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-          <Badge
-            status={getStatusColor(order.status_text)}
-            text={
-              <Space>
-                {getStatusIcon(order.status_text)}
-                {getStatusText(order.status_text)}
-              </Space>
-            }
-          />
-        </div>
-        
-        {/* 基本信息 */}
-        <Card style={{ marginBottom: 24 }}>
-          <Title level={5}>
-            基本信息
-          </Title>
-          <Row gutter={[16, 16]}>
-            <Col span={12}>
-              <Text type="secondary">
-                出库单号
-              </Text>
-              <br />
-              <Text strong>
-                {order.orderNumber}
-              </Text>
-            </Col>
-            <Col span={12}>
-              <Text type="secondary">
-                仓库
-              </Text>
-              <br />
-              <Text strong>
-                {order.warehouse?.name}
-              </Text>
-            </Col>
-            <Col span={12}>
-              <Text type="secondary">
-                客户
-              </Text>
-              <br />
-              <Text strong>
-                {order.customerId || '未指定'}
-              </Text>
-            </Col>
-            {order.notes && (
-              <Col span={24}>
-                <Text type="secondary">
-                  备注
-                </Text>
-                <br />
-                <Text>
+      <Spin spinning={detailLoading && !order}>
+        <div style={{ padding: '24px 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+            {order ? getOutboundStatusTag(order.status) : null}
+          </div>
+
+          {/* 基本信息 */}
+          <Card style={{ marginBottom: 24 }}>
+            <Title level={5}>
+              基本信息
+            </Title>
+            <Descriptions column={2}>
+              <Descriptions.Item label="出库单号">{order?.order_number}</Descriptions.Item>
+              <Descriptions.Item label="仓库">{order?.warehouse_name}</Descriptions.Item>
+              <Descriptions.Item label="客户/领用单位">
+                {order?.customer_name || order?.receiver_unit || '未指定'}
+              </Descriptions.Item>
+              <Descriptions.Item label="领用人">{order?.receiver_name || '-'}</Descriptions.Item>
+              <Descriptions.Item label="拣货进度">
+                {pickedQty} / {totalQty}（{order?.statistics?.completion_rate ?? 0}%）
+              </Descriptions.Item>
+              <Descriptions.Item label="要求送达日期">
+                {order?.expected_date || '-'}
+              </Descriptions.Item>
+              {order?.notes && (
+                <Descriptions.Item label="备注" span={2}>
                   {order.notes}
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+          </Card>
+
+          {/* 流程状态 */}
+          <Card style={{ marginBottom: 24 }}>
+            <Title level={5}>
+              处理流程
+            </Title>
+            <Steps current={activeStep} labelPlacement="vertical">
+              {steps.map((label) => (
+                <Step key={label} title={label} />
+              ))}
+            </Steps>
+            {order?.status === 'picking' && (
+              <div style={{ marginTop: 16 }}>
+                <Text type="secondary">
+                  拣货进度: {pickingProgress.toFixed(0)}%
                 </Text>
-              </Col>
+                <Progress percent={pickingProgress} size="small" />
+              </div>
             )}
-          </Row>
-        </Card>
+          </Card>
 
-        {/* 流程状态 */}
-        <Card style={{ marginBottom: 24 }}>
-          <Title level={5}>
-            处理流程
-          </Title>
-          <Steps current={activeStep} labelPlacement="vertical">
-            {steps.map((label) => (
-              <Step key={label} title={label} />
-            ))}
-          </Steps>
-          {((order as any).status === 'picking' || (order as any).status === 'picked') && (
-            <div style={{ marginTop: 16 }}>
-              <Text type="secondary">
-                拣货进度: {pickingProgress.toFixed(0)}%
-              </Text>
-              <Progress percent={pickingProgress} size="small" />
-            </div>
-          )}
-        </Card>
+          {/* 产品明细 */}
+          <Card style={{ marginBottom: 24 }}>
+            <Title level={5} style={{ padding: '16px 16px 0' }}>
+              产品明细
+            </Title>
+            <Table
+              dataSource={order?.items || []}
+              rowKey="id"
+              pagination={false}
+              scroll={{ x: 'max-content' }}
+              columns={[
+                {
+                  title: '产品名称',
+                  dataIndex: ['product', 'name'],
+                  key: 'productName',
+                  render: (text, record: any) => (
+                    <Space>
+                      <Avatar src={record.product?.imageUrl || '/default-product.png'} shape="square" size="large" />
+                      <Text strong>{text}</Text>
+                    </Space>
+                  ),
+                },
+                {
+                  title: 'SKU',
+                  dataIndex: ['product', 'sku'],
+                  key: 'sku',
+                },
+                {
+                  title: '请求数量',
+                  dataIndex: 'quantity',
+                  key: 'quantity',
+                  align: 'right',
+                  render: (text, record: any) => `${text} ${record.product?.unit || '件'}`,
+                },
+                {
+                  title: '已拣数量',
+                  dataIndex: 'picked_quantity',
+                  key: 'picked_quantity',
+                  align: 'right',
+                  render: (text) => Number(text || 0),
+                },
+                {
+                  title: '进度',
+                  key: 'progress',
+                  align: 'right',
+                  width: 130,
+                  render: (_, record: any) => {
+                    const q = Number(record.quantity);
+                    const p = Number(record.picked_quantity || 0);
+                    return (
+                      <Text type={p >= q ? 'success' : p > 0 ? 'warning' : undefined}>
+                        {p >= q ? '已拣齐' : p > 0 ? `部分拣货 ${p}/${q}` : '未拣货'}
+                      </Text>
+                    );
+                  },
+                },
+                {
+                  title: '批次号',
+                  dataIndex: 'batch_number',
+                  key: 'batch_number',
+                  render: (text) => text || '-',
+                },
+                {
+                  title: '备注',
+                  dataIndex: 'notes',
+                  key: 'notes',
+                  render: (text) => text || '-',
+                },
+              ]}
+            />
+          </Card>
+        </div>
+      </Spin>
 
-        {/* 产品明细 */}
-        <Card style={{ marginBottom: 24 }}>
-          <Title level={5} style={{ padding: '16px 16px 0' }}>
-            产品明细
-          </Title>
-          <Table
-            dataSource={order.items}
-            rowKey={(_, index) => `item-${index}`}
-            pagination={false}
-            scroll={{ x: 'max-content' }}
-            columns={[
-              {
-                title: '产品名称',
-                dataIndex: 'product',
-                key: 'productName',
-                render: (product) => (
-                  <Space>
-                    <Avatar src={product?.imageUrl || '/default-product.png'} shape="square" size="large" />
-                    <Text strong>{product?.name}</Text>
-                  </Space>
-                ),
-              },
-              {
-                title: 'SKU',
-                dataIndex: ['product', 'sku'],
-                key: 'sku',
-              },
-              {
-                title: '请求数量',
-                dataIndex: 'quantity',
-        key: 'quantity',
-                align: 'right',
-              },
-              {
-                title: '拣货数量',
-                dataIndex: 'pickedQuantity',
-                key: 'pickedQuantity',
-                align: 'right',
-                render: (text) => text || 0,
-              },
-              {
-                title: '单位',
-                dataIndex: ['product', 'unit'],
-                key: 'unit',
-                align: 'right',
-              },
-              {
-                title: '备注',
-                dataIndex: 'remark',
-                key: 'remark',
-              },
-            ]}
-          />
-        </Card>
-      </div>
+      {/* P9：明细级拣货登记（嵌套弹窗，拣货后自动刷新详情） */}
+      <PickingDialog
+        open={pickingOpen}
+        order={order}
+        onClose={() => setPickingOpen(false)}
+      />
     </Modal>
   );
 };
@@ -1066,39 +1350,35 @@ const OutboundPage: React.FC = () => {
     },
   });
 
-  // 审核出库单
-  const approveMutation = useMutation({
+  // P9：开始拣货（pending → picking，真正扣库存的动作在明细级 pick）
+  const startPickingMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.post(`/outbound-orders/${id}/approve`);
+      const response = await api.post(`/outbound-orders/${id}/start-picking`);
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['outbound-orders'] });
-      setDetailDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['outbound-order-detail'] });
+      message.success('已开始拣货，请进行拣货登记');
+    },
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message || '开始拣货失败');
     },
   });
 
-  // 拒绝出库单
-  const rejectMutation = useMutation({
+  // P9：完成打包（picking → packed）
+  const packMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.post(`/outbound-orders/${id}/reject`);
+      const response = await api.post(`/outbound-orders/${id}/pack`);
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['outbound-orders'] });
-      setDetailDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['outbound-order-detail'] });
+      message.success('打包完成');
     },
-  });
-
-  // 开始拣货
-  const pickMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await api.post(`/outbound-orders/${id}/pick`);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['outbound-orders'] });
-      setDetailDialogOpen(false);
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message || '打包失败');
     },
   });
 
@@ -1110,7 +1390,28 @@ const OutboundPage: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['outbound-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['outbound-order-detail'] });
       setDetailDialogOpen(false);
+      message.success('发货成功');
+    },
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message || '发货失败');
+    },
+  });
+
+  // P9：确认送达（shipped → delivered）
+  const deliverMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.post(`/outbound-orders/${id}/deliver`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['outbound-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['outbound-order-detail'] });
+      message.success('已确认送达');
+    },
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message || '确认送达失败');
     },
   });
 
@@ -1183,14 +1484,11 @@ const OutboundPage: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'warning';
-      case 'approved': return 'processing';
       case 'picking': return 'processing';
-      case 'picked': return 'processing';
       case 'packed': return 'processing';
       case 'shipped': return 'success';
       case 'completed': return 'success';
       case 'delivered': return 'success';
-      case 'rejected': return 'error';
       case 'cancelled': return 'default';
       default: return 'default';
     }
@@ -1198,15 +1496,12 @@ const OutboundPage: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'pending': return '待审核';
-      case 'approved': return '已审核';
+      case 'pending': return '待处理';
       case 'picking': return '拣货中';
-      case 'picked': return '已拣货';
       case 'packed': return '已打包';
       case 'shipped': return '已发货';
       case 'completed': return '已完成';
       case 'delivered': return '已送达';
-      case 'rejected': return '已拒绝';
       case 'cancelled': return '已取消';
       default: return status;
     }
@@ -1240,14 +1535,12 @@ const OutboundPage: React.FC = () => {
               style={{ width: '100%' }}
             >
               <Option value="">全部状态</Option>
-              <Option value="pending">待审核</Option>
-              <Option value="approved">已审核</Option>
+              <Option value="pending">待处理</Option>
               <Option value="picking">拣货中</Option>
-              <Option value="picked">已拣货</Option>
+              <Option value="packed">已打包</Option>
               <Option value="shipped">已发货</Option>
-              <Option value="completed">已完成</Option>
+              <Option value="delivered">已送达</Option>
               <Option value="cancelled">已取消</Option>
-              <Option value="rejected">已拒绝</Option>
             </Select>
           </Col>
           <Col xs={24} sm={12} md={4}>
@@ -1480,23 +1773,23 @@ const OutboundPage: React.FC = () => {
         loading={createMutation.isPending || updateMutation.isPending}
       />
 
-      {/* 详情对话框 */}
+      {/* 详情对话框（P9：id 驱动 + 明细级拣货流程） */}
       <OutboundOrderDetailDialog
         open={detailDialogOpen}
-        order={selectedOrder}
+        orderId={selectedOrder?.id}
         onClose={() => {
           setDetailDialogOpen(false);
           setSelectedOrder(undefined);
         }}
-        onApprove={(id) => approveMutation.mutate(id)}
-        onReject={(id) => rejectMutation.mutate(id)}
-        onPick={(id) => pickMutation.mutate(id)}
+        onStartPicking={(id) => startPickingMutation.mutate(id)}
+        onPack={(id) => packMutation.mutate(id)}
         onShip={(id) => shipMutation.mutate(id)}
+        onDeliver={(id) => deliverMutation.mutate(id)}
         loading={
-          approveMutation.isPending || 
-          rejectMutation.isPending || 
-          pickMutation.isPending || 
-          shipMutation.isPending
+          startPickingMutation.isPending ||
+          packMutation.isPending ||
+          shipMutation.isPending ||
+          deliverMutation.isPending
         }
       />
 
