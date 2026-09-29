@@ -39,11 +39,13 @@ Route::group('api', function () {
             Route::delete('types/:id', 'DictionaryController/deleteType');  // 删除字典类型
             
             // 字典项
-            Route::get('items/:typeId', 'DictionaryController/getItems');           // 获取指定类型的字典项
+            // 注意：`items/type/:typeCode` 必须排在 `items/:typeId` 之前，且 :typeId/:id 限定为数字，
+            // 否则 `items/type/unit` 会被 `items/:typeId` 抢先匹配（typeId='type'），导致按编码查询恒返回空数组
             Route::get('items/type/:typeCode', 'DictionaryController/getItemsByTypeCode'); // 根据类型编码获取字典项
+            Route::get('items/:typeId', 'DictionaryController/getItems')->pattern(['typeId' => '\d+']); // 获取指定类型的字典项
             Route::post('items', 'DictionaryController/createItem');                // 创建字典项
-            Route::put('items/:id', 'DictionaryController/updateItem');             // 更新字典项
-            Route::delete('items/:id', 'DictionaryController/deleteItem');          // 删除字典项
+            Route::put('items/:id', 'DictionaryController/updateItem')->pattern(['id' => '\d+']);       // 更新字典项
+            Route::delete('items/:id', 'DictionaryController/deleteItem')->pattern(['id' => '\d+']);    // 删除字典项
         });
         
         // 仓库管理

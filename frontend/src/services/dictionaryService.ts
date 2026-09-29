@@ -28,7 +28,7 @@ export interface DictionaryItem {
 // 获取所有字典类型
 export const getDictionaryTypes = async () => {
   try {
-    const response = await api.get('/api/dictionary/types');
+    const response = await api.get('/dictionary/types');
     return response.data;
   } catch (error) {
     console.error('获取字典类型失败:', error);
@@ -39,7 +39,7 @@ export const getDictionaryTypes = async () => {
 // 获取指定字典类型的所有字典项
 export const getDictionaryItems = async (typeId: number) => {
   try {
-    const response = await api.get(`/api/dictionary/items/${typeId}`);
+    const response = await api.get(`/dictionary/items/${typeId}`);
     return response.data;
   } catch (error) {
     console.error('获取字典项失败:', error);
@@ -50,7 +50,7 @@ export const getDictionaryItems = async (typeId: number) => {
 // 根据字典类型编码获取字典项
 export const getDictionaryItemsByTypeCode = async (typeCode: string) => {
   try {
-    const response = await api.get(`/api/dictionary/items/type/${typeCode}`);
+    const response = await api.get(`/dictionary/items/type/${typeCode}`);
     return response.data;
   } catch (error) {
     console.error(`获取${typeCode}字典项失败:`, error);
@@ -61,7 +61,7 @@ export const getDictionaryItemsByTypeCode = async (typeCode: string) => {
 // 创建字典类型
 export const createDictionaryType = async (data: Omit<DictionaryType, 'id'>) => {
   try {
-    const response = await api.post('/api/dictionary/types', data);
+    const response = await api.post('/dictionary/types', data);
     return response.data;
   } catch (error) {
     console.error('创建字典类型失败:', error);
@@ -72,7 +72,7 @@ export const createDictionaryType = async (data: Omit<DictionaryType, 'id'>) => 
 // 更新字典类型
 export const updateDictionaryType = async (id: number, data: Partial<DictionaryType>) => {
   try {
-    const response = await api.put(`/api/dictionary/types/${id}`, data);
+    const response = await api.put(`/dictionary/types/${id}`, data);
     return response.data;
   } catch (error) {
     console.error('更新字典类型失败:', error);
@@ -83,7 +83,7 @@ export const updateDictionaryType = async (id: number, data: Partial<DictionaryT
 // 删除字典类型
 export const deleteDictionaryType = async (id: number) => {
   try {
-    const response = await api.delete(`/api/dictionary/types/${id}`);
+    const response = await api.delete(`/dictionary/types/${id}`);
     return response.data;
   } catch (error) {
     console.error('删除字典类型失败:', error);
@@ -94,7 +94,7 @@ export const deleteDictionaryType = async (id: number) => {
 // 创建字典项
 export const createDictionaryItem = async (data: Omit<DictionaryItem, 'id'>) => {
   try {
-    const response = await api.post('/api/dictionary/items', data);
+    const response = await api.post('/dictionary/items', data);
     return response.data;
   } catch (error) {
     console.error('创建字典项失败:', error);
@@ -105,7 +105,7 @@ export const createDictionaryItem = async (data: Omit<DictionaryItem, 'id'>) => 
 // 更新字典项
 export const updateDictionaryItem = async (id: number, data: Partial<DictionaryItem>) => {
   try {
-    const response = await api.put(`/api/dictionary/items/${id}`, data);
+    const response = await api.put(`/dictionary/items/${id}`, data);
     return response.data;
   } catch (error) {
     console.error('更新字典项失败:', error);
@@ -116,7 +116,7 @@ export const updateDictionaryItem = async (id: number, data: Partial<DictionaryI
 // 删除字典项
 export const deleteDictionaryItem = async (id: number) => {
   try {
-    const response = await api.delete(`/api/dictionary/items/${id}`);
+    const response = await api.delete(`/dictionary/items/${id}`);
     return response.data;
   } catch (error) {
     console.error('删除字典项失败:', error);

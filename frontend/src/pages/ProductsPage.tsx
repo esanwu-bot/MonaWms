@@ -658,7 +658,8 @@ const ProductsPage: React.FC = () => {
       dataIndex: 'price',
       key: 'price',
       width: 100,
-      render: (price: number) => `¥${(price || 0).toFixed(2)}`,
+      // A3：price 已是 DECIMAL，接口返回 string，必须先转数值
+      render: (price: string | number) => `¥${Number(price || 0).toFixed(2)}`,
     },
     {
       title: '库存范围',
