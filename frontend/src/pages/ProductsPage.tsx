@@ -574,29 +574,7 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
                 />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item
-                label="单价"
-                validateStatus={errors.unitPrice ? 'error' : ''}
-                help={errors.unitPrice?.message}
-                required
-              >
-                <Controller
-                  name="unitPrice"
-                  control={control}
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      type="number"
-                      prefix="¥"
-                      placeholder="0.00"
-                      disabled={loading}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                    />
-                  )}
-                />
-              </Form.Item>
-            </Col>
+            {/* 单价已按需求隐藏（后端仍保留 price 字段，默认 0） */}
             <Col span={12}>
               <Form.Item
                 label="序列号"
@@ -993,14 +971,6 @@ const ProductsPage: React.FC = () => {
       dataIndex: 'unit',
       key: 'unit',
       width: 80,
-    },
-    {
-      title: '单价',
-      dataIndex: 'price',
-      key: 'price',
-      width: 100,
-      // A3：price 已是 DECIMAL，接口返回 string，必须先转数值
-      render: (price: string | number) => `¥${Number(price || 0).toFixed(2)}`,
     },
     {
       title: '库存范围',

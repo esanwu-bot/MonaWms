@@ -37,8 +37,8 @@ const mockDictionaryItems: DictionaryItem[] = [
   { id: 12, type_id: 4, type_code: 'device_status', code: 'fault', name: '故障', sort_order: 3, status: 'active' },
 ];
 
-// 判断是否使用模拟数据（实际项目中可根据环境变量或配置决定）
-const USE_MOCK_DATA = true;
+// 判断是否使用模拟数据（后端 /dictionary/* 已全部实现，固定走真实接口）
+const USE_MOCK_DATA = false;
 
 const DictionaryPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('types');
