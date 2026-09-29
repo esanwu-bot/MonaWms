@@ -45,7 +45,8 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { key: '/dashboard', label: '仪表板', icon: <DashboardOutlined /> },
       { key: '/warehouses', label: '仓库管理', icon: <HomeOutlined /> },
-      { key: '/devices', label: '设备登记', icon: <ToolOutlined /> },
+      // G1 收敛：设备已并入产品主数据（products），设备页仅保留台账查询，入口隐藏（路由 /devices 仍可直接访问）
+      // { key: '/devices', label: '设备登记', icon: <ToolOutlined /> },
       { key: '/products', label: '产品管理', icon: <ShoppingOutlined /> },
     ],
   },

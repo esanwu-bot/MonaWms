@@ -444,4 +444,247 @@ class ProductController extends BaseController
             return Response::serverError('获取商品选项失败：' . $e->getMessage());
         }
     }
+    
+    /**
+     * 下载产品批量导入模板（xlsx）
+     * 列：SKU* / 产品名称* / 分类 / 单位 / 计量方式 / 单价 / 成本价 / 最小库存 / 最大库存 / 备注
+     */
+    public function downloadTemplate()
+    {
+        try {
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            
+            $headers = [
+                'A1' => 'SKU*',
+                'B1' => '产品名称*',
+                'C1' => '分类',
+                'D1' => '单位',
+                'E1' => '计量方式',
+                'F1' => '单价',
+                'G1' => '成本价',
+                'H1' => '最小库存',
+                'I1' => '最大库存',
+                'J1' => '备注'
+            ];
+            foreach ($headers as $cell => $value) {
+                $sheet->setCellValue($cell, $value);
+            }
+            
+            // 示例行
+            $sheet->setCellValue('A2', 'SKU-DEMO-001');
+            $sheet->setCellValue('B2', '5G基站设备');
+            $sheet->setCellValue('C2', '基站设备');
+            $sheet->setCellValue('D2', '台');
+            $sheet->setCellValue('E2', 'count');
+            $sheet->setCellValue('F2', '12000');
+            $sheet->setCellValue('G2', '9000');
+            $sheet->setCellValue('H2', '5');
+            $sheet->setCellValue('I2', '100');
+            $sheet->setCellValue('J2', '示例数据，导入前请删除本行');
+            $sheet->setCellValue('A3', 'SKU-DEMO-002');
+            $sheet->setCellValue('B3', '光缆-单模');
+            $sheet->setCellValue('C3', '光缆');
+            $sheet->setCellValue('D3', '米');
+            $sheet->setCellValue('E3', 'length');
+            $sheet->setCellValue('J3', '线材类按长度计量，无需序列号');
+            
+            foreach (['A' => 16, 'B' => 24, 'C' => 14, 'D' => 8, 'E' => 12, 'F' => 10, 'G' => 10, 'H' => 10, 'I' => 10, 'J' => 30] as $col => $width) {
+                $sheet->getColumnDimension($col)->setWidth($width);
+            }
+            
+            $sheet->getStyle('A1:J1')->applyFromArray([
+                'font' => ['bold' => true],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => 'E6E6FA']
+                ]
+            ]);
+            
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            
+            $filename = '产品导入模板_' . date('YmdHis') . '.xlsx';
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment;filename="' . $filename . '"');
+            header('Cache-Control: max-age=0');
+            
+            $writer->save('php://output');
+            exit;
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
+            return Response::serverError('模板下载失败：' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * 产品批量导入（Excel）
+     * 规则：
+     * - SKU、产品名称必填；SKU 全局唯一（库内重复与文件内重复都报错，带行号）
+     * - 分类按名称匹配 categories，匹配不到跳过该列（不影响导入）
+     * - 单位填中文名时自动映射单位字典 code，映射不到按原文入库
+     * - 计量方式仅允许 count/length/weight/area/volume，默认 count；requires_serial 由计量方式推导
+     */
+    public function batchImport(Request $request)
+    {
+        try {
+            $file = $request->file('file');
+            if (!$file) {
+                return Response::validateError('请选择要上传的文件');
+            }
+            
+            $extension = strtolower($file->getOriginalExtension());
+            if (!in_array($extension, ['xlsx', 'xls'])) {
+                return Response::validateError('只支持Excel文件格式(.xlsx, .xls)');
+            }
+            
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getPathname());
+            $data = $spreadsheet->getActiveSheet()->toArray();
+            
+            // 移除表头并过滤空行
+            array_shift($data);
+            $data = array_filter($data, function ($row) {
+                return !empty(array_filter($row));
+            });
+            if (empty($data)) {
+                return Response::validateError('Excel文件中没有有效数据');
+            }
+            
+            // 预加载：分类名称映射、单位字典（中文名 -> code）、已有 SKU
+            $categoryMap = Category::column('id', 'name');
+            // 两表均有 code/name 列，直接 column('code') 会产生 SQL 歧义，改用显式字段
+            $unitDict = [];
+            $unitRows = Db::name('dictionary_items')
+                ->alias('i')
+                ->join('dictionary_types t', 't.id = i.type_id')
+                ->where('t.code', 'unit')
+                ->where('i.status', 'active')
+                ->field('i.code AS item_code, i.name AS item_name')
+                ->select();
+            foreach ($unitRows as $u) {
+                $unitDict[$u['item_name']] = $u['item_code'];
+            }
+            $existingSkus = array_flip(Product::column('sku'));
+            
+            $allowedMeasure = ['count', 'length', 'weight', 'area', 'volume'];
+            $skuSeen = [];
+            $rows = [];
+            $errors = [];
+            $warnings = [];
+            $line = 1; // Excel 表头占第 1 行
+            
+            foreach ($data as $row) {
+                $line++;
+                $sku = trim((string)($row[0] ?? ''));
+                $name = trim((string)($row[1] ?? ''));
+                
+                if ($sku === '' && $name === '') {
+                    continue;
+                }
+                if ($sku === '' || $name === '') {
+                    $errors[] = ['row' => $line, 'message' => 'SKU 与产品名称均为必填'];
+                    continue;
+                }
+                
+                // SKU 唯一性：库内 + 文件内
+                if (isset($existingSkus[$sku])) {
+                    $errors[] = ['row' => $line, 'message' => "SKU[{$sku}] 已存在，请更换"];
+                    continue;
+                }
+                if (isset($skuSeen[$sku])) {
+                    $errors[] = ['row' => $line, 'message' => "文件内 SKU[{$sku}] 重复"];
+                    continue;
+                }
+                $skuSeen[$sku] = true;
+                
+                // 计量方式
+                $measure = strtolower(trim((string)($row[4] ?? '')));
+                if ($measure === '') {
+                    $measure = 'count';
+                }
+                if (!in_array($measure, $allowedMeasure, true)) {
+                    $errors[] = ['row' => $line, 'message' => "计量方式[{$measure}] 无效，仅允许 " . implode('/', $allowedMeasure)];
+                    continue;
+                }
+                
+                // 分类（匹配不到仅警告，不阻塞）
+                $categoryId = null;
+                $categoryName = trim((string)($row[2] ?? ''));
+                if ($categoryName !== '') {
+                    if (isset($categoryMap[$categoryName])) {
+                        $categoryId = (int) $categoryMap[$categoryName];
+                    } else {
+                        $warnings[] = "第 {$line} 行：分类[{$categoryName}] 不存在，已留空";
+                    }
+                }
+                
+                // 单位：中文名映射字典 code，否则原样入库
+                $unitName = trim((string)($row[3] ?? ''));
+                $unit = $unitName !== '' ? ($unitDict[$unitName] ?? $unitName) : 'pcs';
+                
+                // 数值字段
+                $price = ($row[5] ?? '') === '' ? 0 : (float) $row[5];
+                $costPrice = ($row[6] ?? '') === '' ? 0 : (float) $row[6];
+                if ($price < 0 || $costPrice < 0) {
+                    $errors[] = ['row' => $line, 'message' => '单价/成本价不能为负数'];
+                    continue;
+                }
+                
+                $rows[] = [
+                    'sku'             => $sku,
+                    'name'            => $name,
+                    'category_id'     => $categoryId,
+                    'unit'            => $unit,
+                    'measure_type'    => $measure,
+                    'requires_serial' => $measure === 'count' ? 1 : 0,
+                    'price'           => number_format($price, 4, '.', ''),
+                    'cost_price'      => number_format($costPrice, 4, '.', ''),
+                    'min_stock'       => is_numeric($row[7] ?? '') ? (int) $row[7] : 0,
+                    'max_stock'       => is_numeric($row[8] ?? '') ? (int) $row[8] : 0,
+                    'status'          => 'active'
+                ];
+            }
+            
+            if (!empty($errors)) {
+                return json([
+                    'code'    => 400,
+                    'success' => false,
+                    'message' => '数据验证失败',
+                    'errors'  => $errors
+                ]);
+            }
+            if (empty($rows)) {
+                return Response::validateError('没有可导入的有效数据');
+            }
+            
+            Db::startTrans();
+            try {
+                $successCount = 0;
+                foreach ($rows as $row) {
+                    $row['created_at'] = date('Y-m-d H:i:s');
+                    $row['updated_at'] = date('Y-m-d H:i:s');
+                    Product::create($row);
+                    $successCount++;
+                }
+                Db::commit();
+            } catch (\app\common\BizException $e) {
+                Db::rollback();
+                throw $e;
+            } catch (\Exception $e) {
+                Db::rollback();
+                throw $e;
+            }
+            
+            return json([
+                'code'    => 200,
+                'success' => true,
+                'message' => "批量导入成功，共导入 {$successCount} 条产品记录",
+                'data'    => [
+                    'success_count' => $successCount,
+                    'total_count'   => count($rows),
+                    'warnings'      => $warnings
+                ]
+            ]);
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
+            return Response::serverError('导入失败：' . $e->getMessage());
+        }
+    }
 }

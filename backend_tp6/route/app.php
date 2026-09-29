@@ -67,6 +67,8 @@ Route::group('api', function () {
             Route::get('statistics', 'ProductController/statistics'); // 产品统计（须在 :id 之前）
             Route::get('sku/:sku', 'ProductController/findBySku');  // 根据SKU查找
             Route::get('barcode/:barcode', 'ProductController/findByBarcode'); // 根据条码查找
+            Route::get('download-template', 'ProductController/downloadTemplate'); // 下载导入模板（须在 :id 之前）
+            Route::post('batch-import', 'ProductController/batchImport');          // 批量导入
             Route::get(':id', 'ProductController/read');            // 产品详情
             Route::put(':id', 'ProductController/update');          // 更新产品
             Route::delete(':id', 'ProductController/delete');       // 删除产品
