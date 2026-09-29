@@ -525,7 +525,7 @@ class ProductController extends BaseController
                 'F1' => '序列号',
                 'G1' => '生产日期',
                 'H1' => '保修期(月)',
-                'I1' => '单位',
+                'I1' => '计量单位',
                 'J1' => '计量方式',
                 'K1' => '单价',
                 'L1' => '成本价',
@@ -547,7 +547,7 @@ class ProductController extends BaseController
             $sheet->setCellValue('G2', '2025-03-12');
             $sheet->setCellValue('H2', '36');
             $sheet->setCellValue('I2', '台');
-            $sheet->setCellValue('J2', 'count');
+            $sheet->setCellValue('J2', '计件');
             $sheet->setCellValue('K2', '12000');
             $sheet->setCellValue('L2', '9000');
             $sheet->setCellValue('M2', '5');
@@ -561,7 +561,7 @@ class ProductController extends BaseController
             $sheet->setCellValue('G3', '2025-01-08');
             $sheet->setCellValue('H3', '12');
             $sheet->setCellValue('I3', '米');
-            $sheet->setCellValue('J3', 'length');
+            $sheet->setCellValue('J3', '长度');
             $sheet->setCellValue('O3', '线材类按长度计量，无需序列号');
             
             foreach (['A' => 16, 'B' => 24, 'C' => 14, 'D' => 14, 'E' => 16, 'F' => 18, 'G' => 14,
@@ -610,6 +610,32 @@ class ProductController extends BaseController
      * - 单位填中文名时自动映射单位字典 code，映射不到按原文入库
      * - 计量方式仅允许 count/length/weight/area/volume，默认 count；requires_serial 由计量方式推导
      */
+    /**
+     * 计量方式归一化：中文 → 库内 code
+     * 支持：计件/长度/重量/面积/体积（含「计件（件/个/台/套）」等括号全称），以及英文 code
+     * 无法识别返回原文（后续按非法值报错），空值返回空串
+     */
+    private function normalizeMeasureType(string $raw): string
+    {
+        $value = trim($raw);
+        if ($value === '') {
+            return '';
+        }
+
+        // 去掉括号补充说明：计件（件/个/台/套）→ 计件
+        $base = trim(preg_split('/[（(]/u', $value)[0]);
+
+        $map = [
+            '计件' => 'count',
+            '长度' => 'length',
+            '重量' => 'weight',
+            '面积' => 'area',
+            '体积' => 'volume',
+        ];
+
+        return $map[$base] ?? strtolower($value);
+    }
+
     /**
      * 导入列定位：按表头名称匹配（兼容新旧模板）
      * 表头含空格、*、全角括号都会被归一化；识别不到任何已知表头时回退旧模板列序
@@ -767,13 +793,14 @@ class ProductController extends BaseController
                 }
                 $skuSeen[$sku] = true;
                 
-                // 计量方式
-                $measure = strtolower(trim((string)($col($row, 'measure') ?? '')));
+                // 计量方式：中文（计件/长度/重量/面积/体积，含括号全称）转库内 code，兼容英文 code
+                $measureRaw = trim((string)($col($row, 'measure') ?? ''));
+                $measure = $this->normalizeMeasureType($measureRaw);
                 if ($measure === '') {
                     $measure = 'count';
                 }
                 if (!in_array($measure, $allowedMeasure, true)) {
-                    $errors[] = ['row' => $line, 'message' => "计量方式[{$measure}] 无效，仅允许 " . implode('/', $allowedMeasure)];
+                    $errors[] = ['row' => $line, 'message' => "计量方式[{$measureRaw}] 无效，允许：计件/长度/重量/面积/体积"];
                     continue;
                 }
                 
