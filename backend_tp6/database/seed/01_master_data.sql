@@ -6,6 +6,7 @@ SET NAMES utf8mb4;
 
 -- ---------- 商品分类 ----------
 INSERT INTO `categories` (`code`,`name`,`parent_id`,`description`,`status`,`sort_order`) VALUES
+('ELEC','电子产品',NULL,'手机/平板/笔记本等消费电子','active',5),
 ('COMM','通信设备',NULL,'5G/传输/数据通信主设备','active',10),
 ('WIRE','无线设备',NULL,'天线、AP、射频单元','active',20),
 ('OPT','光传输设备',NULL,'OLT/ONU/光模块','active',30),
@@ -16,6 +17,10 @@ ON DUPLICATE KEY UPDATE `name`=VALUES(`name`), `description`=VALUES(`description
 -- ---------- 商品二级分类（F1：一级大类 + 二级细分） ----------
 -- parent_id 通过一级分类 code 反查，避免依赖自增 ID；code 唯一，可幂等重复执行
 INSERT INTO `categories` (`code`,`name`,`parent_id`,`description`,`status`,`sort_order`) VALUES
+('ELEC-PHONE','手机终端',(SELECT id FROM (SELECT id FROM `categories` WHERE `code`='ELEC') AS t),'智能手机/功能机','active',6),
+('ELEC-TABLET','平板电脑',(SELECT id FROM (SELECT id FROM `categories` WHERE `code`='ELEC') AS t),'平板/二合一设备','active',7),
+('ELEC-LAPTOP','笔记本电脑',(SELECT id FROM (SELECT id FROM `categories` WHERE `code`='ELEC') AS t),'笔记本/便携PC','active',8),
+('ELEC-ACC','电子配件',(SELECT id FROM (SELECT id FROM `categories` WHERE `code`='ELEC') AS t),'充电器/耳机/保护壳','active',9),
 ('COMM-BS','基站设备',(SELECT id FROM (SELECT id FROM `categories` WHERE `code`='COMM') AS t),'5G/4G基站主设备','active',11),
 ('COMM-TR','传输设备',(SELECT id FROM (SELECT id FROM `categories` WHERE `code`='COMM') AS t),'PTN/OTN/SDH传输设备','active',12),
 ('WIRE-AP','无线AP',(SELECT id FROM (SELECT id FROM `categories` WHERE `code`='WIRE') AS t),'室内外无线接入点','active',21),

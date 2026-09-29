@@ -4,19 +4,18 @@ import {
   Card,
   Button,
   Input,
-  Tree,
   Modal,
   Form,
   Select,
   message,
   Typography,
   Tag,
-  // ...existing code...
-  Popconfirm,
   Spin,
   Alert,
   Space,
-  Tooltip
+  Tooltip,
+  Table,
+  Breadcrumb,
 } from 'antd';
 import {
   PlusOutlined,
@@ -24,8 +23,6 @@ import {
   DeleteOutlined,
   SearchOutlined,
   FolderOutlined,
-  FolderOpenOutlined,
-  // ...existing code...
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -227,76 +224,16 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
   );
 };
 
-// AntD 5 Tree 必须用 treeData（Tree.TreeNode 已废弃）
-interface CategoryTreeDataNode {
-  key: string;
-  title: React.ReactNode;
-  children?: CategoryTreeDataNode[];
-}
+// ===== 分类下钻列表 =====
+// 交互：默认展示一级分类；点击一级分类名进入其子分类列表（面包屑可返回）
+// 新增：当前在哪一层就在哪一层新增（一级层新增一级，二级层新增子分类）
 
-const buildCategoryNode = (
-  category: CategoryType,
-  onEdit: (c: CategoryType) => void,
-  onDelete: (c: CategoryType) => void,
-  onAddChild: (c: CategoryType) => void,
-): CategoryTreeDataNode => {
-  const hasChildren = !!(category.children && category.children.length > 0);
-
-  const title = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 8 }}>
-      <Space>
-        {hasChildren ? <FolderOpenOutlined /> : <FolderOutlined />}
-        <Text strong={hasChildren}>{category.name}</Text>
-        <Tag color="default">{category.code}</Tag>
-        <Tag color={category.status === 'active' ? 'success' : 'default'}>
-          {category.status === 'active' ? '启用' : '禁用'}
-        </Tag>
-      </Space>
-      <Space>
-        <Tooltip title="添加子分类">
-          <Button
-            type="text"
-            size="small"
-            icon={<PlusOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddChild(category);
-            }}
-          />
-        </Tooltip>
-        <Tooltip title="编辑">
-          <Button
-            type="text"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(category);
-            }}
-          />
-        </Tooltip>
-        <Tooltip title="删除">
-          <Button
-            type="text"
-            size="small"
-            icon={<DeleteOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(category);
-            }}
-          />
-        </Tooltip>
-      </Space>
-    </div>
-  );
-
-  return {
-    key: String(category.id),
-    title,
-    children: hasChildren
-      ? category.children!.map((child) => buildCategoryNode(child, onEdit, onDelete, onAddChild))
-      : undefined,
-  };
+const flattenTree = (tree: CategoryType[], acc: CategoryType[] = []): CategoryType[] => {
+  tree.forEach((node) => {
+    acc.push(node);
+    if (node.children?.length) flattenTree(node.children, acc);
+  });
+  return acc;
 };
 
 const CategoriesPage: React.FC = () => {
@@ -306,11 +243,12 @@ const CategoriesPage: React.FC = () => {
   const [parentCategory, setParentCategory] = useState<CategoryType | undefined>();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<CategoryType | undefined>();
-  const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
+  // 下钻：null=展示一级；否则展示该分类的子分类
+  const [currentParentId, setCurrentParentId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
 
-  // 获取分类树（/categories/tree 直接返回一二级层级结构）
+  // 获取分类树（/categories/tree 返回嵌套结构）
   const { data: categoriesData, isLoading } = useQuery({
     queryKey: ['categories', 'tree'],
     queryFn: async () => {
@@ -318,6 +256,27 @@ const CategoriesPage: React.FC = () => {
       return response.data.data;
     },
   });
+
+  const allCategories: CategoryType[] = Array.isArray(categoriesData) ? flattenTree(categoriesData) : [];
+  const categoryMap = new Map<string, CategoryType>();
+  allCategories.forEach((c) => categoryMap.set(String(c.id), c));
+
+  // 当前展示的分类列表：currentParentId 为 null 时取根节点，否则取其子节点
+  const currentList: CategoryType[] = currentParentId
+    ? categoryMap.get(currentParentId)?.children || []
+    : (categoriesData || []).filter((c) => !c.parent_id);
+
+  // 搜索过滤
+  const filteredList = search
+    ? currentList.filter(
+        (c) =>
+          c.name.toLowerCase().includes(search.toLowerCase()) ||
+          c.code.toLowerCase().includes(search.toLowerCase()),
+      )
+    : currentList;
+
+  const currentParent = currentParentId ? categoryMap.get(currentParentId) : undefined;
+  const hasChildren = (c: CategoryType) => !!(c.children && c.children.length > 0);
 
   // 创建分类
   const createMutation = useMutation({
@@ -334,7 +293,7 @@ const CategoriesPage: React.FC = () => {
     },
     onError: () => {
       message.error('分类创建失败');
-    }
+    },
   });
 
   // 更新分类
@@ -352,7 +311,7 @@ const CategoriesPage: React.FC = () => {
     },
     onError: () => {
       message.error('分类更新失败');
-    }
+    },
   });
 
   // 删除分类
@@ -368,12 +327,13 @@ const CategoriesPage: React.FC = () => {
     },
     onError: () => {
       message.error('分类删除失败');
-    }
+    },
   });
 
   const handleCreate = () => {
     setSelectedCategory(undefined);
-    setParentCategory(undefined);
+    // 在当前层新增：若已下钻到某一级，则新增其子分类；否则新增一级
+    setParentCategory(currentParent);
     setDialogOpen(true);
   };
 
@@ -383,19 +343,19 @@ const CategoriesPage: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const handleAddChild = (parentCat: CategoryType) => {
-    setSelectedCategory(undefined);
-    setParentCategory(parentCat);
-    setDialogOpen(true);
-  };
-
   const handleDelete = (category: CategoryType) => {
     setCategoryToDelete(category);
     setDeleteConfirmOpen(true);
   };
 
+  const handleEnter = (category: CategoryType) => {
+    if (hasChildren(category)) {
+      setCurrentParentId(String(category.id));
+      setSearch('');
+    }
+  };
+
   const handleSubmit = (data: CategoryFormData) => {
-    // 后端读 snake_case；空父分类不提交（保持 NULL，避免空串写库变 0）
     const payload: any = { ...data };
     if (!payload.parent_id) delete payload.parent_id;
     if (selectedCategory) {
@@ -411,73 +371,74 @@ const CategoriesPage: React.FC = () => {
     }
   };
 
-  // 树结构适配：/categories/tree 已返回 children 层级；
-  // 若个别节点缺 children（旧缓存/接口变化），按 parent_id 重建兜底
-  const buildCategoryTree = (categories: CategoryType[]): CategoryType[] => {
-    const categoryMap = new Map<string, CategoryType>();
-    const rootCategories: CategoryType[] = [];
-
-    categories.forEach(category => {
-      categoryMap.set(category.id, { ...category, children: category.children || [] });
-    });
-
-    categories.forEach(category => {
-      const categoryNode = categoryMap.get(category.id)!;
-      if (categoryNode.children && categoryNode.children.length > 0) {
-        // 已带子节点，直接挂（不重复构建）
-      } else if (category.parent_id) {
-        const parent = categoryMap.get(category.parent_id);
-        if (parent) {
-          parent.children = parent.children || [];
-          parent.children.push(categoryNode);
-        }
-      }
-    });
-
-    categories.forEach(category => {
-      if (!category.parent_id) {
-        rootCategories.push(categoryMap.get(category.id)!);
-      }
-    });
-
-    return rootCategories;
-  };
-
-  // 过滤分类
-  const filterCategories = (categories: CategoryType[], searchTerm: string): CategoryType[] => {
-    if (!searchTerm) return categories;
-    
-    const filtered: CategoryType[] = [];
-    
-    const searchInCategory = (category: CategoryType): boolean => {
-      const matches = category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                     category.code.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const childMatches = category.children?.some(child => searchInCategory(child)) || false;
-      
-      if (matches || childMatches) {
-        const filteredCategory = { ...category };
-        if (childMatches) {
-          filteredCategory.children = category.children?.filter(child => searchInCategory(child)) || [];
-        }
-        return true;
-      }
-      
-      return false;
-    };
-    
-    categories.forEach(category => {
-      if (searchInCategory(category)) {
-        filtered.push(category);
-      }
-    });
-    
-    return filtered;
-  };
-
-  const categories = Array.isArray(categoriesData) ? categoriesData : [];
-  const categoryTree = buildCategoryTree(categories);
-  const filteredTree = filterCategories(categoryTree, search);
+  const columns = [
+    {
+      title: '分类名称',
+      dataIndex: 'name',
+      key: 'name',
+      render: (name: string, record: CategoryType) => (
+        <Space>
+          <FolderOutlined style={{ color: hasChildren(record) ? '#1677ff' : '#bfbfbf' }} />
+          {hasChildren(record) ? (
+            <Button
+              type="link"
+              style={{ padding: 0, height: 'auto' }}
+              onClick={() => handleEnter(record)}
+            >
+              {name}
+            </Button>
+          ) : (
+            <Text>{name}</Text>
+          )}
+        </Space>
+      ),
+    },
+    {
+      title: '分类编码',
+      dataIndex: 'code',
+      key: 'code',
+      width: 140,
+    },
+    {
+      title: '子分类数',
+      key: 'children_count',
+      width: 100,
+      render: (_: unknown, record: CategoryType) => record.children?.length || 0,
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 90,
+      render: (status: string) => (
+        <Tag color={status === 'active' ? 'success' : 'default'}>
+          {status === 'active' ? '启用' : '禁用'}
+        </Tag>
+      ),
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 140,
+      render: (_: unknown, record: CategoryType) => (
+        <Space>
+          <Tooltip title="编辑">
+            <Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
+          </Tooltip>
+          <Tooltip title="删除">
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
+              disabled={hasChildren(record)}
+            />
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
 
   return (
     <div>
@@ -493,37 +454,53 @@ const CategoriesPage: React.FC = () => {
             prefix={<SearchOutlined />}
             style={{ width: 300 }}
           />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleCreate}
-          >
-            新增分类
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+            {currentParent ? `新增「${currentParent.name}」的子分类` : '新增一级分类'}
           </Button>
         </div>
       </Card>
 
-      {/* 分类树 */}
+      {/* 面包屑导航 */}
+      <Card style={{ marginBottom: 16 }}>
+        <Breadcrumb
+          items={[
+            {
+              title: (
+                <Button type="link" style={{ padding: 0 }} onClick={() => setCurrentParentId(null)}>
+                  全部
+                </Button>
+              ),
+            },
+            ...(currentParent
+              ? [
+                  {
+                    title: <Text strong>{currentParent.name}</Text>,
+                  },
+                ]
+              : []),
+          ]}
+        />
+      </Card>
+
+      {/* 分类列表 */}
       <Card>
         {isLoading ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
             <Spin size="large" />
           </div>
-        ) : filteredTree.length === 0 ? (
+        ) : filteredList.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
             <Text type="secondary">
-              {search ? '未找到匹配的分类' : '暂无分类数据'}
+              {search ? '未找到匹配的分类' : currentParent ? '该分类下暂无子分类' : '暂无分类数据'}
             </Text>
           </div>
         ) : (
-          <Tree
-            showLine
-            expandedKeys={expandedKeys}
-            onExpand={(keys) => setExpandedKeys(keys as string[])}
-            blockNode
-            treeData={filteredTree.map((category) =>
-              buildCategoryNode(category, handleEdit, handleDelete, handleAddChild)
-            )}
+          <Table
+            rowKey="id"
+            dataSource={filteredList}
+            columns={columns}
+            pagination={false}
+            size="middle"
           />
         )}
       </Card>
@@ -551,21 +528,16 @@ const CategoriesPage: React.FC = () => {
           <Button key="back" onClick={() => setDeleteConfirmOpen(false)}>
             取消
           </Button>,
-          <Popconfirm
+          <Button
             key="delete"
-            title="确定要删除吗？此操作不可恢复！"
-            onConfirm={handleConfirmDelete}
+            type="primary"
+            danger
+            loading={deleteMutation.isPending}
             disabled={!!(categoryToDelete?.children && categoryToDelete.children.length > 0)}
+            onClick={handleConfirmDelete}
           >
-            <Button
-              type="primary"
-              danger
-              loading={deleteMutation.isPending}
-              disabled={!!(categoryToDelete?.children && categoryToDelete.children.length > 0)}
-            >
-              确认删除
-            </Button>
-          </Popconfirm>
+            确认删除
+          </Button>,
         ]}
       >
         <Alert
@@ -581,12 +553,7 @@ const CategoriesPage: React.FC = () => {
           style={{ marginBottom: 16 }}
         />
         {categoryToDelete?.children && categoryToDelete.children.length > 0 && (
-          <Alert
-            message="错误"
-            description="该分类下还有子分类，请先删除子分类！"
-            type="error"
-            showIcon
-          />
+          <Alert message="错误" description="该分类下还有子分类，请先删除子分类！" type="error" showIcon />
         )}
       </Modal>
     </div>
