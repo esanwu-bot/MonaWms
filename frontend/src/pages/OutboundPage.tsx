@@ -57,6 +57,7 @@ import BatchPickingDialog from '../components/BatchPickingDialog';
 import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
 import { userService, type UserOption } from '../services/userService';
+import { stocktakeEnhance } from '../services/stocktakeEnhance';
 import type {
   OutboundOrder,
   OutboundOrderItem,
@@ -1507,8 +1508,40 @@ const OutboundPage: React.FC = () => {
     }
   };
 
-  const orders = ordersData?.list || [];
   const total = ordersData?.pagination?.total || 0;
+  // P10：合并盘点盘亏生成的其他出库单（DEFICIT_OUT，mock 增强层）
+  // TODO(backend): 后端落地后改走真实单据列表透传
+  const orders = React.useMemo(() => {
+    const real = ordersData?.list || [];
+    const rows = stocktakeEnhance
+      .getAdjustmentOrdersByType('DEFICIT_OUT')
+      .filter(
+        (adj) =>
+          (!search || adj.order_number.includes(search)) &&
+          (!warehouseFilter || String(adj.warehouse_id) === String(warehouseFilter))
+      )
+      .map((adj) => ({
+        id: adj.id,
+        orderNumber: adj.order_number,
+        order_number: adj.order_number,
+        warehouseId: String(adj.warehouse_id),
+        warehouse: { id: adj.warehouse_id, name: adj.warehouse_name },
+        status: 'completed',
+        status_text: '已完成（盘亏调整）',
+        receiver_unit: '盘点盘亏调整',
+        receiver_name: adj.created_by,
+        shippedAt: adj.created_at,
+        shipped_at: adj.created_at,
+        totalQuantity: adj.items.reduce((s, it) => s + Number(it.qty || 0), 0),
+        totalAmount: 0,
+        notes: `盘点单 ${adj.stocktake_order_number} 审核通过自动生成`,
+        createdBy: adj.created_by,
+        created_at: adj.created_at,
+        updated_at: adj.created_at,
+        items: [],
+      })) as unknown as OutboundOrder[];
+    return [...rows, ...real];
+  }, [ordersData, search, warehouseFilter]);
 
   return (
     <div>

@@ -152,6 +152,24 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.wirelessSpareParts.details(), id] as const,
   },
   
+  // 盘点相关
+  stocktakes: {
+    all: ['stocktakes'] as const,
+    lists: () => [...queryKeys.stocktakes.all, 'list'] as const,
+    list: (params?: any) => [...queryKeys.stocktakes.lists(), params] as const,
+    details: () => [...queryKeys.stocktakes.all, 'detail'] as const,
+    detail: (id: number | string) => [...queryKeys.stocktakes.details(), id] as const,
+    items: (id: number | string) => [...queryKeys.stocktakes.detail(id), 'items'] as const,
+    diffItems: (id: number | string) => [...queryKeys.stocktakes.detail(id), 'diffItems'] as const,
+    stats: () => [...queryKeys.stocktakes.all, 'stats'] as const,
+  },
+
+  // 对账相关
+  reconcile: {
+    all: ['reconcile'] as const,
+    detail: (warehouseId?: string) => [...queryKeys.reconcile.all, warehouseId] as const,
+  },
+
   // 序列号相关
   serialNumbers: {
     all: ['serialNumbers'] as const,

@@ -137,6 +137,20 @@ Route::group('api', function () {
             Route::get('product/:product_id/flow', 'InventoryTransactionController/productFlow'); // 产品流水
         })->middleware(['warehouse_scope']);
         
+        // 库存盘点（P10）
+        Route::group('stocktakes', function () {
+            Route::get('', 'StocktakeController/index');           // 盘点单列表
+            Route::post('', 'StocktakeController/save');           // 创建盘点单（生成账面快照）
+            Route::get(':id/items', 'StocktakeController/items');  // 盘点明细（须在 :id 之前）
+            Route::get(':id', 'StocktakeController/read');         // 盘点单详情
+            Route::post(':id/start', 'StocktakeController/start'); // 开始盘点（冻结出入库）
+            Route::post(':id/scan', 'StocktakeController/scan');   // 普件扫SN（盲盘）
+            Route::post(':id/record', 'StocktakeController/record'); // 散料录实盘（明盘）
+            Route::post(':id/submit', 'StocktakeController/submit'); // 提交盘点结果
+            Route::post(':id/review', 'StocktakeController/review'); // 差异审核过账（manager）
+            Route::post(':id/cancel', 'StocktakeController/cancel'); // 取消盘点
+        })->middleware(['warehouse_scope']);
+
         // 供应商管理
         Route::group('suppliers', function () {
             Route::get('', 'SupplierController/index');             // 供应商列表

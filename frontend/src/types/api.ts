@@ -295,6 +295,8 @@ export interface InventoryQueryParams extends QueryParams {
   stockStatus?: string;
   location?: string;
   batchNumber?: string;
+  /** 后端分页参数（与 pageSize 同传） */
+  limit?: number;
 }
 
 // 入库单相关类型

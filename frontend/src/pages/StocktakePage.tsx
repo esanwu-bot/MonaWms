@@ -100,13 +100,15 @@ interface StocktakeFormValues {
   scope_type: StocktakeScopeType;
   scope_value?: (string | number)[];
   notes?: string;
+  /** 盲盘开关（Switch 布尔值；代维场景强制 1） */
+  blind_flag?: boolean;
 }
 
 // 盘点仓库检索选择：名称/编码模糊过滤，下拉展示 名称+编码徽标，表单只存仓库 ID
 const WarehouseAutoSelect: React.FC<{
   value?: number | string;
   onChange?: (v?: number) => void;
-  warehouses: any[];
+  warehouses: Array<{ id: number; name: string; code: string }>;
 }> = ({ value, onChange, warehouses }) => {
   const [display, setDisplay] = useState('');
   const list = Array.isArray(warehouses) ? warehouses : [];
@@ -135,7 +137,7 @@ const WarehouseAutoSelect: React.FC<{
         // 重新检索时先清空已选仓库，避免展示串位
         if (value !== undefined) onChange?.(undefined);
       }}
-      onSelect={(_v, option: any) => {
+      onSelect={(_v, option: { warehouseId: number }) => {
         onChange?.(option.warehouseId);
         setDisplay('');
       }}
@@ -232,13 +234,11 @@ const StocktakePage: React.FC = () => {
       rows = rows.filter((o) => o.type === params.type);
     }
     return rows;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mergedList, params.order_number, params.warehouse_id, params.status, params.type]);
 
   const list: MergedOrder[] = React.useMemo(() => {
     const backendFiltered = params.status ? backendList.filter((o) => o.status === params.status) : backendList;
     return [...mockList, ...backendFiltered];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mockList, backendList, params.status]);
 
   const total = (listData?.pagination?.total || 0) + mockList.length;
@@ -328,7 +328,7 @@ const StocktakePage: React.FC = () => {
 
   // 开始盘点（增强层：draft → counting，冻结语义）
   const startMutation = useMutation({
-    mutationFn: (id: number) => stocktakeEnhance.startCounting(id, operator),
+    mutationFn: async (id: number) => stocktakeEnhance.startCounting(id, operator),
     onSuccess: (_, id) => {
       message.success('盘点已开始，该仓库账面已冻结');
       queryClient.invalidateQueries({ queryKey: ['stocktakes'] });
@@ -341,7 +341,7 @@ const StocktakePage: React.FC = () => {
 
   // 取消（录原因）
   const cancelMutation = useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+    mutationFn: async ({ id, reason }: { id: number; reason: string }) =>
       stocktakeEnhance.cancelOrder(id, reason, operator),
     onSuccess: () => {
       message.success('盘点单已取消');

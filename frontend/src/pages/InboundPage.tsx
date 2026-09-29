@@ -55,6 +55,7 @@ import { z } from 'zod';
 import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
 import { userService, type UserOption } from '../services/userService';
+import { stocktakeEnhance } from '../services/stocktakeEnhance';
 import type {
   InboundOrder,
   Product,
@@ -89,6 +90,7 @@ const SOURCE_TO_TYPE: Record<string, string> = {
   borrow_return: 'return',
   inventory_gain: 'other',
   other: 'other',
+  surplus_in: 'other',
 };
 
 // 来源编码 -> 中文（P8 I3）
@@ -117,6 +119,11 @@ const inboundOrderSchema = z.object({
   supplierId: z.string().optional(),
   receivedAt: z.string().optional(),        // C1：入库时间
   notes: z.string().optional(),
+  // P9+：调拨信息（无设备编号的调拨依据）
+  transferFrom: z.string().optional(),
+  transferRemark: z.string().optional(),
+  handlerName: z.string().optional(),
+  handlerPhone: z.string().optional(),
   items: z.array(inboundOrderItemSchema).min(1, '至少添加一个商品'),
 }).superRefine((data, ctx) => {
   // I4：来源为采购入库时供应商必填，其他来源可选
@@ -224,6 +231,12 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
   const watchItems = watch('items');
   const isPurchaseSource = (watchSource || 'purchase') === 'purchase';
   const isTransferSource = (watchSource || '') === 'transfer_in';   // P9+：调拨入库
+
+  // P9+：明细是否含"无设备编号"（非计件/散料）物资 → 调拨说明必填
+  const hasNoSerialItem = (watchItems || []).some((it: { productId?: string }) => {
+    const product = productMap[String(it?.productId || '')];
+    return (product?.measure_type || 'count') !== 'count';
+  });
 
   const productMap = React.useMemo(() => {
     const map: Record<string, Product> = {};
@@ -1485,8 +1498,38 @@ const InboundPage: React.FC = () => {
     setBatchImportOpen(true);
   };
 
-  const orders = ordersData?.list || [];
   const total = ordersData?.pagination?.total || 0;
+  // P10：合并盘点盘盈生成的其他入库单（SURPLUS_IN，mock 增强层）
+  // TODO(backend): 后端落地后改走真实单据列表透传
+  const orders = React.useMemo(() => {
+    const real = ordersData?.list || [];
+    const rows = stocktakeEnhance
+      .getAdjustmentOrdersByType('SURPLUS_IN')
+      .filter(
+        (adj) =>
+          (!search || adj.order_number.includes(search)) &&
+          (!warehouseFilter || String(adj.warehouse_id) === String(warehouseFilter))
+      )
+      .map((adj) => ({
+        id: adj.id,
+        orderNumber: adj.order_number,
+        order_number: adj.order_number,
+        warehouseId: String(adj.warehouse_id),
+        warehouse: { id: adj.warehouse_id, name: adj.warehouse_name },
+        status: 'completed',
+        status_text: '已完成（盘盈调整）',
+        source: 'surplus_in',
+        receivedAt: adj.created_at,
+        received_at: adj.created_at,
+        totalQuantity: adj.items.reduce((s, it) => s + Number(it.qty || 0), 0),
+        notes: `盘点单 ${adj.stocktake_order_number} 审核通过自动生成`,
+        createdBy: adj.created_by,
+        created_at: adj.created_at,
+        updated_at: adj.created_at,
+        items: [],
+      })) as InboundOrder[];
+    return [...rows, ...real];
+  }, [ordersData, search, warehouseFilter]);
 
   return (
     <div>

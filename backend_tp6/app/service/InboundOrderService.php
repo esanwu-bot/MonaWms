@@ -328,6 +328,9 @@ class InboundOrderService
                 throw new ValidateException('订单状态不正确');
             }
 
+            // P10：盘点期间冻结该仓库库存变动（收货会破坏盘点快照口径）
+            StocktakeService::assertNotStocktaking((int)($order->warehouse_id ?? 0));
+
             // A4：按计量方式校验数量精度
             if ($item->product) {
                 try {

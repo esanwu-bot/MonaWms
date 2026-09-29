@@ -65,6 +65,7 @@ class SerialNumber extends Model
     const STATUS_IN_USE   = 'in_use';     // 正在用
     const STATUS_REPAIRING = 'repairing'; // 返修中
     const STATUS_TO_SCRAP = 'to_scrap';   // 待报废（坏件，报废走 ScrapPage 流程，无单独"已报废"状态）
+    const STATUS_LOST = 'lost';           // P10: 盘亏/遗失（盘点审核后由在库流转，终态）
     
     /**
      * 允许的状态流转（B3：待报废为终态，坏件不再变更；实际报废走报废申请流程）
@@ -73,11 +74,12 @@ class SerialNumber extends Model
     public static function statusTransitions(): array
     {
         return [
-            self::STATUS_IN_STOCK  => [self::STATUS_IN_USE, self::STATUS_REPAIRING, self::STATUS_TO_SCRAP],
+            self::STATUS_IN_STOCK  => [self::STATUS_IN_USE, self::STATUS_REPAIRING, self::STATUS_TO_SCRAP, self::STATUS_LOST],
             self::STATUS_SOLD      => [self::STATUS_IN_USE, self::STATUS_REPAIRING, self::STATUS_TO_SCRAP],
             self::STATUS_IN_USE    => [self::STATUS_REPAIRING, self::STATUS_TO_SCRAP],
             self::STATUS_REPAIRING => [self::STATUS_IN_USE, self::STATUS_TO_SCRAP],
-            self::STATUS_TO_SCRAP  => []
+            self::STATUS_TO_SCRAP  => [],
+            self::STATUS_LOST      => [] // 盘亏终态，仅盘点审核触发
         ];
     }
     

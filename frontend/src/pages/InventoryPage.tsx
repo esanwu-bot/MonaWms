@@ -37,6 +37,8 @@ import type {
   Warehouse,
   Product,
   InventoryQueryParams,
+  InventoryAdjustmentRequest,
+  InventoryTransferRequest,
 } from '../types/api';
 
 const { Title, Text } = Typography;
@@ -637,6 +639,16 @@ const InventoryPage: React.FC = () => {
     },
   });
 
+  // 产品列表（调整/转移弹窗的产品检索）
+  const { data: productsData } = useQuery({
+    queryKey: ['products', 'for-inventory-dialog'],
+    queryFn: async () => {
+      const response = await api.get('/products', { params: { limit: 1000 } });
+      const data = response.data?.data;
+      return Array.isArray(data) ? data : (data?.list ?? []);
+    },
+  });
+
   // 库存调整
   const adjustmentMutation = useMutation({
     mutationFn: async (data: InventoryAdjustmentRequest) => {
@@ -678,12 +690,27 @@ const InventoryPage: React.FC = () => {
     setPageSize(newPageSize);
   };
 
-  const handleAdjustmentSubmit = (data: AdjustmentFormData) => {
-    adjustmentMutation.mutate(data);
+  // 表单驼峰值 → 后端 snake_case 契约
+  const handleAdjustmentSubmit = (data: AdjustmentFormValues) => {
+    adjustmentMutation.mutate({
+      product_id: data.productId,
+      warehouse_id: data.warehouseId,
+      type: data.adjustmentType,
+      quantity: data.quantity,
+      reason: data.reason,
+      remark: data.remark,
+    });
   };
 
-  const handleTransferSubmit = (data: TransferFormData) => {
-    transferMutation.mutate(data);
+  const handleTransferSubmit = (data: TransferFormValues) => {
+    transferMutation.mutate({
+      product_id: data.productId,
+      from_warehouse_id: data.fromWarehouseId,
+      to_warehouse_id: data.toWarehouseId,
+      quantity: data.quantity,
+      reason: data.reason,
+      remark: data.remark,
+    });
   };
 
 
@@ -928,6 +955,8 @@ const InventoryPage: React.FC = () => {
         onClose={() => setAdjustmentDialogOpen(false)}
         onSubmit={handleAdjustmentSubmit}
         loading={adjustmentMutation.isPending}
+        products={Array.isArray(productsData) ? productsData : []}
+        warehouses={Array.isArray(warehousesData) ? warehousesData : []}
       />
 
       {/* 库存转移对话框 */}
@@ -936,6 +965,8 @@ const InventoryPage: React.FC = () => {
         onClose={() => setTransferDialogOpen(false)}
         onSubmit={handleTransferSubmit}
         loading={transferMutation.isPending}
+        products={Array.isArray(productsData) ? productsData : []}
+        warehouses={Array.isArray(warehousesData) ? warehousesData : []}
       />
     </div>
   );

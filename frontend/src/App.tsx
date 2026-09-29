@@ -37,6 +37,10 @@ import WirelessSparePartsPage from './pages/WirelessSparePartsPage';
 import BOMPage from './pages/BOMPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ScrapPage from './pages/ScrapPage';
+import StocktakePage from './pages/StocktakePage';
+import StocktakeExecutePage from './pages/StocktakeExecutePage';
+import StocktakeCountPage from './pages/StocktakeCountPage';
+import ReconcilePage from './pages/ReconcilePage';
 import DictionaryPage from './pages/DictionaryPage';
 import UsersPage from './pages/UsersPage';
 
@@ -146,7 +150,13 @@ function App() {
                 
                 {/* 报废管理 */}
                 <Route path="scrap" element={<ScrapPage />} />
-                
+
+                {/* 库存盘点与对账 */}
+                <Route path="stocktakes" element={<StocktakePage />} />
+                <Route path="stocktakes/:id/count" element={<StocktakeCountPage />} />
+                <Route path="stocktake/:id/execute" element={<StocktakeExecutePage />} />
+                <Route path="reconcile" element={<ReconcilePage />} />
+
                 {/* 数据字典 */}
                 <Route path="dictionary" element={<DictionaryPage />} />
                 

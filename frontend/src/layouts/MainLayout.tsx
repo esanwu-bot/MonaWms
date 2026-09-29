@@ -26,6 +26,8 @@ import {
   BellOutlined,
   GlobalOutlined,
   TeamOutlined,
+  FileSearchOutlined,
+  ContainerOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { useWarehouseStore } from '../store/warehouseStore';
@@ -57,6 +59,8 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { key: '/inbound', label: '入库管理', icon: <CarOutlined /> },
       { key: '/outbound', label: '出库管理', icon: <CarOutlined /> },
       { key: '/scrap', label: '报废管理', icon: <DeleteOutlined /> },
+      { key: '/stocktakes', label: '库存盘点', icon: <FileSearchOutlined /> },
+      { key: '/reconcile', label: '库存对账', icon: <ContainerOutlined /> },
       { key: '/serial-numbers', label: '序列号管理', icon: <BarcodeOutlined /> },
       { key: '/wireless-spare-parts', label: '无线备件登记', icon: <ShoppingOutlined /> },
     ],
@@ -86,6 +90,10 @@ const PAGE_NAME: Record<string, string> = {
   '/inbound': '入库管理',
   '/outbound': '出库管理',
   '/scrap': '报废管理',
+  '/stocktakes': '库存盘点',
+  '/stocktake/:id/execute': '盘点执行',
+  '/stocktakes/:id/count': '盘点执行',
+  '/reconcile': '库存对账',
   '/serial-numbers': '序列号管理',
   '/wireless-spare-parts': '无线备件登记表',
   '/bom': 'BOM 管理',
@@ -153,7 +161,13 @@ const MainLayout: React.FC = () => {
     [can]
   );
 
-  const currentName = PAGE_NAME[location.pathname] || '控制面板';
+  // 参数路由（/stocktakes/123/count 等）按前缀兜底匹配
+  const currentName =
+    PAGE_NAME[location.pathname] ||
+    (location.pathname.startsWith('/stocktake')
+      ? '盘点执行'
+      : undefined) ||
+    '控制面板';
 
   const handleLogout = async () => {
     await logout();

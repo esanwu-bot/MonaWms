@@ -140,7 +140,10 @@ class InventoryController extends BaseController
             if (!$location) {
                 return Response::error('库位不存在');
             }
-            
+
+            // P10：盘点期间冻结库存调整
+            \app\service\StocktakeService::assertNotStocktaking((int)($location->warehouse_id ?? 0));
+
             if ($data['quantity'] <= 0) {
                 return Response::error('调整数量必须大于0');
             }
@@ -230,6 +233,9 @@ class InventoryController extends BaseController
 
         $warehouseId = (int) $data['warehouse_id'];
         Grant::assert('inventory:adjust', $warehouseId);
+
+        // P10：盘点期间冻结库存调整
+        \app\service\StocktakeService::assertNotStocktaking($warehouseId);
 
         try {
             $product = Product::find($data['product_id']);
@@ -339,6 +345,10 @@ class InventoryController extends BaseController
 
         Grant::assert('inventory:transfer', $fromWarehouseId);
         Grant::assert('inventory:transfer', $toWarehouseId);
+
+        // P10：盘点期间冻结库存转移（源/目标仓任一在盘均禁止）
+        \app\service\StocktakeService::assertNotStocktaking($fromWarehouseId);
+        \app\service\StocktakeService::assertNotStocktaking($toWarehouseId);
 
         try {
             $product = Product::find($data['product_id']);

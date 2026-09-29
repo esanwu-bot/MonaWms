@@ -338,6 +338,9 @@ class OutboundOrderService
                 throw new ValidateException('订单状态不正确');
             }
 
+            // P10：盘点期间冻结该仓库库存变动（拣货扣减会破坏盘点快照口径）
+            StocktakeService::assertNotStocktaking((int)($order->warehouse_id ?? 0));
+
             // E3：支持批量粘贴 SN（换行/逗号/空格分隔）
             $serials = $extraData['serials'] ?? [];
             if (is_string($serials)) {
