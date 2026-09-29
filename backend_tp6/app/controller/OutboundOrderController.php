@@ -30,11 +30,24 @@ class OutboundOrderController extends BaseController
             $params = $request->get();
             $page = $params['page'] ?? 1;
             $limit = $params['limit'] ?? 15;
-            
-            $query = OutboundOrder::with(['warehouse', 'customer', 'operator']);
-            
+
+            // 归档筛选：缺省=未归档（软删自动排除）；archived=仅归档；all=全部
+            $archived = $params['archived'] ?? '';
+            if ($archived === 'archived') {
+                $query = OutboundOrder::onlyTrashed()->with(['warehouse', 'customer', 'operator']);
+            } elseif ($archived === 'all') {
+                $query = OutboundOrder::withTrashed()->with(['warehouse', 'customer', 'operator']);
+            } else {
+                $query = OutboundOrder::with(['warehouse', 'customer', 'operator']);
+            }
+
             if (Current::role() !== 'admin' && Current::grantRole() !== 'manager') {
                 $query->where('created_by', Current::idOrNull());
+            }
+
+            // 负责人筛选（经办人）
+            if (!empty($params['operator_id'])) {
+                $query->where('operator_id', (int) $params['operator_id']);
             }
             
             // 搜索条件
@@ -92,6 +105,9 @@ class OutboundOrderController extends BaseController
                 $item['customer_name'] = $order->customer->name ?? '';
                 $item['operator_name'] = $order->operator->username ?? '';
                 $item['statistics'] = $order->getStatistics();
+                // 归档标记：前端据此展示「已归档」Tag
+                $item['is_archived'] = !empty($order->getData('deleted_at'));
+                $item['archived_at'] = $order->getData('deleted_at');
                 $list[] = $item;
             }
             
@@ -108,8 +124,9 @@ class OutboundOrderController extends BaseController
     public function read(Request $request, $id)
     {
         try {
-            $order = OutboundOrder::with(['warehouse', 'customer', 'operator', 'items.product', 'items.location'])->find($id);
-            
+            // withTrashed：已归档单据详情仍可翻查（物资追溯要求信息保留）
+            $order = OutboundOrder::withTrashed()->with(['warehouse', 'customer', 'operator', 'items.product', 'items.location'])->find($id);
+
             if (!$order) {
                 return Response::notFound('出库单不存在');
             }
@@ -296,33 +313,26 @@ class OutboundOrderController extends BaseController
     public function delete(Request $request, $id)
     {
         try {
+            // find() 默认排除已归档单，归档单不会重复归档
             $order = OutboundOrder::find($id);
-            
+
             if (!$order) {
                 return Response::notFound('出库单不存在');
             }
-            
+
             Grant::assert('outbound:write', (int) $order->warehouse_id);
-            
+
             if (!$order->canDelete()) {
-                return Response::error('出库单已开始拣货，无法删除');
+                return Response::error('出库单已开始拣货，无法归档');
             }
-            
-            Db::startTrans();
-            
-            // 删除出库单明细
-            OutboundOrderItem::where('outbound_order_id', $id)->delete();
-            
-            // 删除出库单
+
+            // 软删除（归档）：单据与明细物理数据全部保留，可在「已归档」筛选下翻查
             $order->delete();
-            
-            Db::commit();
-            
-            return Response::success([], '出库单删除成功');
-            
+
+            return Response::success([], '出库单已归档，可在归档筛选中翻查');
+
         } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
-            Db::rollback();
-            return Response::serverError('删除出库单失败：' . $e->getMessage());
+            return Response::serverError('归档出库单失败：' . $e->getMessage());
         }
     }
     

@@ -50,6 +50,7 @@ import {
 import BatchPickingDialog from '../components/BatchPickingDialog';
 import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
+import { userService, type UserOption } from '../services/userService';
 import type {
   OutboundOrder,
   OutboundOrderItem,
@@ -902,6 +903,8 @@ const OutboundPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [warehouseFilter, setWarehouseFilter] = useState('');
+  const [archivedFilter, setArchivedFilter] = useState<'' | 'archived' | 'all'>('');
+  const [operatorFilter, setOperatorFilter] = useState<number | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -912,13 +915,15 @@ const OutboundPage: React.FC = () => {
 
   const queryClient = useQueryClient();
 
-  // 构建查询参数
+  // 构建查询参数（与后端 snake_case 参数对齐：order_number/warehouse_id/archived/operator_id）
   const queryParams: OutboundOrderQueryParams = {
     page,
     limit: pageSize,
-    search,
-    status: statusFilter as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | undefined,
-    warehouseId: warehouseFilter || undefined,
+    order_number: search || undefined,
+    status: statusFilter || undefined,
+    warehouse_id: warehouseFilter || undefined,
+    archived: archivedFilter || undefined,
+    operator_id: operatorFilter,
   };
 
   // 获取出库单列表
@@ -943,6 +948,15 @@ const OutboundPage: React.FC = () => {
     queryFn: async () => {
       const response = await api.get('/warehouses');
       return response.data.data.list;
+    },
+  });
+
+  // 获取负责人（经办人）选项：归档/负责人筛选下拉
+  const { data: operatorOptions } = useQuery({
+    queryKey: ['user-options'],
+    queryFn: async () => {
+      const response = await userService.getOptions();
+      return response.data.data as UserOption[];
     },
   });
 
@@ -1037,16 +1051,16 @@ const OutboundPage: React.FC = () => {
 
   const handleDelete = (order: OutboundOrder) => {
     confirm({
-      title: '确认删除出库单?',
+      title: '确认归档出库单?',
       icon: <ExclamationCircleOutlined />,
-      content: `确定要删除出库单 ${order.orderNumber} 吗？此操作不可恢复。`,
+      content: `确定要归档出库单 ${order.orderNumber} 吗？归档后单据保留，可在「已归档」筛选中翻查。`,
       okText: '确认',
       okType: 'danger',
       cancelText: '取消',
       onOk() {
         return api.delete(`/outbound-orders/${order.id}`).then(() => {
           queryClient.invalidateQueries({ queryKey: ['outbound-orders'] });
-          message.success('出库单删除成功');
+          message.success('出库单已归档，可在归档筛选中翻查');
         });
       },
     });
@@ -1101,11 +1115,12 @@ const OutboundPage: React.FC = () => {
         <Row gutter={[16, 16]} align="middle">
           <Col xs={24} sm={12} md={6}>
             <Input
-              placeholder="搜索出库单..."
+              placeholder="搜索出库单号..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               prefix={<SearchOutlined />}
               style={{ width: '100%' }}
+              allowClear
             />
           </Col>
           <Col xs={24} sm={12} md={4}>
@@ -1140,6 +1155,35 @@ const OutboundPage: React.FC = () => {
             </Select>
           </Col>
           <Col xs={24} sm={12} md={4}>
+            <Select
+              value={archivedFilter}
+              onChange={(value) => setArchivedFilter((value as '' | 'archived' | 'all') ?? '')}
+              placeholder="归档状态"
+              style={{ width: '100%' }}
+            >
+              <Option value="">未归档</Option>
+              <Option value="archived">已归档</Option>
+              <Option value="all">全部</Option>
+            </Select>
+          </Col>
+          <Col xs={24} sm={12} md={3}>
+            <Select
+              value={operatorFilter}
+              onChange={(value) => setOperatorFilter(value ?? undefined)}
+              placeholder="负责人"
+              style={{ width: '100%' }}
+              allowClear
+              showSearch
+              optionFilterProp="children"
+            >
+              {(operatorOptions || []).map((user) => (
+                <Option key={user.id} value={user.id}>
+                  {user.real_name || user.username}
+                </Option>
+              ))}
+            </Select>
+          </Col>
+          <Col xs={24} sm={12} md={3}>
             <Button
               type="default"
               icon={<ReloadOutlined />}
@@ -1147,6 +1191,8 @@ const OutboundPage: React.FC = () => {
                 setSearch('');
                 setStatusFilter('');
                 setWarehouseFilter('');
+                setArchivedFilter('');
+                setOperatorFilter(undefined);
               }}
               style={{ width: '100%' }}
             >
@@ -1196,14 +1242,17 @@ const OutboundPage: React.FC = () => {
             }),
           }}
           columns={[
-            { 
-              title: '出库单号', 
-              dataIndex: 'orderNumber', 
+            {
+              title: '出库单号',
+              dataIndex: 'orderNumber',
               key: 'orderNumber',
               render: (text: string, record: OutboundOrder) => (
-                <Button type="link" onClick={() => handleView(record)}>
-                  {text}
-                </Button>
+                <Space>
+                  <Button type="link" onClick={() => handleView(record)}>
+                    {text}
+                  </Button>
+                  {record.is_archived && <Tag color="default">已归档</Tag>}
+                </Space>
               )
             },
             { 
@@ -1259,7 +1308,7 @@ const OutboundPage: React.FC = () => {
                       />
                     </Tooltip>
                   )}
-                  <Tooltip title="删除">
+                  <Tooltip title="归档">
                     <Button
                       type="text"
                       danger

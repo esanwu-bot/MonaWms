@@ -3,12 +3,16 @@
 namespace app\model;
 
 use think\Model;
+use think\model\concern\SoftDelete;
 
 /**
  * 入库单模型
  */
 class InboundOrder extends Model
 {
+    // 软删除：删除即归档，默认查询自动排除已归档单据
+    use SoftDelete;
+    
     // 表名
     protected $name = 'inbound_orders';
     
@@ -22,6 +26,9 @@ class InboundOrder extends Model
     protected $createTime = 'created_at';
     protected $updateTime = 'updated_at';
     
+    // 软删除字段（delete() 写入该列，物理数据保留）
+    protected $deleteTime = 'deleted_at';
+    
     // 字段类型转换
     protected $type = [
         'id' => 'integer',
@@ -31,7 +38,8 @@ class InboundOrder extends Model
         'expected_date' => 'date',
         'received_date' => 'date',
         'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime'
     ];
     
     // 只读字段
@@ -51,7 +59,8 @@ class InboundOrder extends Model
         'received_date',
         'notes',
         'created_at',
-        'updated_at'
+        'updated_at',
+        'deleted_at'
     ];
     
     /**

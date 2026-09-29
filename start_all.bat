@@ -22,7 +22,7 @@ if %errorlevel% neq 0 (
 )
 
 echo [2/3] Starting Backend TP6 on port 8000 ...
-start "Backend TP6" cmd /k "cd /d %ROOT%\backend_tp6 && php think run :8000"
+start "Backend TP6" cmd /k "cd /d %ROOT%\backend_tp6 && php think run --host 0.0.0.0 --port 8000"
 
 echo [3/3] Starting Frontend Vite ...
 start "Frontend Vite" cmd /k "cd /d %ROOT%\frontend && npm run dev"

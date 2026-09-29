@@ -300,6 +300,9 @@ export interface InboundOrder {
   created_at: string;
   updated_at: string;
   items: InboundOrderItem[];
+  /** 归档标记（软删除）：后端 index 注入，用于「已归档」Tag */
+  is_archived?: boolean;
+  archived_at?: string | null;
 }
 
 export interface InboundOrderItem {
@@ -334,11 +337,14 @@ export interface CreateInboundOrderRequest {
 export interface UpdateInboundOrderRequest extends Partial<CreateInboundOrderRequest> {}
 
 export interface InboundOrderQueryParams extends QueryParams {
-  warehouseId?: string;
-  supplierId?: string;
-  status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-  startDate?: string;
-  endDate?: string;
+  page?: number;
+  limit?: number;
+  order_number?: string;
+  warehouse_id?: string;
+  supplier_id?: string;
+  status?: string;
+  archived?: '' | 'archived' | 'all';
+  operator_id?: number;
 }
 
 // 项目相关类型
@@ -396,6 +402,9 @@ export interface OutboundOrder {
   created_at: string;
   updated_at: string;
   items: OutboundOrderItem[];
+  /** 归档标记（软删除）：后端 index 注入，用于「已归档」Tag */
+  is_archived?: boolean;
+  archived_at?: string | null;
 }
 
 export interface OutboundOrderItem {
@@ -443,12 +452,14 @@ export interface CreateOutboundOrderRequest {
 export interface UpdateOutboundOrderRequest extends Partial<CreateOutboundOrderRequest> {}
 
 export interface OutboundOrderQueryParams extends QueryParams {
-  warehouseId?: string;
-  customerId?: string;
-  status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-  startDate?: string;
-  endDate?: string;
+  page?: number;
   limit?: number;
+  order_number?: string;
+  warehouse_id?: string;
+  customer_id?: string;
+  status?: string;
+  archived?: '' | 'archived' | 'all';
+  operator_id?: number;
 }
 
 // 仪表板统计类型

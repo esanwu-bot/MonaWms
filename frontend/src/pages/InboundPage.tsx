@@ -48,6 +48,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { queryKeys } from '../utils/queryClient';
 import { api } from '../services/api';
+import { userService, type UserOption } from '../services/userService';
 import type {
   InboundOrder,
   Product,
@@ -603,6 +604,8 @@ const InboundPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [warehouseFilter, setWarehouseFilter] = useState('');
+  const [archivedFilter, setArchivedFilter] = useState<'' | 'archived' | 'all'>('');
+  const [operatorFilter, setOperatorFilter] = useState<number | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -612,13 +615,15 @@ const InboundPage: React.FC = () => {
 
   const queryClient = useQueryClient();
 
-  // 构建查询参数
+  // 构建查询参数（与后端 snake_case 参数对齐：order_number/limit/warehouse_id/archived/operator_id）
   const queryParams: InboundOrderQueryParams = {
     page,
-    pageSize: pageSize,
-    search,
-    status: statusFilter as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | undefined,
-    warehouseId: warehouseFilter || undefined,
+    limit: pageSize,
+    order_number: search || undefined,
+    status: statusFilter || undefined,
+    warehouse_id: warehouseFilter || undefined,
+    archived: archivedFilter || undefined,
+    operator_id: operatorFilter,
   };
 
   // 获取入库单列表
@@ -644,6 +649,15 @@ const InboundPage: React.FC = () => {
         const response = await api.get('/warehouses');
         return response.data.data;
       },
+  });
+
+  // 获取负责人（经办人）选项：归档/负责人筛选下拉
+  const { data: operatorOptions } = useQuery({
+    queryKey: ['user-options'],
+    queryFn: async () => {
+      const response = await userService.getOptions();
+      return response.data.data as UserOption[];
+    },
   });
 
   // 创建入库单
@@ -789,10 +803,11 @@ const InboundPage: React.FC = () => {
         <Row gutter={[16, 15]} align="middle">
           <Col xs={24} sm={12} md={8} lg={6}>
             <Input
-              placeholder="搜索入库单..."
+              placeholder="搜索入库单号..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               prefix={<SearchOutlined />}
+              allowClear
             />
           </Col>
           <Col xs={24} sm={12} md={8} lg={6}>
@@ -825,12 +840,44 @@ const InboundPage: React.FC = () => {
             </Select>
           </Col>
           <Col xs={24} sm={12} md={8} lg={6}>
+            <Select
+              style={{ width: '100%' }}
+              placeholder="归档状态"
+              value={archivedFilter}
+              onChange={(v) => setArchivedFilter((v as '' | 'archived' | 'all') ?? '')}
+              allowClear
+            >
+              <Option value="">未归档</Option>
+              <Option value="archived">已归档</Option>
+              <Option value="all">全部</Option>
+            </Select>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6}>
+            <Select
+              style={{ width: '100%' }}
+              placeholder="负责人"
+              value={operatorFilter}
+              onChange={(v) => setOperatorFilter(v ?? undefined)}
+              allowClear
+              showSearch
+              optionFilterProp="children"
+            >
+              {(operatorOptions || []).map((user) => (
+                <Option key={user.id} value={user.id}>
+                  {user.real_name || user.username}
+                </Option>
+              ))}
+            </Select>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6}>
             <Button
               icon={<FilterOutlined />}
               onClick={() => {
                 setSearch('');
                 setStatusFilter('');
                 setWarehouseFilter('');
+                setArchivedFilter('');
+                setOperatorFilter(undefined);
               }}
               block
             >
@@ -878,7 +925,12 @@ const InboundPage: React.FC = () => {
             {
               title: '入库单号',
               dataIndex: 'orderNumber',
-              render: (text) => <Text strong>{text}</Text>,
+              render: (text, record) => (
+                <Space>
+                  <Text strong>{text}</Text>
+                  {record.is_archived && <Tag color="default">已归档</Tag>}
+                </Space>
+              ),
             },
             {
               title: '仓库',

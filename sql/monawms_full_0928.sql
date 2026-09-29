@@ -249,10 +249,12 @@ CREATE TABLE `inbound_orders` (
   `notes` text,
   `created_at` datetime DEFAULT NULL,
   `updated_at` datetime DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL COMMENT '归档时间（软删除）',
   PRIMARY KEY (`id`),
   UNIQUE KEY `order_number` (`order_number`),
   KEY `warehouse_id` (`warehouse_id`),
-  KEY `supplier_id` (`supplier_id`)
+  KEY `supplier_id` (`supplier_id`),
+  KEY `idx_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4;
 
 /*Data for the table `inbound_orders` */
@@ -413,10 +415,12 @@ CREATE TABLE `outbound_orders` (
   `notes` text,
   `created_at` datetime DEFAULT NULL,
   `updated_at` datetime DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL COMMENT '归档时间（软删除）',
   PRIMARY KEY (`id`),
   UNIQUE KEY `order_number` (`order_number`),
   KEY `warehouse_id` (`warehouse_id`),
-  KEY `customer_id` (`customer_id`)
+  KEY `customer_id` (`customer_id`),
+  KEY `idx_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4;
 
 /*Data for the table `outbound_orders` */
