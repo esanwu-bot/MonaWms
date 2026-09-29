@@ -151,14 +151,19 @@ class OutboundOrderController extends BaseController
         // 验证参数：直接实例化 think\Validate，避免门面单例导致 items.* 通配规则失效
         $validate = new \think\Validate([
             'warehouse_id' => 'require|integer',
-            'customer_id' => 'require|integer',
+            'customer_id' => 'integer',                          // D2：与领用信息并存，非必填
+            'receiver_unit' => 'max:100',                        // D2：领用单位
+            'receiver_name' => 'max:50',                         // D2：领用人
+            'receiver_phone' => 'mobile',                        // D4：手机号格式校验
+            'shipped_at' => 'date',                              // C2：出库时间
             'type' => 'require|in:sale,return,transfer,other',
             'priority' => 'in:low,normal,high,urgent',
             'expected_date' => 'require|date',
             'notes' => 'max:500',
             'items' => 'require|array',
             'items.*.product_id' => 'require|integer',
-            'items.*.quantity' => 'require|integer|>:0',
+            // A4：数量允许小数（计件类在下方按物资计量方式二次校验）
+            'items.*.quantity' => 'require|float|>:0',
             'items.*.unit_price' => 'float|>=:0',
             'items.*.notes' => 'max:255'
         ]);
@@ -175,16 +180,22 @@ class OutboundOrderController extends BaseController
                 throw new \Exception('仓库不存在');
             }
             
-            $customer = Customer::find($data['customer_id']);
-            if (!$customer) {
-                throw new \Exception('客户不存在');
+            if (!empty($data['customer_id'])) {
+                $customer = Customer::find($data['customer_id']);
+                if (!$customer) {
+                    throw new \Exception('客户不存在');
+                }
             }
             
             // 创建出库单
             $order = new OutboundOrder();
             $order->order_number = OutboundOrder::generateOrderNumber();
             $order->warehouse_id = $data['warehouse_id'];
-            $order->customer_id = $data['customer_id'];
+            $order->customer_id = $data['customer_id'] ?? null;
+            $order->receiver_unit = $data['receiver_unit'] ?? null;   // D2：领用单位
+            $order->receiver_name = $data['receiver_name'] ?? null;   // D2：领用人
+            $order->receiver_phone = $data['receiver_phone'] ?? null; // D2：手机号
+            $order->shipped_at = $data['shipped_at'] ?? null;         // C2：出库时间
             $order->operator_id = $this->getCurrentUserId($request);
             $order->created_by = Current::idOrNull();
             $order->status = OutboundOrder::STATUS_PENDING;
@@ -202,16 +213,32 @@ class OutboundOrderController extends BaseController
                     throw new \Exception('商品ID ' . $itemData['product_id'] . ' 不存在');
                 }
                 
-                // 检查库存是否充足
-                $availableStock = $product->getAvailableStock();
-                if ($availableStock < $itemData['quantity']) {
-                    throw new \Exception('商品 ' . $product->name . ' 库存不足，可用库存：' . $availableStock);
+                // A4：按物资计量方式校验数量
+                try {
+                    $product->assertQuantityValid((string) $itemData['quantity']);
+                } catch (\InvalidArgumentException $e) {
+                    throw new \Exception($product->name . '：' . $e->getMessage());
+                }
+                
+                // 检查库存是否充足（缺料明细随错误返回）
+                $availableStock = (string) $product->getAvailableStock();
+                if (bccomp($availableStock, (string) $itemData['quantity'], 4) < 0) {
+                    throw new \app\common\BizException('STOCK_INSUFFICIENT', '商品 ' . $product->name . ' 库存不足', [[
+                        'product_id'   => $product->id,
+                        'product_name' => $product->name,
+                        'unit'         => $product->unit ?: '件',
+                        'required'     => (string) $itemData['quantity'],
+                        'available'    => $availableStock,
+                        'shortage'     => bcsub((string) $itemData['quantity'], $availableStock, 4)
+                    ]]);
                 }
                 
                 $item = new OutboundOrderItem();
                 $item->outbound_order_id = $order->id;
                 $item->product_id = $itemData['product_id'];
-                $item->quantity = $itemData['quantity'];
+                $item->unit = $product->unit ?: '件';                        // A6：单位快照
+                $item->requires_serial = $product->requiresSerial() ? 1 : 0;  // E1：由计量方式推导
+                $item->quantity = (string) $itemData['quantity'];
                 $item->picked_quantity = 0;
                 $item->unit_price = $itemData['unit_price'] ?? 0;
                 $item->notes = $itemData['notes'] ?? '';
@@ -244,6 +271,10 @@ class OutboundOrderController extends BaseController
         $validate = Validate::rule([
             'warehouse_id' => 'integer',
             'customer_id' => 'integer',
+            'receiver_unit' => 'max:100',    // D2
+            'receiver_name' => 'max:50',     // D2
+            'receiver_phone' => 'mobile',    // D4
+            'shipped_at' => 'date',          // C2
             'type' => 'in:sale,return,transfer,other',
             'priority' => 'in:low,normal,high,urgent',
             'expected_date' => 'date',
@@ -286,7 +317,10 @@ class OutboundOrderController extends BaseController
             }
             
             // 更新字段
-            $updateFields = ['warehouse_id', 'customer_id', 'type', 'priority', 'expected_date', 'tracking_number', 'notes'];
+            $updateFields = [
+                'warehouse_id', 'customer_id', 'type', 'priority', 'expected_date', 'tracking_number', 'notes',
+                'receiver_unit', 'receiver_name', 'receiver_phone', 'shipped_at' // P8：领用信息与出库时间
+            ];
             foreach ($updateFields as $field) {
                 if (isset($data[$field])) {
                     $order->$field = $data[$field];
@@ -374,8 +408,10 @@ class OutboundOrderController extends BaseController
         $validate = Validate::rule([
             'item_id' => 'require|integer',
             'location_id' => 'require|integer',
-            'quantity' => 'require|integer|>:0',
-            'batch_number' => 'max:50'
+            // A4：数量允许小数，计件类由 Model 按计量方式二次校验
+            'quantity' => 'require|float|>:0',
+            'batch_number' => 'max:50',
+            'serials' => 'array'   // E3：SN 批量录入（计件类必填，个数需等于数量）
         ]);
         
         if (!$validate->check($data)) {
@@ -405,11 +441,17 @@ class OutboundOrderController extends BaseController
                 return Response::error('库位不存在');
             }
             
-            // 执行拣货
+            // D3：执行拣货（同一事务内完成库存扣减 + SN 状态联动 + 流水）
+            $serials = $data['serials'] ?? [];
+            if (is_string($serials)) {
+                $serials = preg_split('/[\r\n,\s]+/', trim($serials), -1, PREG_SPLIT_NO_EMPTY);
+            }
             $item->pick(
                 $data['quantity'],
                 $data['location_id'],
-                $data['batch_number'] ?? null
+                $data['batch_number'] ?? null,
+                is_array($serials) ? array_values(array_filter(array_map('trim', $serials))) : [],
+                (int) Current::idOrNull()
             );
             
             // 检查是否完成拣货

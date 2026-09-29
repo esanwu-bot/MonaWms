@@ -37,6 +37,7 @@ class OutboundOrder extends Model
         'operator_id' => 'integer',
         'expected_date' => 'date',
         'shipped_date' => 'date',
+        'shipped_at' => 'datetime', // C2：出库业务时间
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime'
@@ -51,6 +52,9 @@ class OutboundOrder extends Model
         'order_number',
         'warehouse_id',
         'customer_id',
+        'receiver_unit',   // D2：领用单位
+        'receiver_name',   // D2：领用人
+        'receiver_phone',  // D2：领用人手机号
         'operator_id',
         'created_by',
         'status',
@@ -58,6 +62,7 @@ class OutboundOrder extends Model
         'priority',
         'expected_date',
         'shipped_date',
+        'shipped_at',      // C2：出库时间
         'tracking_number',
         'notes',
         'created_at',
@@ -378,18 +383,23 @@ class OutboundOrder extends Model
             'completion_rate' => 0
         ];
         
-        // 计算总金额
+        // 计算总金额（A7：bcmath）
         $items = $this->items()->select();
+        $totalAmount = '0';
+        $totalQty = '0';
+        $pickedQty = '0';
         foreach ($items as $item) {
-            $statistics['total_amount'] += $item->quantity * ($item->unit_price ?? 0);
+            $totalAmount = bcadd($totalAmount, bcmul((string)$item->quantity, (string)($item->unit_price ?? '0'), 4), 4);
+            $totalQty = bcadd($totalQty, (string)$item->quantity, 4);
+            $pickedQty = bcadd($pickedQty, (string)$item->picked_quantity, 4);
         }
+        $statistics['total_amount'] = $totalAmount;
+        $statistics['total_quantity'] = $totalQty;
+        $statistics['picked_quantity'] = $pickedQty;
         
         // 计算完成率
-        if ($statistics['total_quantity'] > 0) {
-            $statistics['completion_rate'] = round(
-                ($statistics['picked_quantity'] / $statistics['total_quantity']) * 100,
-                2
-            );
+        if (bccomp($totalQty, '0', 4) > 0) {
+            $statistics['completion_rate'] = (float) bcmul(bcdiv($pickedQty, $totalQty, 6), '100', 2);
         }
         
         return $statistics;

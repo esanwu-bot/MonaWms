@@ -696,6 +696,14 @@ const DevicesPage: React.FC = () => {
   return (
     <div>
       <PageHeader title="设备登记" sub="设备台账、状态跟踪与维保管理" />
+      {/* G 项：模型已收敛——设备=按件计量的物资 + SN 单件记录，状态在序列号页维护 */}
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="设备已并入物资主数据（products）"
+        description="单件设备的在库 / 正在用 / 返修中 / 待报废 / 已报废状态统一在「序列号管理」维护，本页仅保留台账查询。"
+      />
       <Card>
         <Tabs
           activeKey={activeTab}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import dayjs from 'dayjs';
 import PageHeader from '../components/ui/PageHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller, useFieldArray, useWatch } from 'react-hook-form';
@@ -80,7 +81,14 @@ const outboundItemSchema = z.object({
 const outboundOrderSchema = z.object({
   orderNumber: z.string().min(1, '请输入出库单号'),
   warehouseId: z.string().min(1, '请选择仓库'),
-  customerId: z.string().min(1, '请选择客户'),
+  // D2：领用信息与「客户」并存，客户不再强制
+  customerId: z.string().optional(),
+  receiverUnit: z.string().optional(),   // 领用单位
+  receiverName: z.string().optional(),   // 领用人
+  // D4：手机号格式校验（客户明确要求该字段）
+  receiverPhone: z.string().optional()
+    .refine((v) => !v || /^1[3-9]\d{9}$/.test(v), '请输入正确的11位手机号'),
+  shippedAt: z.string().optional(),      // C2：出库时间
   expectedDate: z.string().min(1, '请选择预期发货日期'),
   shippingAddress: z.string().min(1, '请输入收货地址'),
   contactPerson: z.string().min(1, '请输入联系人'),
@@ -183,6 +191,10 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
         orderNumber: order?.orderNumber || `OUT${Date.now()}`,
         warehouseId: order?.warehouseId || '',
         customerId: order?.customerId || '',
+        receiverUnit: (order as any)?.receiverUnit || '',
+        receiverName: (order as any)?.receiverName || '',
+        receiverPhone: (order as any)?.receiverPhone || '',
+        shippedAt: (order as any)?.shippedAt || '',
         expectedDate: order?.expectedDate ? (order as any).expectedDate.split('T')[0] : '',
         shippingAddress: (order as any)?.shippingAddress || '',
         contactPerson: order?.contactPerson || '',
@@ -336,8 +348,7 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
           </Col>
           <Col span={12}>
             <Form.Item
-              label="客户"
-              required
+              label="客户（可选）"
               validateStatus={errors.customerId ? 'error' : ''}
               help={errors.customerId?.message}
             >
@@ -386,6 +397,85 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
               />
             </Form.Item>
           </Col>
+          </Col>
+        </Row>
+
+        {/* D2 领用信息 */}
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              label="领用单位"
+              validateStatus={errors.receiverUnit ? 'error' : ''}
+              help={errors.receiverUnit?.message}
+            >
+              <Controller
+                name="receiverUnit"
+                control={control}
+                render={({ field }) => (
+                  <Input {...field} placeholder="请输入领用单位" disabled={loading} />
+                )}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="领用人"
+              validateStatus={errors.receiverName ? 'error' : ''}
+              help={errors.receiverName?.message}
+            >
+              <Controller
+                name="receiverName"
+                control={control}
+                render={({ field }) => (
+                  <Input {...field} placeholder="请输入领用人" disabled={loading} />
+                )}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* D2 手机号 + C2 出库时间 */}
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              label="领用人手机号"
+              validateStatus={errors.receiverPhone ? 'error' : ''}
+              help={errors.receiverPhone?.message}
+            >
+              <Controller
+                name="receiverPhone"
+                control={control}
+                render={({ field }) => (
+                  <Input {...field} placeholder="11 位手机号" maxLength={11} disabled={loading} />
+                )}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="出库时间"
+              validateStatus={errors.shippedAt ? 'error' : ''}
+              help={errors.shippedAt?.message}
+            >
+              <Controller
+                name="shippedAt"
+                control={control}
+                render={({ field }) => (
+                  <DatePicker
+                    showTime
+                    style={{ width: '100%' }}
+                    placeholder="业务发生时间（精确到时分秒）"
+                    disabled={loading}
+                    value={field.value ? dayjs(field.value) : null}
+                    onChange={(v) => field.onChange(v ? v.format('YYYY-MM-DD HH:mm:ss') : '')}
+                  />
+                )}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
           <Col span={12}>
             <Form.Item
               label="联系人"
@@ -1067,10 +1157,31 @@ const OutboundPage: React.FC = () => {
   };
 
   const handleSubmit = (data: OutboundOrderFormData) => {
+    // 后端接口字段为 snake_case（warehouse_id / customer_id / items[].product_id ...）
+    const payload: Record<string, any> = {
+      warehouse_id: Number(data.warehouseId),
+      customer_id: data.customerId ? Number(data.customerId) : null,
+      receiver_unit: data.receiverUnit || null,     // D2 领用单位
+      receiver_name: data.receiverName || null,     // D2 领用人
+      receiver_phone: data.receiverPhone || null,   // D2 手机号
+      shipped_at: data.shippedAt || null,           // C2 出库时间
+      type: 'sale',
+      priority: 'normal',
+      expected_date: data.expectedDate,
+      notes: data.remark || '',
+      items: data.items.map((it) => ({
+        product_id: Number(it.productId),
+        quantity: it.quantity,
+        unit_price: it.unitPrice ?? 0,
+        batch_number: '',
+        notes: it.remark || '',
+      })),
+    };
+
     if (selectedOrder) {
-      updateMutation.mutate({ id: selectedOrder.id, data });
+      updateMutation.mutate({ id: selectedOrder.id, data: payload as any });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(payload as any);
     }
   };
 
@@ -1264,6 +1375,26 @@ const OutboundPage: React.FC = () => {
               title: '客户', 
               dataIndex: ['customer', 'name'], 
               key: 'customer' 
+            },
+            { 
+              title: '领用单位', 
+              dataIndex: 'receiverUnit', 
+              key: 'receiverUnit',
+              render: (text: string) => text || '-'
+            },
+            { 
+              title: '领用人', 
+              dataIndex: 'receiverName', 
+              key: 'receiverName',
+              render: (text: string, record: any) => (
+                text ? `${text}${record.receiverPhone ? ' / ' + record.receiverPhone : ''}` : '-'
+              )
+            },
+            { 
+              title: '出库时间', 
+              dataIndex: 'shippedAt', 
+              key: 'shippedAt',
+              render: (text: string) => (text ? new Date(text).toLocaleString() : '-')
             },
             { 
               title: '预期发货日期', 

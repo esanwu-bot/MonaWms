@@ -149,6 +149,11 @@ class OutboundOrderService
                 throw new ValidateException('客户不存在');
             }
 
+            // D4：领用人手机号格式校验（客户明确要求该字段）
+            if (!empty($data['receiver_phone']) && !preg_match('/^1[3-9]\d{9}$/', (string)$data['receiver_phone'])) {
+                throw new ValidateException('领用人手机号格式不正确');
+            }
+
             // 生成订单号
             $orderNumber = $this->generateOrderNumber();
 
@@ -157,6 +162,10 @@ class OutboundOrderService
                 'order_number' => $orderNumber,
                 'warehouse_id' => $data['warehouse_id'],
                 'customer_id' => $data['customer_id'] ?? null,
+                'receiver_unit' => $data['receiver_unit'] ?? null,   // D2：领用单位
+                'receiver_name' => $data['receiver_name'] ?? null,   // D2：领用人
+                'receiver_phone' => $data['receiver_phone'] ?? null, // D2：手机号
+                'shipped_at' => $data['shipped_at'] ?? null,         // C2：出库时间
                 'operator_id' => $operatorId,
                 'status' => 'pending',
                 'type' => $data['type'] ?? 'sale',
@@ -305,7 +314,15 @@ class OutboundOrderService
      * @return bool
      * @throws ValidateException
      */
-    public function pick(int $itemId, int $pickedQuantity, int $operatorId, array $extraData = []): bool
+    /**
+     * 拣货/出库（D3：不是单纯的加减）
+     * 同一事务内完成：库存扣减（行锁）+ SN 单件状态联动 + 库存流水
+     * @param int $itemId 明细ID
+     * @param string|float|int $pickedQuantity 数量（按计量方式可带 4 位小数）
+     * @param int $operatorId 操作人
+     * @param array $extraData ['serials' => string[]|string] 序列号（计件类必填，支持批量粘贴）
+     */
+    public function pick(int $itemId, $pickedQuantity, int $operatorId, array $extraData = []): bool
     {
         Db::startTrans();
         try {
@@ -319,37 +336,15 @@ class OutboundOrderService
                 throw new ValidateException('订单状态不正确');
             }
 
-            $remainingQuantity = $item->quantity - $item->picked_quantity;
-            if ($pickedQuantity > $remainingQuantity) {
-                throw new ValidateException('拣货数量超过剩余数量');
+            // E3：支持批量粘贴 SN（换行/逗号/空格分隔）
+            $serials = $extraData['serials'] ?? [];
+            if (is_string($serials)) {
+                $serials = preg_split('/[\r\n,\s]+/', trim($serials), -1, PREG_SPLIT_NO_EMPTY);
             }
+            $serials = is_array($serials) ? array_values(array_filter(array_map('trim', $serials))) : [];
 
-            // 更新拣货数量
-            $item->picked_quantity += $pickedQuantity;
-            $item->updated_time = date('Y-m-d H:i:s');
-            $item->save();
-
-            // 更新库存
-            $this->updateInventory(
-                $item->product_id,
-                $item->location_id,
-                $pickedQuantity,
-                $item->batch_number,
-                'decrease'
-            );
-
-            // 记录库存事务
-            InventoryTransaction::create([
-                'product_id' => $item->product_id,
-                'location_id' => $item->location_id,
-                'type' => 'out',
-                'quantity' => $pickedQuantity,
-                'operator_id' => $operatorId,
-                'reason' => '出库拣货',
-                'reference_type' => 'outbound_order',
-                'reference_id' => $order->id,
-                'created_time' => date('Y-m-d H:i:s')
-            ]);
+            // 明细内完成：数量校验 + 行锁扣减 + SN 联动 + 流水
+            $item->pick((string) $pickedQuantity, null, null, $serials, $operatorId);
 
             // 检查是否所有明细都已拣货完成
             $this->checkPickingCompletion($order->id);
@@ -407,7 +402,8 @@ class OutboundOrderService
         }
 
         $order->status = 'shipped';
-        $order->shipped_date = date('Y-m-d H:i:s');
+        $order->shipped_date = date('Y-m-d');
+        $order->shipped_at = $order->shipped_at ?: date('Y-m-d H:i:s'); // C2：出库时间落库
         $order->operator_id = $operatorId;
         $order->updated_time = date('Y-m-d H:i:s');
         
@@ -581,7 +577,8 @@ class OutboundOrderService
     private function createOrderItem(int $orderId, array $itemData): OutboundOrderItem
     {
         // 验证产品
-        if (!Product::find($itemData['product_id'])) {
+        $product = Product::find($itemData['product_id']);
+        if (!$product) {
             throw new ValidateException('产品不存在');
         }
 
@@ -590,13 +587,22 @@ class OutboundOrderService
             throw new ValidateException('库位不存在');
         }
 
+        // A4：按计量方式校验数量
+        try {
+            $product->assertQuantityValid((string) $itemData['quantity']);
+        } catch (\InvalidArgumentException $e) {
+            throw new ValidateException($e->getMessage());
+        }
+
         $data = [
             'outbound_order_id' => $orderId,
             'product_id' => $itemData['product_id'],
             'location_id' => $itemData['location_id'],
-            'quantity' => $itemData['quantity'],
+            'unit' => $product->unit ?: '件',                        // A6：单位快照
+            'requires_serial' => $product->requiresSerial() ? 1 : 0, // E1：由计量方式推导
+            'quantity' => (string) $itemData['quantity'],
             'picked_quantity' => 0,
-            'unit_price' => $itemData['unit_price'] ?? 0,
+            'unit_price' => (string) ($itemData['unit_price'] ?? 0),
             'batch_number' => $itemData['batch_number'] ?? null,
             'notes' => $itemData['notes'] ?? '',
             'created_time' => date('Y-m-d H:i:s')
@@ -624,9 +630,17 @@ class OutboundOrderService
                 throw new ValidateException('产品库存不存在：' . $item->product->name);
             }
             
-            $availableQuantity = $inventory->quantity - $inventory->reserved_quantity;
-            if ($availableQuantity < $item->quantity) {
-                throw new ValidateException('产品库存不足：' . $item->product->name . '，可用库存：' . $availableQuantity);
+            $availableQuantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
+            if (bccomp($availableQuantity, (string)$item->quantity, 4) < 0) {
+                // 缺料明细随错误返回，便于前端即时反馈差多少
+                throw new \app\common\BizException('STOCK_INSUFFICIENT', '产品库存不足：' . ($item->product->name ?? ''), [[
+                    'product_id'   => $item->product_id,
+                    'product_name' => $item->product->name ?? '',
+                    'unit'         => $item->unit ?: ($item->product->unit ?? ''),
+                    'required'     => (string) $item->quantity,
+                    'available'    => $availableQuantity,
+                    'shortage'     => bcsub((string)$item->quantity, $availableQuantity, 4)
+                ]]);
             }
         }
     }
@@ -647,7 +661,8 @@ class OutboundOrderService
                 ->where('batch_number', $item->batch_number)
                 ->find();
             
-            $inventory->reserved_quantity += $item->quantity;
+            $inventory->reserved_quantity = bcadd((string)$inventory->reserved_quantity, (string)$item->quantity, 4);
+            $inventory->available_quantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
             $inventory->updated_time = date('Y-m-d H:i:s');
             $inventory->save();
         }
@@ -668,7 +683,8 @@ class OutboundOrderService
                 ->find();
             
             if ($inventory) {
-                $inventory->reserved_quantity -= $item->quantity;
+                $inventory->reserved_quantity = bcsub((string)$inventory->reserved_quantity, (string)$item->quantity, 4);
+                $inventory->available_quantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
                 $inventory->updated_time = date('Y-m-d H:i:s');
                 $inventory->save();
             }
@@ -683,20 +699,23 @@ class OutboundOrderService
      * @param string $batchNumber 批次号
      * @param string $operation 操作类型
      */
-    private function updateInventory(int $productId, int $locationId, int $quantity, string $batchNumber = null, string $operation = 'decrease'): void
+    private function updateInventory(int $productId, int $locationId, $quantity, string $batchNumber = null, string $operation = 'decrease'): void
     {
+        // 并发安全：行锁
         $inventory = Inventory::where('product_id', $productId)
             ->where('location_id', $locationId)
             ->where('batch_number', $batchNumber)
+            ->lock(true)
             ->find();
 
         if ($inventory) {
             if ($operation === 'decrease') {
-                $inventory->quantity -= $quantity;
-                $inventory->reserved_quantity -= $quantity;
+                $inventory->quantity = bcsub((string)$inventory->quantity, (string)$quantity, 4);
+                $inventory->reserved_quantity = bcsub((string)$inventory->reserved_quantity, (string)$quantity, 4);
             } else {
-                $inventory->quantity += $quantity;
+                $inventory->quantity = bcadd((string)$inventory->quantity, (string)$quantity, 4);
             }
+            $inventory->available_quantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
             $inventory->updated_time = date('Y-m-d H:i:s');
             $inventory->save();
         }
@@ -719,7 +738,8 @@ class OutboundOrderService
                 ->find();
 
             if ($inventory) {
-                $inventory->quantity += $item->picked_quantity;
+                $inventory->quantity = bcadd((string)$inventory->quantity, (string)$item->picked_quantity, 4);
+                $inventory->available_quantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
                 $inventory->updated_time = date('Y-m-d H:i:s');
                 $inventory->save();
 

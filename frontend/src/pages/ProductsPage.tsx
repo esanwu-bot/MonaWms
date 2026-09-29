@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getDictionaryItemsByTypeCode } from '../services/dictionaryService';
 import PageHeader from '../components/ui/PageHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -48,7 +49,9 @@ const productSchema = z.object({
   frequencyProtocol: z.string().optional(),
   firmwareVersion: z.string().optional(),
   categoryId: z.string().min(1, '请选择分类'),
-  unit: z.string().min(1, '请输入单位').max(20, '单位不能超过20个字符'),
+  unit: z.string().min(1, '请选择计量单位').max(20, '单位不能超过20个字符'),
+  // A1：计量方式决定数量精度与是否需要序列号
+  measureType: z.enum(['count', 'length', 'weight', 'area', 'volume']).default('count'),
   unitPrice: z.number().min(0, '单价不能为负数'),
   minStock: z.number().min(0, '最小库存不能为负数'),
   maxStock: z.number().min(0, '最大库存不能为负数'),
@@ -57,6 +60,18 @@ const productSchema = z.object({
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
+
+// P8 A1 计量方式
+const MEASURE_TYPES = [
+  { value: 'count', label: '计件（件/个/台/套）' },
+  { value: 'length', label: '长度（米）' },
+  { value: 'weight', label: '重量（吨/千克）' },
+  { value: 'area', label: '面积（平方米）' },
+  { value: 'volume', label: '体积' },
+];
+
+// P8 A2 单位字典兜底（字典可后台维护）
+const UNIT_FALLBACK = ['件', '个', '台', '套', '米', '吨', '千克', '平方米', '卷', '盘', '对', '箱', '只', '组', '条', '根', '副'];
 
 interface ProductDialogProps {
   open: boolean;
@@ -87,6 +102,7 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
       description: product?.description || '',
       categoryId: product?.category_id || '',
       unit: product?.unit || '',
+      measureType: (product?.measure_type as any) || 'count',
       unitPrice: product?.price || 0,
       minStock: product?.min_stock || 0,
       maxStock: product?.max_stock || 0,
@@ -95,6 +111,29 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
   });
 
   const minStock = watch('minStock');
+  const watchMeasureType = watch('measureType');
+
+  // 获取计量单位字典（A2：字典可后台维护，失败时用内置兜底）
+  const { data: unitDictData } = useQuery({
+    queryKey: ['dictionary', 'items', 'unit'],
+    queryFn: async () => {
+      const response = await getDictionaryItemsByTypeCode('unit');
+      return Array.isArray(response?.data) ? response.data : [];
+    },
+    retry: false,
+  });
+  const unitOptions = React.useMemo(() => {
+    const fromDict = Array.isArray(unitDictData)
+      ? unitDictData
+          .filter((item: any) => item.status !== 'inactive')
+          .map((item: any) => ({ value: item.name, label: item.name }))
+      : [];
+    const merged = [...fromDict];
+    UNIT_FALLBACK.forEach((u) => {
+      if (!merged.some((m) => m.value === u)) merged.push({ value: u, label: u });
+    });
+    return merged;
+  }, [unitDictData]);
 
   // 获取分类列表
   const { data: categoriesData } = useQuery({
@@ -127,6 +166,7 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
         firmwareVersion: product?.firmware_version || '',
         categoryId: product?.category_id || '',
         unit: product?.unit || '',
+        measureType: (product?.measure_type as any) || 'count',
         unitPrice: product?.price || 0,
         minStock: product?.min_stock || 0,
         maxStock: product?.max_stock || 0,
@@ -302,7 +342,7 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
 
             <Col span={12}>
               <Form.Item
-                label="单位"
+                label="计量单位"
                 validateStatus={errors.unit ? 'error' : ''}
                 help={errors.unit?.message}
                 required
@@ -311,11 +351,40 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
                   name="unit"
                   control={control}
                   render={({ field }) => (
-                    <Input
+                    <Select
                       {...field}
-                      placeholder="如：台、个、套"
+                      placeholder="请选择计量单位（可在字典管理维护）"
                       disabled={loading}
-                    />
+                      showSearch
+                      optionFilterProp="children"
+                    >
+                      {unitOptions.map((item: any) => (
+                        <Option key={item.value} value={item.value}>{item.label}</Option>
+                      ))}
+                    </Select>
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="计量方式"
+                validateStatus={errors.measureType ? 'error' : ''}
+                help={errors.measureType?.message
+                  || (watchMeasureType === 'count'
+                    ? '计件：数量为正整数，需录序列号'
+                    : '非计件：数量可保留 4 位小数，无需序列号')}
+                required
+              >
+                <Controller
+                  name="measureType"
+                  control={control}
+                  render={({ field }) => (
+                    <Select {...field} placeholder="请选择计量方式" disabled={loading}>
+                      {MEASURE_TYPES.map((m) => (
+                        <Option key={m.value} value={m.value}>{m.label}</Option>
+                      ))}
+                    </Select>
                   )}
                 />
               </Form.Item>
@@ -516,10 +585,30 @@ const ProductsPage: React.FC = () => {
   });
 
   const handleSubmit = (data: ProductFormData) => {
+    // 后端接口字段为 snake_case（category_id / min_stock / device_type ...）
+    const payload: Record<string, any> = {
+      sku: data.sku,
+      name: data.name,
+      description: data.description || '',
+      device_type: data.deviceType || null,
+      model_number: data.modelNumber || null,
+      frequency_protocol: data.frequencyProtocol || null,
+      firmware_version: data.firmwareVersion || null,
+      category_id: data.categoryId,
+      unit: data.unit,
+      measure_type: data.measureType || 'count',   // A1
+      price: data.unitPrice ?? 0,
+      min_stock: data.minStock ?? 0,
+      max_stock: data.maxStock ?? 0,
+      barcode: data.barcode || null,
+      status: 'active',
+      ...(data.projectId ? { project_id: Number(data.projectId) } : {}),
+    };
+
     if (selectedProduct) {
-      updateMutation.mutate(data);
+      updateMutation.mutate(payload as any);
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(payload as any);
     }
   };
 

@@ -150,6 +150,7 @@ class ProductController extends BaseController
             'barcode' => 'max:50|unique:products',
             'price' => 'float|>=:0',
             'unit' => 'max:20',
+            'measure_type' => 'in:count,length,weight,area,volume',   // A1：计量方式
             'weight' => 'float|>=:0',
             'length' => 'float|>=:0',
             'width' => 'float|>=:0',
@@ -189,7 +190,10 @@ class ProductController extends BaseController
             $product->category_id = $data['category_id'];
             $product->barcode = $data['barcode'] ?? '';
             $product->price = $data['price'] ?? 0;
-            $product->unit = $data['unit'] ?? '个';
+            $product->unit = $data['unit'] ?? '件';
+            $product->measure_type = $data['measure_type'] ?? Product::MEASURE_COUNT;
+            // E1：是否需要序列号由计量方式推导（计件类要 SN，长度/重量类按数量走）
+            $product->requires_serial = $product->requiresSerial() ? 1 : 0;
             $product->weight = $data['weight'] ?? 0;
             $product->length = $data['length'] ?? 0;
             $product->width = $data['width'] ?? 0;
@@ -235,6 +239,7 @@ class ProductController extends BaseController
             'barcode' => 'max:50|unique:products,barcode,' . $id,
             'price' => 'float|>=:0',
             'unit' => 'max:20',
+            'measure_type' => 'in:count,length,weight,area,volume',   // A1
             'weight' => 'float|>=:0',
             'length' => 'float|>=:0',
             'width' => 'float|>=:0',
@@ -274,7 +279,7 @@ class ProductController extends BaseController
             // 更新字段
             $updateFields = [
                 'sku', 'name', 'description', 'category_id', 'barcode',
-                'price', 'unit', 'weight', 'length', 'width', 'height',
+                'price', 'unit', 'measure_type', 'weight', 'length', 'width', 'height',
                 'min_stock', 'max_stock', 'status', 'device_type', 'model_number',
                 'frequency_protocol', 'firmware_version', 'project_id'
             ];
@@ -284,6 +289,9 @@ class ProductController extends BaseController
                     $product->$field = $data[$field];
                 }
             }
+            
+            // E1：计量方式变化后同步推导 SN 要求
+            $product->requires_serial = $product->requiresSerial() ? 1 : 0;
             
             $product->save();
             

@@ -76,6 +76,11 @@ class InboundOrderController extends BaseController
                 $searchFields['type'] = $params['type'];
             }
             
+            // I3：来源筛选
+            if (!empty($params['source'])) {
+                $searchFields['source'] = $params['source'];
+            }
+            
             if (!empty($params['expected_date_start'])) {
                 $query->where('expected_date', '>=', $params['expected_date_start']);
             }
@@ -237,13 +242,15 @@ class InboundOrderController extends BaseController
         // 验证参数：直接实例化 think\Validate，避免门面单例导致 items.* 通配规则失效
         $validate = new \think\Validate([
             'warehouse_id' => 'require|integer',
-            'supplier_id' => 'require|integer',
+            'supplier_id' => 'integer',                 // I4：采购来源时必填，其他来源可选
+            'source' => 'in:purchase,transfer_in,return_in,project_return,borrow_return,inventory_gain,other',
+            'received_at' => 'date',                    // C1：入库时间
             'type' => 'require|in:purchase,return,transfer,other',
             'expected_date' => 'require|date',
             'notes' => 'max:500',
             'items' => 'require|array',
-            'items.*.product_id' => 'require|integer',
-            'items.*.quantity' => 'require|integer|>:0',
+            // A4：数量允许小数（计件类在下方按物资计量方式二次校验）
+            'items.*.quantity' => 'require|float|>:0',
             'items.*.unit_price' => 'float|>=:0',
             'items.*.batch_number' => 'max:50',
             'items.*.expiry_date' => 'date',
@@ -254,6 +261,12 @@ class InboundOrderController extends BaseController
             return Response::validateError($validate->getError());
         }
         
+        // I4：来源为采购入库时供应商必填
+        $source = $data['source'] ?? 'purchase';
+        if ($source === 'purchase' && empty($data['supplier_id'])) {
+            return Response::validateError('来源为采购入库时，供应商必填');
+        }
+        
         Db::startTrans();
         try {
             // 验证仓库和供应商是否存在
@@ -262,16 +275,20 @@ class InboundOrderController extends BaseController
                 throw new \Exception('仓库不存在');
             }
             
-            $supplier = Supplier::find($data['supplier_id']);
-            if (!$supplier) {
-                throw new \Exception('供应商不存在');
+            if (!empty($data['supplier_id'])) {
+                $supplier = Supplier::find($data['supplier_id']);
+                if (!$supplier) {
+                    throw new \Exception('供应商不存在');
+                }
             }
             
             // 创建入库单
             $order = new InboundOrder();
             $order->order_number = InboundOrder::generateOrderNumber();
             $order->warehouse_id = $data['warehouse_id'];
-            $order->supplier_id = $data['supplier_id'];
+            $order->supplier_id = $data['supplier_id'] ?? null;
+            $order->source = $data['source'] ?? 'purchase';   // I2：入库来源
+            $order->received_at = $data['received_at'] ?? null; // C1：入库时间
             $order->operator_id = $this->getCurrentUserId($request);
             $order->created_by = Current::idOrNull();
             $order->status = InboundOrder::STATUS_PENDING;
@@ -288,12 +305,21 @@ class InboundOrderController extends BaseController
                     throw new \Exception('商品ID ' . $itemData['product_id'] . ' 不存在');
                 }
                 
+                // A4：按物资计量方式校验数量（计件类必须正整数，长度/重量类允许 4 位小数）
+                try {
+                    $product->assertQuantityValid((string) $itemData['quantity']);
+                } catch (\InvalidArgumentException $e) {
+                    throw new \Exception($product->name . '：' . $e->getMessage());
+                }
+                
                 $item = new InboundOrderItem();
                 $item->inbound_order_id = $order->id;
                 $item->product_id = $itemData['product_id'];
-                $item->quantity = $itemData['quantity'];
+                $item->unit = $product->unit ?: '件';                        // A6：单位快照
+                $item->requires_serial = $product->requiresSerial() ? 1 : 0;  // E1：由计量方式推导
+                $item->quantity = (string) $itemData['quantity'];
                 $item->received_quantity = 0;
-                $item->unit_price = $itemData['unit_price'] ?? 0;
+                $item->unit_price = (string) ($itemData['unit_price'] ?? 0);
                 $item->batch_number = $itemData['batch_number'] ?? '';
                 $item->expiry_date = $itemData['expiry_date'] ?? null;
                 $item->notes = $itemData['notes'] ?? '';
@@ -650,6 +676,8 @@ class InboundOrderController extends BaseController
         $validate = Validate::rule([
             'warehouse_id' => 'integer',
             'supplier_id' => 'integer',
+            'source' => 'in:purchase,transfer_in,return_in,project_return,borrow_return,inventory_gain,other',
+            'received_at' => 'date',
             'type' => 'in:purchase,return,transfer,other',
             'expected_date' => 'date',
             'notes' => 'max:500'
@@ -688,12 +716,32 @@ class InboundOrderController extends BaseController
                 }
             }
             
-            // 更新字段
-            $updateFields = ['warehouse_id', 'supplier_id', 'type', 'expected_date', 'notes'];
+            // 更新字段（I2/C1：来源与入库时间同样可改）
+            $updateFields = ['warehouse_id', 'supplier_id', 'type', 'expected_date', 'notes', 'source', 'received_at'];
+            
+            // I5：来源变更留痕
+            $sourceBefore = (string) $order->source;
+            $sourceAfter = isset($data['source']) ? (string) $data['source'] : $sourceBefore;
+            
             foreach ($updateFields as $field) {
                 if (isset($data[$field])) {
                     $order->$field = $data[$field];
                 }
+            }
+            
+            if ($sourceAfter !== $sourceBefore) {
+                Db::name('operation_log')->insert([
+                    'operator_id' => Current::idOrNull(),
+                    'action'      => 'inbound_order:change_source',
+                    'target_type' => 'inbound_order',
+                    'target_id'   => (int) $order->id,
+                    'before'      => json_encode(['source' => $sourceBefore], JSON_UNESCAPED_UNICODE),
+                    'after'       => json_encode(['source' => $sourceAfter], JSON_UNESCAPED_UNICODE),
+                    'method'      => 'PUT',
+                    'path'        => 'inbound-orders/' . $order->id,
+                    'ip'          => request()->ip(),
+                    'created_at'  => date('Y-m-d H:i:s')
+                ]);
             }
             
             $order->save();
@@ -778,7 +826,8 @@ class InboundOrderController extends BaseController
         $validate = Validate::rule([
             'item_id' => 'require|integer',
             'location_id' => 'require|integer',
-            'quantity' => 'require|integer|>:0',
+            // A4：数量允许小数，计件类由 Service/Model 按计量方式二次校验
+            'quantity' => 'require|float|>:0',
             'batch_number' => 'max:50',
             'expiry_date' => 'date'
         ]);

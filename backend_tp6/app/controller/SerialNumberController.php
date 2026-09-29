@@ -5,6 +5,7 @@ namespace app\controller;
 use app\BaseController;
 use app\model\SerialNumber;
 use app\model\Product;
+use app\common\Current;
 use app\common\library\Response;
 use app\service\BarcodeService;
 use think\Request;
@@ -101,7 +102,8 @@ class SerialNumberController extends BaseController
             'product_id' => 'require|integer',
             'manufacture_date' => 'date',
             'warranty_period' => 'integer',
-            'status' => 'in:in_stock,sold,scrapped',
+            // B1：对齐客户口径 在库/已出库/正在用/返修中/待报废/已报废
+            'status' => 'in:in_stock,sold,in_use,repairing,to_scrap,scrapped',
             'location' => 'max:200',
             'notes' => 'max:500'
         ]);
@@ -160,7 +162,8 @@ class SerialNumberController extends BaseController
             'product_id' => 'integer',
             'manufacture_date' => 'date',
             'warranty_period' => 'integer',
-            'status' => 'in:in_stock,sold,scrapped',
+            // B1：对齐客户口径 在库/已出库/正在用/返修中/待报废/已报废
+            'status' => 'in:in_stock,sold,in_use,repairing,to_scrap,scrapped',
             'location' => 'max:200',
             'notes' => 'max:500'
         ]);
@@ -207,7 +210,26 @@ class SerialNumberController extends BaseController
                 $serialNumber->warranty_end_date = $data['warranty_end_date'];
             }
             if (isset($data['status'])) {
-                $serialNumber->status = $data['status'];
+                // B2：状态变更走流转校验 + 留痕（SN 历史 + 操作日志）
+                \think\facade\Db::name('operation_log')->insert([
+                    'operator_id' => Current::idOrNull(),
+                    'action'      => 'serial_number:update_status',
+                    'target_type' => 'serial_number',
+                    'target_id'   => (int) $serialNumber->id,
+                    'before'      => json_encode(['status' => (string) $serialNumber->status], JSON_UNESCAPED_UNICODE),
+                    'after'       => json_encode(['status' => $data['status']], JSON_UNESCAPED_UNICODE),
+                    'method'      => 'PUT',
+                    'path'        => 'serial-numbers/' . $serialNumber->id,
+                    'ip'          => request()->ip(),
+                    'created_at'  => date('Y-m-d H:i:s')
+                ]);
+                $serialNumber->changeStatus(
+                    $data['status'],
+                    (int) Current::idOrNull(),
+                    $data['notes'] ?? '状态变更',
+                    'serial_number',
+                    (int) $serialNumber->id
+                );
             }
             if (isset($data['location'])) {
                 $serialNumber->location = $data['location'];

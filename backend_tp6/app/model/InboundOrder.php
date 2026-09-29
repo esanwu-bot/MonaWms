@@ -37,6 +37,7 @@ class InboundOrder extends Model
         'operator_id' => 'integer',
         'expected_date' => 'date',
         'received_date' => 'date',
+        'received_at' => 'datetime', // C1：入库业务时间（精确到时分秒）
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime'
@@ -57,6 +58,8 @@ class InboundOrder extends Model
         'type',
         'expected_date',
         'received_date',
+        'received_at',   // C1：入库时间
+        'source',        // I2：入库来源（字典 inbound_source）
         'notes',
         'created_at',
         'updated_at',
@@ -257,6 +260,7 @@ class InboundOrder extends Model
         
         $this->status = self::STATUS_COMPLETED;
         $this->received_date = date('Y-m-d');
+        $this->received_at = $this->received_at ?: date('Y-m-d H:i:s'); // C1：落库入库时间
         return $this->save();
     }
     
@@ -289,18 +293,23 @@ class InboundOrder extends Model
             'completion_rate' => 0
         ];
         
-        // 计算总金额
+        // 计算总金额（A7：bcmul/bcadd，禁止 float 累加）
         $items = $this->items()->select();
+        $totalAmount = '0';
+        $totalQty = '0';
+        $receivedQty = '0';
         foreach ($items as $item) {
-            $statistics['total_amount'] += $item->quantity * ($item->unit_price ?? 0);
+            $totalAmount = bcadd($totalAmount, bcmul((string)$item->quantity, (string)($item->unit_price ?? '0'), 4), 4);
+            $totalQty = bcadd($totalQty, (string)$item->quantity, 4);
+            $receivedQty = bcadd($receivedQty, (string)$item->received_quantity, 4);
         }
+        $statistics['total_amount'] = $totalAmount;
+        $statistics['total_quantity'] = $totalQty;
+        $statistics['received_quantity'] = $receivedQty;
         
         // 计算完成率
-        if ($statistics['total_quantity'] > 0) {
-            $statistics['completion_rate'] = round(
-                ($statistics['received_quantity'] / $statistics['total_quantity']) * 100,
-                2
-            );
+        if (bccomp($totalQty, '0', 4) > 0) {
+            $statistics['completion_rate'] = (float) bcmul(bcdiv($receivedQty, $totalQty, 6), '100', 2);
         }
         
         return $statistics;

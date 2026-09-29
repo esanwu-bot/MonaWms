@@ -27,8 +27,10 @@ class Inventory extends Model
         'id' => 'integer',
         'product_id' => 'integer',
         'location_id' => 'integer',
-        'quantity' => 'integer',
-        'reserved_quantity' => 'integer',
+        // P8: DECIMAL(18,4) 一律按 string 处理，禁止 float 累加
+        'quantity' => 'string',
+        'reserved_quantity' => 'string',
+        'available_quantity' => 'string',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];
@@ -43,18 +45,20 @@ class Inventory extends Model
         'location_id',
         'quantity',
         'reserved_quantity',
+        'available_quantity',
         'batch_number',
+        'production_date',
         'expiry_date',
         'created_at',
         'updated_at'
     ];
     
     /**
-     * 获取可用数量
+     * 获取可用数量（bcsub 保证小数精度）
      */
     public function getAvailableQuantityAttr($value, $data)
     {
-        return ($data['quantity'] ?? 0) - ($data['reserved_quantity'] ?? 0);
+        return bcsub((string)($data['quantity'] ?? '0'), (string)($data['reserved_quantity'] ?? '0'), 4);
     }
     
     /**

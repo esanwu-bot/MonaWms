@@ -28,9 +28,10 @@ class InboundOrderItem extends Model
         'inbound_order_id' => 'integer',
         'product_id' => 'integer',
         'location_id' => 'integer',
-        'quantity' => 'integer',
-        'received_quantity' => 'integer',
-        'unit_price' => 'float',
+        // P8: DECIMAL(18,4) 按 string 处理，金额禁止 float 累加
+        'quantity' => 'string',
+        'received_quantity' => 'string',
+        'unit_price' => 'string',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];
@@ -44,9 +45,11 @@ class InboundOrderItem extends Model
         'inbound_order_id',
         'product_id',
         'location_id',
+        'unit',              // P8: 单位快照（A6）
         'quantity',
         'received_quantity',
         'unit_price',
+        'requires_serial',
         'batch_number',
         'expiry_date',
         'notes',
@@ -59,7 +62,7 @@ class InboundOrderItem extends Model
      */
     public function getRemainingQuantityAttr($value, $data)
     {
-        return ($data['quantity'] ?? 0) - ($data['received_quantity'] ?? 0);
+        return bcsub((string)($data['quantity'] ?? '0'), (string)($data['received_quantity'] ?? '0'), 4);
     }
     
     /**
@@ -67,21 +70,21 @@ class InboundOrderItem extends Model
      */
     public function getCompletionRateAttr($value, $data)
     {
-        $quantity = $data['quantity'] ?? 0;
-        if ($quantity <= 0) {
+        $quantity = (string)($data['quantity'] ?? '0');
+        if (bccomp($quantity, '0', 4) <= 0) {
             return 0;
         }
         
-        $receivedQuantity = $data['received_quantity'] ?? 0;
-        return round(($receivedQuantity / $quantity) * 100, 2);
+        $receivedQuantity = (string)($data['received_quantity'] ?? '0');
+        return (float) bcmul(bcdiv($receivedQuantity, $quantity, 6), '100', 2);
     }
     
     /**
-     * 获取总金额
+     * 获取总金额（A7：bcmul，禁止 float 累加）
      */
     public function getTotalAmountAttr($value, $data)
     {
-        return ($data['quantity'] ?? 0) * ($data['unit_price'] ?? 0);
+        return bcmul((string)($data['quantity'] ?? '0'), (string)($data['unit_price'] ?? '0'), 4);
     }
     
     /**
@@ -157,18 +160,24 @@ class InboundOrderItem extends Model
      */
     public function receive($quantity, $locationId = null, $batchNumber = null, $expiryDate = null)
     {
-        if ($quantity <= 0) {
+        $quantity = (string) $quantity;
+        if (bccomp($quantity, '0', 4) <= 0) {
             throw new \InvalidArgumentException('收货数量必须大于0');
         }
         
-        if ($this->received_quantity + $quantity > $this->quantity) {
+        // A4：按物资计量方式校验数量精度（计件类必须正整数，长度/重量类允许 4 位小数）
+        if ($this->product) {
+            $this->product->assertQuantityValid($quantity);
+        }
+        
+        if (bccomp(bcadd((string)$this->received_quantity, $quantity, 4), (string)$this->quantity, 4) > 0) {
             throw new \InvalidArgumentException('收货数量不能超过计划数量');
         }
         
         $this->startTrans();
         try {
-            // 更新收货数量
-            $this->received_quantity += $quantity;
+            // 更新收货数量（bcadd，禁止 float 累加）
+            $this->received_quantity = bcadd((string)$this->received_quantity, $quantity, 4);
             
             // 更新库位（如果提供）
             if ($locationId) {
@@ -196,7 +205,8 @@ class InboundOrderItem extends Model
                 ])->find();
                 
                 if ($inventory) {
-                    $inventory->quantity += $quantity;
+                    $inventory->quantity = bcadd((string)$inventory->quantity, $quantity, 4);
+                    $inventory->available_quantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
                     $inventory->save();
                 } else {
                     Inventory::create([
@@ -266,7 +276,7 @@ class InboundOrderItem extends Model
      */
     public function getRemainingQuantity()
     {
-        return (int) ($this->quantity ?? 0) - (int) ($this->received_quantity ?? 0);
+        return bcsub((string)($this->quantity ?? '0'), (string)($this->received_quantity ?? '0'), 4);
     }
 
     /**
@@ -274,12 +284,12 @@ class InboundOrderItem extends Model
      */
     public function getCompletionRate()
     {
-        $quantity = (int) ($this->quantity ?? 0);
-        if ($quantity <= 0) {
+        $quantity = (string)($this->quantity ?? '0');
+        if (bccomp($quantity, '0', 4) <= 0) {
             return 0;
         }
 
-        return round(((int) ($this->received_quantity ?? 0) / $quantity) * 100, 2);
+        return (float) bcmul(bcdiv((string)($this->received_quantity ?? '0'), $quantity, 6), '100', 2);
     }
 
     /**

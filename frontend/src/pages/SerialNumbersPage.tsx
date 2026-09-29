@@ -54,7 +54,8 @@ interface SerialNumberFormData {
   productId: string;
   manufactureDate?: dayjs.Dayjs;
   warrantyPeriod?: number;
-  status?: 'in_stock' | 'sold' | 'scrapped';
+  // B1：状态挂在单件实物上，对齐客户口径
+  status?: 'in_stock' | 'sold' | 'in_use' | 'repairing' | 'to_scrap' | 'scrapped';
   location?: string;
   notes?: string;
 }
@@ -324,6 +325,12 @@ const SerialNumbersPage: React.FC = () => {
         return 'green';
       case 'sold':
         return 'blue';
+      case 'in_use':
+        return 'cyan';
+      case 'repairing':
+        return 'orange';
+      case 'to_scrap':
+        return 'volcano';
       case 'scrapped':
         return 'red';
       default:
@@ -331,12 +338,19 @@ const SerialNumbersPage: React.FC = () => {
     }
   };
 
+  // B1：在库 / 已出库 / 正在用 / 返修中 / 待报废 / 已报废
   const getStatusText = (status: string) => {
     switch (status) {
       case 'in_stock':
-        return '库存中';
+        return '在库';
       case 'sold':
-        return '已售出';
+        return '已出库';
+      case 'in_use':
+        return '正在用';
+      case 'repairing':
+        return '返修中';
+      case 'to_scrap':
+        return '待报废';
       case 'scrapped':
         return '已报废';
       default:
@@ -511,8 +525,11 @@ const SerialNumbersPage: React.FC = () => {
                 style={{ width: '100%' }}
                 onChange={(value) => handleSearch(value || '', 'status')}
               >
-                <Option value="in_stock">库存中</Option>
-                <Option value="sold">已售出</Option>
+                <Option value="in_stock">在库</Option>
+                <Option value="sold">已出库</Option>
+                <Option value="in_use">正在用</Option>
+                <Option value="repairing">返修中</Option>
+                <Option value="to_scrap">待报废</Option>
                 <Option value="scrapped">已报废</Option>
               </Select>
             </Col>
@@ -694,9 +711,12 @@ const SerialNumbersPage: React.FC = () => {
                 label="状态"
                 rules={[{ required: true, message: '请选择状态' }]}
               >
-                <Select placeholder="请选择状态">
-                  <Option value="in_stock">库存中</Option>
-                  <Option value="sold">已售出</Option>
+                <Select placeholder="请选择状态（变更会留痕，待报废只能推进到已报废）">
+                  <Option value="in_stock">在库</Option>
+                  <Option value="sold">已出库</Option>
+                  <Option value="in_use">正在用</Option>
+                  <Option value="repairing">返修中</Option>
+                  <Option value="to_scrap">待报废</Option>
                   <Option value="scrapped">已报废</Option>
                 </Select>
               </Form.Item>

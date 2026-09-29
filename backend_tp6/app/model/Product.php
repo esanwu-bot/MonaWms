@@ -26,7 +26,9 @@ class Product extends Model
     protected $type = [
         'id' => 'integer',
         'category_id' => 'integer',
-        'price' => 'float',
+        // P8: 金额与数量一律字符串 + bcmath
+        'price' => 'string',
+        'cost_price' => 'string',
         'weight' => 'float',
         'length' => 'float',
         'width' => 'float',
@@ -54,7 +56,10 @@ class Product extends Model
         'category_id',
         'barcode',
         'price',
+        'cost_price',
         'unit',
+        'measure_type',      // P8: 计量方式 count/length/weight/area/volume
+        'requires_serial',   // P8: 是否需序列号（由 measure_type 推导）
         'weight',
         'length',
         'width',
@@ -73,6 +78,72 @@ class Product extends Model
     const STATUS_ACTIVE = 'active';
     const STATUS_INACTIVE = 'inactive';
     const STATUS_DISCONTINUED = 'discontinued';
+    
+    /**
+     * P8 计量方式枚举（A1）
+     */
+    const MEASURE_COUNT  = 'count';   // 计件：件/个/台/套
+    const MEASURE_LENGTH = 'length';  // 长度：米
+    const MEASURE_WEIGHT = 'weight';  // 重量：吨/kg
+    const MEASURE_AREA   = 'area';    // 面积：平方米
+    const MEASURE_VOLUME = 'volume';  // 体积
+    
+    /**
+     * 获取计量方式中文名
+     */
+    public function getMeasureTypeTextAttr($value, $data)
+    {
+        $texts = [
+            self::MEASURE_COUNT  => '计件',
+            self::MEASURE_LENGTH => '长度',
+            self::MEASURE_WEIGHT => '重量',
+            self::MEASURE_AREA   => '面积',
+            self::MEASURE_VOLUME => '体积'
+        ];
+        return $texts[$data['measure_type'] ?? self::MEASURE_COUNT] ?? '计件';
+    }
+    
+    /**
+     * 是否需要序列号（E1：由计量方式推导，计件类需要 SN，长度/重量类按数量走）
+     * @return bool
+     */
+    public function requiresSerial(): bool
+    {
+        return ($this->measure_type ?: self::MEASURE_COUNT) === self::MEASURE_COUNT;
+    }
+    
+    /**
+     * 数量小数位：计件类 0（只允许正整数），其余 4 位
+     * @return int
+     */
+    public function quantityScale(): int
+    {
+        return $this->requiresSerial() ? 0 : 4;
+    }
+    
+    /**
+     * 校验数量是否符合计量方式（A4：后端必须校验，不能只放开前端）
+     * @param string $quantity
+     * @throws \InvalidArgumentException
+     */
+    public function assertQuantityValid(string $quantity): void
+    {
+        if (!is_numeric($quantity) || bccomp($quantity, '0', 4) <= 0) {
+            throw new \InvalidArgumentException('数量必须大于 0');
+        }
+        if ($this->quantityScale() === 0) {
+            // 计件类：必须为正整数
+            if (bccomp($quantity, bcadd($quantity, '0', 0), 4) !== 0) {
+                throw new \InvalidArgumentException('计件类物资数量必须为正整数，当前单位：' . ($this->unit ?: '件'));
+            }
+        } else {
+            // 长度/重量类：最多 4 位小数
+            $scaled = bcmul($quantity, '1', 4);
+            if (bccomp($quantity, $scaled, 4) !== 0) {
+                throw new \InvalidArgumentException('数量最多保留 4 位小数');
+            }
+        }
+    }
     
     /**
      * 获取状态中文名

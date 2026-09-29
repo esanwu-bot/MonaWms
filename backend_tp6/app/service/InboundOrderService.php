@@ -60,6 +60,11 @@ class InboundOrderService
         if (!empty($params['type'])) {
             $query->where('type', $params['type']);
         }
+        
+        // I3：来源筛选
+        if (!empty($params['source'])) {
+            $query->where('source', $params['source']);
+        }
 
         // 日期范围
         if (!empty($params['start_date'])) {
@@ -143,11 +148,19 @@ class InboundOrderService
             // 生成订单号
             $orderNumber = $this->generateOrderNumber();
 
+            // I4：来源为采购入库时供应商必填，其他来源（调拨/归还/盘盈）可选
+            $source = $data['source'] ?? 'purchase';
+            if ($source === 'purchase' && empty($data['supplier_id'])) {
+                throw new ValidateException('来源为采购入库时，供应商必填');
+            }
+
             // 创建订单
             $orderData = [
                 'order_number' => $orderNumber,
                 'warehouse_id' => $data['warehouse_id'],
                 'supplier_id' => $data['supplier_id'] ?? null,
+                'source' => $source,                                  // I2：入库来源
+                'received_at' => $data['received_at'] ?? null,        // C1：入库时间
                 'operator_id' => $operatorId,
                 'status' => 'pending',
                 'type' => $data['type'] ?? 'purchase',
@@ -203,8 +216,14 @@ class InboundOrderService
 
             // 更新订单
             $updateData = array_intersect_key($data, array_flip([
-                'warehouse_id', 'supplier_id', 'expected_date', 'notes'
+                'warehouse_id', 'supplier_id', 'expected_date', 'notes', 'source', 'received_at'
             ]));
+            
+            // I4：改为采购来源时必须补供应商
+            if (($updateData['source'] ?? $order->source) === 'purchase'
+                && empty($updateData['supplier_id'] ?? $order->supplier_id)) {
+                throw new ValidateException('来源为采购入库时，供应商必填');
+            }
             $updateData['updated_time'] = date('Y-m-d H:i:s');
             $order->save($updateData);
 
@@ -289,8 +308,11 @@ class InboundOrderService
      * @return bool
      * @throws ValidateException
      */
-    public function receive(int $itemId, int $receivedQuantity, int $operatorId, array $extraData = []): bool
+    public function receive(int $itemId, $receivedQuantity, int $operatorId, array $extraData = []): bool
     {
+        // A3：数量按 string 处理，避免 float 精度与 int 截断
+        $receivedQuantity = (string) $receivedQuantity;
+
         Db::startTrans();
         try {
             $item = InboundOrderItem::with(['inboundOrder', 'product', 'location'])->find($itemId);
@@ -303,13 +325,22 @@ class InboundOrderService
                 throw new ValidateException('订单状态不正确');
             }
 
-            $remainingQuantity = $item->quantity - $item->received_quantity;
-            if ($receivedQuantity > $remainingQuantity) {
+            // A4：按计量方式校验数量精度
+            if ($item->product) {
+                try {
+                    $item->product->assertQuantityValid($receivedQuantity);
+                } catch (\InvalidArgumentException $e) {
+                    throw new ValidateException($e->getMessage());
+                }
+            }
+            
+            $remainingQuantity = bcsub((string)$item->quantity, (string)$item->received_quantity, 4);
+            if (bccomp($receivedQuantity, $remainingQuantity, 4) > 0) {
                 throw new ValidateException('收货数量超过剩余数量');
             }
 
             // 更新收货数量
-            $item->received_quantity += $receivedQuantity;
+            $item->received_quantity = bcadd((string)$item->received_quantity, $receivedQuantity, 4);
             $item->updated_time = date('Y-m-d H:i:s');
             $item->save();
 
@@ -368,7 +399,8 @@ class InboundOrderService
         }
 
         $order->status = 'completed';
-        $order->received_date = date('Y-m-d H:i:s');
+        $order->received_date = date('Y-m-d');
+        $order->received_at = $order->received_at ?: date('Y-m-d H:i:s'); // C1：入库时间落库
         $order->operator_id = $operatorId;
         $order->updated_time = date('Y-m-d H:i:s');
         
@@ -495,7 +527,8 @@ class InboundOrderService
     private function createOrderItem(int $orderId, array $itemData): InboundOrderItem
     {
         // 验证产品
-        if (!Product::find($itemData['product_id'])) {
+        $product = Product::find($itemData['product_id']);
+        if (!$product) {
             throw new ValidateException('产品不存在');
         }
 
@@ -504,13 +537,22 @@ class InboundOrderService
             throw new ValidateException('库位不存在');
         }
 
+        // A4：按物资计量方式校验数量（计件正整数 / 长度重量 4 位小数），后端必须校验
+        try {
+            $product->assertQuantityValid((string) $itemData['quantity']);
+        } catch (\InvalidArgumentException $e) {
+            throw new ValidateException($e->getMessage());
+        }
+
         $data = [
             'inbound_order_id' => $orderId,
             'product_id' => $itemData['product_id'],
             'location_id' => $itemData['location_id'],
-            'quantity' => $itemData['quantity'],
+            'unit' => $product->unit ?: '件',                       // A6：单位快照
+            'requires_serial' => $product->requiresSerial() ? 1 : 0, // E1：由计量方式推导
+            'quantity' => (string) $itemData['quantity'],
             'received_quantity' => 0,
-            'unit_price' => $itemData['unit_price'] ?? 0,
+            'unit_price' => (string) ($itemData['unit_price'] ?? 0),
             'batch_number' => $itemData['batch_number'] ?? null,
             'expiry_date' => $itemData['expiry_date'] ?? null,
             'notes' => $itemData['notes'] ?? '',
@@ -529,23 +571,27 @@ class InboundOrderService
      * @param string $expiryDate 过期日期
      * @return void
      */
-    private function updateInventory(int $productId, int $locationId, int $quantity, string $batchNumber = null, string $expiryDate = null): void
+    private function updateInventory(int $productId, int $locationId, $quantity, string $batchNumber = null, string $expiryDate = null): void
     {
+        // 并发安全：行锁，禁止先查后改
         $inventory = Inventory::where('product_id', $productId)
             ->where('location_id', $locationId)
             ->where('batch_number', $batchNumber)
+            ->lock(true)
             ->find();
 
         if ($inventory) {
-            $inventory->quantity += $quantity;
+            $inventory->quantity = bcadd((string)$inventory->quantity, (string)$quantity, 4);
+            $inventory->available_quantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
             $inventory->updated_time = date('Y-m-d H:i:s');
             $inventory->save();
         } else {
             Inventory::create([
                 'product_id' => $productId,
                 'location_id' => $locationId,
-                'quantity' => $quantity,
+                'quantity' => (string) $quantity,
                 'reserved_quantity' => 0,
+                'available_quantity' => (string) $quantity,
                 'batch_number' => $batchNumber,
                 'expiry_date' => $expiryDate,
                 'created_time' => date('Y-m-d H:i:s')
@@ -571,7 +617,8 @@ class InboundOrderService
                 ->find();
 
             if ($inventory) {
-                $inventory->quantity -= $item->received_quantity;
+                $inventory->quantity = bcsub((string)$inventory->quantity, (string)$item->received_quantity, 4);
+                $inventory->available_quantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
                 $inventory->updated_time = date('Y-m-d H:i:s');
                 $inventory->save();
 

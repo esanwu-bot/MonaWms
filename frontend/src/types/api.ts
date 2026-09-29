@@ -171,6 +171,11 @@ export interface Product {
   category_id: string;
   category?: Category;
   unit: string;
+  /** P8 A1 计量方式：count 计件 / length 长度 / weight 重量 / area 面积 / volume 体积 */
+  measure_type?: 'count' | 'length' | 'weight' | 'area' | 'volume';
+  measure_type_text?: string;
+  /** P8 E1 是否需要序列号（由 measure_type 推导，计件类为 1） */
+  requires_serial?: number;
   price: number;              // API返回的是price字段
   unitPrice?: number;         // 保持兼容性
   min_stock: number;
@@ -205,6 +210,8 @@ export interface CreateProductRequest {
   firmwareVersion?: string;
   categoryId: string;
   unit: string;
+  /** P8 A1 计量方式 */
+  measureType?: 'count' | 'length' | 'weight' | 'area' | 'volume';
   unitPrice: number;
   minStock: number;
   maxStock: number;
@@ -292,6 +299,11 @@ export interface InboundOrder {
   warehouseId: string;
   warehouse?: Warehouse;
   supplierId?: string;
+  /** P8 I2 入库来源（字典 inbound_source） */
+  source?: string;
+  source_text?: string;
+  /** P8 C1 入库时间（业务发生时间，精确到时分秒） */
+  receivedAt?: string | null;
   status_text: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   totalQuantity: number;
   totalAmount: number;
@@ -323,6 +335,10 @@ export interface InboundOrderItem {
 export interface CreateInboundOrderRequest {
   warehouseId: string;
   supplierId?: string;
+  /** P8 I2 入库来源 */
+  source?: string;
+  /** P8 C1 入库时间 */
+  receivedAt?: string;
   notes?: string;
   items: {
     productId: string;
@@ -390,6 +406,14 @@ export interface OutboundOrder {
   warehouseId: string;
   warehouse?: Warehouse;
   customerId?: string;
+  /** P8 D2 领用单位 */
+  receiverUnit?: string;
+  /** P8 D2 领用人 */
+  receiverName?: string;
+  /** P8 D2 领用人手机号 */
+  receiverPhone?: string;
+  /** P8 C2 出库时间（业务发生时间，精确到时分秒） */
+  shippedAt?: string | null;
   status_text: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   totalQuantity: number;
   totalAmount: number;
@@ -439,6 +463,12 @@ export interface Customer {
 export interface CreateOutboundOrderRequest {
   warehouseId: string;
   customerId?: string;
+  /** P8 D2 领用信息 */
+  receiverUnit?: string;
+  receiverName?: string;
+  receiverPhone?: string;
+  /** P8 C2 出库时间 */
+  shippedAt?: string;
   notes?: string;
   items: {
     productId: string;

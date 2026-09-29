@@ -12,6 +12,7 @@ import {
   Space,
   Row,
   Col,
+  InputNumber,
   Table,
   Select,
   Tag,
@@ -20,8 +21,11 @@ import {
   Descriptions,
   Badge,
   FloatButton,
+  DatePicker,
   message
 } from 'antd';
+import dayjs from 'dayjs';
+import { getDictionaryItemsByTypeCode } from '../services/dictionaryService';
 import {
   SearchOutlined,
   PlusOutlined,
@@ -63,10 +67,40 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 const { Step } = Steps;
 
+// P8 I1：入库来源（字典 inbound_source，后端可维护，这里做兜底）
+const INBOUND_SOURCE_FALLBACK = [
+  { code: 'purchase', name: '采购入库' },
+  { code: 'transfer_in', name: '调拨入库' },
+  { code: 'return_in', name: '归还入库' },
+  { code: 'project_return', name: '项目退回' },
+  { code: 'borrow_return', name: '借用归还' },
+  { code: 'inventory_gain', name: '盘盈' },
+  { code: 'other', name: '其他' },
+];
+
+// 入库来源 -> 单据类型（后端 type 为必填枚举）
+const SOURCE_TO_TYPE: Record<string, string> = {
+  purchase: 'purchase',
+  transfer_in: 'transfer',
+  return_in: 'return',
+  project_return: 'return',
+  borrow_return: 'return',
+  inventory_gain: 'other',
+  other: 'other',
+};
+
+// 来源编码 -> 中文（P8 I3）
+const getSourceText = (code?: string) => {
+  if (!code) return '-';
+  const hit = INBOUND_SOURCE_FALLBACK.find((s) => s.code === code);
+  return hit ? hit.name : code;
+};
+
 // 入库单项验证
 const inboundOrderItemSchema = z.object({
   productId: z.string().min(1, '请选择产品'),
-  quantity: z.number().min(1, '数量必须大于0'),
+  // A4：数量允许小数（长度/重量类 4 位小数）；计件类在提交前按物资计量方式校验为正整数
+  quantity: z.number().positive('数量必须大于0'),
   unitPrice: z.number().min(0, '单价不能小于0'),
   batchNumber: z.string().optional(),
   expiryDate: z.string().optional(),
@@ -77,9 +111,20 @@ const inboundOrderItemSchema = z.object({
 const inboundOrderSchema = z.object({
   orderNumber: z.string().min(1, '请输入订单号'),
   warehouseId: z.string().min(1, '请选择仓库'),
+  source: z.string().default('purchase'),   // I2：来源
   supplierId: z.string().optional(),
+  receivedAt: z.string().optional(),        // C1：入库时间
   notes: z.string().optional(),
   items: z.array(inboundOrderItemSchema).min(1, '至少添加一个商品'),
+}).superRefine((data, ctx) => {
+  // I4：来源为采购入库时供应商必填，其他来源可选
+  if ((data.source || 'purchase') === 'purchase' && !data.supplierId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['supplierId'],
+      message: '来源为采购入库时，供应商必填'
+    });
+  }
 });
 
 type InboundOrderFormData = z.infer<typeof inboundOrderSchema>;
@@ -104,12 +149,15 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<InboundOrderFormData>({
     resolver: zodResolver(inboundOrderSchema),
     defaultValues: {
       orderNumber: order?.orderNumber || '',
       warehouseId: order?.warehouseId || '',
+      source: (order as any)?.source || 'purchase',        // I2
+      receivedAt: (order as any)?.receivedAt || '',         // C1
       supplierId: order?.supplierId || '',
       notes: order?.notes || '',
       items: order?.items || [{
@@ -155,11 +203,52 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
     },
   });
 
+  // 获取入库来源字典（I1：字典可后台维护，失败时用内置兜底）
+  const { data: sourceDictData } = useQuery({
+    queryKey: ['dictionary', 'items', 'inbound_source'],
+    queryFn: async () => {
+      const response = await getDictionaryItemsByTypeCode('inbound_source');
+      return Array.isArray(response?.data) ? response.data : [];
+    },
+    retry: false,
+  });
+  const sourceOptions = Array.isArray(sourceDictData) && sourceDictData.length > 0
+    ? sourceDictData.filter((item: any) => item.status !== 'inactive')
+    : INBOUND_SOURCE_FALLBACK;
+
+  // 监听来源与明细，用于条件必填与按计量方式控制数量精度
+  const watchSource = watch('source');
+  const watchItems = watch('items');
+  const isPurchaseSource = (watchSource || 'purchase') === 'purchase';
+
+  const productMap = React.useMemo(() => {
+    const map: Record<string, Product> = {};
+    if (Array.isArray(productsData)) {
+      (productsData as Product[]).forEach((p) => { map[String(p.id)] = p; });
+    }
+    return map;
+  }, [productsData]);
+
+  // A4：计件类数量必须为正整数，长度/重量类允许 4 位小数
+  const quantityMetaOf = (index: number) => {
+    const pid = String(watchItems?.[index]?.productId || '');
+    const product = productMap[pid];
+    const isCount = (product?.measure_type || 'count') === 'count';
+    return {
+      isCount,
+      unit: product?.unit || '件',
+      precision: isCount ? 0 : 4,
+      step: isCount ? 1 : 0.0001,
+    };
+  };
+
   React.useEffect(() => {
     if (open) {
       reset({
         orderNumber: order?.orderNumber || '',
         warehouseId: order?.warehouseId || '',
+        source: (order as any)?.source || 'purchase',        // I2
+        receivedAt: (order as any)?.receivedAt || '',         // C1
         supplierId: order?.supplierId || '',
         notes: order?.notes || '',
         items: order?.items || [{
@@ -175,6 +264,19 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
   }, [open, order, reset]);
 
   const handleFormSubmit = (data: InboundOrderFormData) => {
+    // A4：计件类物资数量必须为正整数（后端同样校验，这里做即时反馈）
+    for (let i = 0; i < data.items.length; i++) {
+      const meta = quantityMetaOf(i);
+      const qty = data.items[i].quantity;
+      if (meta.isCount && !Number.isInteger(qty)) {
+        message.error(`第 ${i + 1} 行：按「${meta.unit}」计件，数量必须为正整数`);
+        return;
+      }
+      if (!meta.isCount && qty <= 0) {
+        message.error(`第 ${i + 1} 行：数量必须大于 0`);
+        return;
+      }
+    }
     onSubmit(data);
   };
 
@@ -273,9 +375,62 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
               />
             </Form.Item>
           </Col>
+        </Row>
+
+        {/* I2 入库来源 + C1 入库时间 */}
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              label="来源"
+              validateStatus={errors.source ? 'error' : ''}
+              help={errors.source?.message}
+            >
+              <Controller
+                name="source"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    {...field}
+                    placeholder="请选择入库来源"
+                    disabled={loading}
+                  >
+                    {sourceOptions.map((item: any) => (
+                      <Option key={item.code} value={item.code}>{item.name}</Option>
+                    ))}
+                  </Select>
+                )}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="入库时间"
+              validateStatus={errors.receivedAt ? 'error' : ''}
+              help={errors.receivedAt?.message}
+            >
+              <Controller
+                name="receivedAt"
+                control={control}
+                render={({ field }) => (
+                  <DatePicker
+                    showTime
+                    style={{ width: '100%' }}
+                    placeholder="业务发生时间（精确到时分秒）"
+                    disabled={loading}
+                    value={field.value ? dayjs(field.value) : null}
+                    onChange={(v) => field.onChange(v ? v.format('YYYY-MM-DD HH:mm:ss') : '')}
+                  />
+                )}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
           <Col span={12}>
             <Form.Item
               label="供应商"
+              required={isPurchaseSource}
               validateStatus={errors.supplierId ? 'error' : ''}
               help={errors.supplierId?.message}
             >
@@ -373,10 +528,14 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                     name={`items.${index}.quantity`}
                     control={control}
                     render={({ field }) => (
-                      <Input
+                      <InputNumber
                         {...field}
-                        type="number"
-                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        style={{ width: '100%' }}
+                        min={0}
+                        // A4：计件类 step=1 无小数，长度/重量类允许 4 位小数
+                        step={quantityMetaOf(index).step}
+                        precision={quantityMetaOf(index).precision}
+                        addonAfter={quantityMetaOf(index).unit}
                         disabled={loading}
                       />
                     )}
@@ -534,6 +693,10 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
         <Descriptions column={2}>
           <Descriptions.Item label="入库单号">{order.orderNumber}</Descriptions.Item>
           <Descriptions.Item label="仓库">{order.warehouse?.name}</Descriptions.Item>
+          <Descriptions.Item label="来源">{getSourceText(order.source)}</Descriptions.Item>
+          <Descriptions.Item label="入库时间">
+            {order.receivedAt ? new Date(order.receivedAt).toLocaleString() : '-'}
+          </Descriptions.Item>
           <Descriptions.Item label="供应商">{order.supplierId}</Descriptions.Item>
           {order.notes && (
             <Descriptions.Item label="备注" span={2}>
@@ -743,10 +906,31 @@ const InboundPage: React.FC = () => {
   };
 
   const handleSubmit = (data: InboundOrderFormData) => {
+    // 后端接口字段为 snake_case（warehouse_id / supplier_id / items[].product_id ...）
+    const payload: Record<string, any> = {
+      warehouse_id: Number(data.warehouseId),
+      supplier_id: data.supplierId ? Number(data.supplierId) : null,
+      source: data.source || 'purchase',                 // I2
+      received_at: data.receivedAt || null,              // C1
+      type: SOURCE_TO_TYPE[data.source || 'purchase'] || 'purchase',
+      expected_date: data.receivedAt
+        ? String(data.receivedAt).slice(0, 10)
+        : new Date().toISOString().slice(0, 10),
+      notes: data.notes || '',
+      items: data.items.map((it) => ({
+        product_id: Number(it.productId),
+        quantity: it.quantity,
+        unit_price: it.unitPrice ?? 0,
+        batch_number: it.batchNumber || '',
+        expiry_date: it.expiryDate || null,
+        notes: '',
+      })),
+    };
+
     if (selectedOrder) {
-      updateMutation.mutate({ id: selectedOrder.id, data });
+      updateMutation.mutate({ id: selectedOrder.id, data: payload as any });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(payload as any);
     }
   };
 
@@ -937,8 +1121,18 @@ const InboundPage: React.FC = () => {
               dataIndex: ['warehouse', 'name'],
             },
             {
+              title: '来源',
+              dataIndex: 'source',
+              render: (text) => getSourceText(text),
+            },
+            {
               title: '供应商',
               dataIndex: ['supplier', 'name'],
+            },
+            {
+              title: '入库时间',
+              dataIndex: 'receivedAt',
+              render: (text) => (text ? new Date(text).toLocaleString() : '-'),
             },
             {
               title: '预期到货日期',

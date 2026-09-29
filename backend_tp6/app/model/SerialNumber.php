@@ -60,6 +60,26 @@ class SerialNumber extends Model
     const STATUS_IN_STOCK = 'in_stock';
     const STATUS_SOLD = 'sold';
     const STATUS_SCRAPPED = 'scrapped';
+    // P8 B1：对齐客户口径，状态挂在单件实物（SN）上
+    const STATUS_IN_USE   = 'in_use';     // 正在用
+    const STATUS_REPAIRING = 'repairing'; // 返修中
+    const STATUS_TO_SCRAP = 'to_scrap';   // 待报废
+    
+    /**
+     * 允许的状态流转（B3：待报废只能由管理员推进到已报废，不允许跳过）
+     * @return array
+     */
+    public static function statusTransitions(): array
+    {
+        return [
+            self::STATUS_IN_STOCK  => [self::STATUS_IN_USE, self::STATUS_REPAIRING, self::STATUS_TO_SCRAP, self::STATUS_SCRAPPED],
+            self::STATUS_SOLD      => [self::STATUS_IN_USE, self::STATUS_REPAIRING, self::STATUS_TO_SCRAP, self::STATUS_SCRAPPED],
+            self::STATUS_IN_USE    => [self::STATUS_REPAIRING, self::STATUS_TO_SCRAP, self::STATUS_SCRAPPED],
+            self::STATUS_REPAIRING => [self::STATUS_IN_USE, self::STATUS_TO_SCRAP, self::STATUS_SCRAPPED],
+            self::STATUS_TO_SCRAP  => [self::STATUS_SCRAPPED],
+            self::STATUS_SCRAPPED  => []
+        ];
+    }
     
     /**
      * 获取状态中文名
@@ -67,9 +87,12 @@ class SerialNumber extends Model
     public function getStatusTextAttr($value, $data)
     {
         $statuses = [
-            self::STATUS_IN_STOCK => '在库',
-            self::STATUS_SOLD => '已售出',
-            self::STATUS_SCRAPPED => '已报废'
+            self::STATUS_IN_STOCK  => '在库',
+            self::STATUS_SOLD      => '已出库',
+            self::STATUS_SCRAPPED  => '已报废',
+            self::STATUS_IN_USE    => '正在用',
+            self::STATUS_REPAIRING => '返修中',
+            self::STATUS_TO_SCRAP  => '待报废'
         ];
         
         return $statuses[$data['status']] ?? '未知';
@@ -88,7 +111,7 @@ class SerialNumber extends Model
      */
     public function stock()
     {
-        return $this->belongsTo(Stock::class, 'stock_id');
+        return $this->belongsTo(Inventory::class, 'stock_id');
     }
     
     /**
@@ -96,7 +119,7 @@ class SerialNumber extends Model
      */
     public function inbound()
     {
-        return $this->belongsTo(Inbound::class, 'inbound_id');
+        return $this->belongsTo(InboundOrder::class, 'inbound_id');
     }
     
     /**
@@ -104,6 +127,67 @@ class SerialNumber extends Model
      */
     public function outbound()
     {
-        return $this->belongsTo(Outbound::class, 'outbound_id');
+        return $this->belongsTo(OutboundOrder::class, 'outbound_id');
+    }
+    
+    /**
+     * 关联变更历史
+     */
+    public function histories()
+    {
+        return $this->hasMany(SerialNumberHistory::class, 'serial_number_id');
+    }
+    
+    /**
+     * 变更单件状态并留痕（B2）
+     * 状态挂在单件实物上：在库 → 正在用 → 返修中 → 待报废 → 已报废
+     * @param string $to 目标状态
+     * @param int $operatorId 操作人
+     * @param string $reason 原因
+     * @param string $referenceType 关联单据类型
+     * @param int $referenceId 关联单据ID
+     * @return bool
+     * @throws \InvalidArgumentException 流转不允许
+     */
+    public function changeStatus(string $to, int $operatorId = 0, string $reason = '', string $referenceType = '', int $referenceId = 0): bool
+    {
+        $from = (string) $this->status;
+        $allowed = self::statusTransitions()[$from] ?? [];
+        
+        if (!in_array($to, $allowed, true)) {
+            throw new \InvalidArgumentException('不允许的状态流转：' . $from . ' → ' . $to);
+        }
+        
+        $this->status = $to;
+        $this->save();
+        
+        SerialNumberHistory::create([
+            'serial_number_id' => $this->id,
+            'event_type'       => $this->eventTypeOf($to),
+            'status_before'    => $from,
+            'status_after'     => $to,
+            'reference_type'   => $referenceType,
+            'reference_id'     => $referenceId,
+            'operator_id'      => $operatorId,
+            'notes'            => $reason,
+            'created_at'       => date('Y-m-d H:i:s')
+        ]);
+        
+        return true;
+    }
+    
+    /**
+     * 状态 -> 历史事件类型
+     */
+    private function eventTypeOf(string $status): string
+    {
+        $map = [
+            self::STATUS_IN_USE    => 'install',
+            self::STATUS_REPAIRING => 'repair',
+            self::STATUS_TO_SCRAP  => 'repair',
+            self::STATUS_SCRAPPED  => 'scrap',
+            self::STATUS_IN_STOCK  => 'return'
+        ];
+        return $map[$status] ?? 'return';
     }
 }
