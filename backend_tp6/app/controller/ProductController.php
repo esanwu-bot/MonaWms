@@ -517,16 +517,21 @@ class ProductController extends BaseController
             $sheet = $spreadsheet->getActiveSheet();
             
             $headers = [
-                'A1' => 'SKU*',
+                'A1' => '设备来源*',
                 'B1' => '产品名称*',
                 'C1' => '分类',
-                'D1' => '单位',
-                'E1' => '计量方式',
-                'F1' => '单价',
-                'G1' => '成本价',
-                'H1' => '最小库存',
-                'I1' => '最大库存',
-                'J1' => '备注'
+                'D1' => '品牌',
+                'E1' => '型号',
+                'F1' => '序列号',
+                'G1' => '生产日期',
+                'H1' => '保修期(月)',
+                'I1' => '单位',
+                'J1' => '计量方式',
+                'K1' => '单价',
+                'L1' => '成本价',
+                'M1' => '最小库存',
+                'N1' => '最大库存',
+                'O1' => '备注'
             ];
             foreach ($headers as $cell => $value) {
                 $sheet->setCellValue($cell, $value);
@@ -536,25 +541,35 @@ class ProductController extends BaseController
             $sheet->setCellValue('A2', 'SKU-DEMO-001');
             $sheet->setCellValue('B2', '5G基站设备');
             $sheet->setCellValue('C2', '基站设备');
-            $sheet->setCellValue('D2', '台');
-            $sheet->setCellValue('E2', 'count');
-            $sheet->setCellValue('F2', '12000');
-            $sheet->setCellValue('G2', '9000');
-            $sheet->setCellValue('H2', '5');
-            $sheet->setCellValue('I2', '100');
-            $sheet->setCellValue('J2', '示例数据，导入前请删除本行');
+            $sheet->setCellValue('D2', '华为');
+            $sheet->setCellValue('E2', 'AAU5613');
+            $sheet->setCellValue('F2', 'SN-DEMO-0001');
+            $sheet->setCellValue('G2', '2025-03-12');
+            $sheet->setCellValue('H2', '36');
+            $sheet->setCellValue('I2', '台');
+            $sheet->setCellValue('J2', 'count');
+            $sheet->setCellValue('K2', '12000');
+            $sheet->setCellValue('L2', '9000');
+            $sheet->setCellValue('M2', '5');
+            $sheet->setCellValue('N2', '100');
+            $sheet->setCellValue('O2', '示例数据，导入前请删除本行');
             $sheet->setCellValue('A3', 'SKU-DEMO-002');
             $sheet->setCellValue('B3', '光缆-单模');
             $sheet->setCellValue('C3', '光缆');
-            $sheet->setCellValue('D3', '米');
-            $sheet->setCellValue('E3', 'length');
-            $sheet->setCellValue('J3', '线材类按长度计量，无需序列号');
+            $sheet->setCellValue('D3', '烽火');
+            $sheet->setCellValue('E3', 'GYXTW-12');
+            $sheet->setCellValue('G3', '2025-01-08');
+            $sheet->setCellValue('H3', '12');
+            $sheet->setCellValue('I3', '米');
+            $sheet->setCellValue('J3', 'length');
+            $sheet->setCellValue('O3', '线材类按长度计量，无需序列号');
             
-            foreach (['A' => 16, 'B' => 24, 'C' => 14, 'D' => 8, 'E' => 12, 'F' => 10, 'G' => 10, 'H' => 10, 'I' => 10, 'J' => 30] as $col => $width) {
+            foreach (['A' => 16, 'B' => 24, 'C' => 14, 'D' => 14, 'E' => 16, 'F' => 18, 'G' => 14,
+                      'H' => 12, 'I' => 8, 'J' => 12, 'K' => 10, 'L' => 10, 'M' => 10, 'N' => 10, 'O' => 30] as $col => $width) {
                 $sheet->getColumnDimension($col)->setWidth($width);
             }
             
-            $sheet->getStyle('A1:J1')->applyFromArray([
+            $sheet->getStyle('A1:O1')->applyFromArray([
                 'font' => ['bold' => true],
                 'fill' => [
                     'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
@@ -595,6 +610,81 @@ class ProductController extends BaseController
      * - 单位填中文名时自动映射单位字典 code，映射不到按原文入库
      * - 计量方式仅允许 count/length/weight/area/volume，默认 count；requires_serial 由计量方式推导
      */
+    /**
+     * 导入列定位：按表头名称匹配（兼容新旧模板）
+     * 表头含空格、*、全角括号都会被归一化；识别不到任何已知表头时回退旧模板列序
+     */
+    private function resolveImportColumns(array $data): array
+    {
+        $aliases = [
+            'sku'             => ['设备来源', 'sku', '设备编号'],
+            'name'            => ['产品名称', '设备名称', '名称'],
+            'category'        => ['分类'],
+            'brand'           => ['品牌'],
+            'model'           => ['型号'],
+            'barcode'         => ['序列号', '条码', '条形码'],
+            'production_date' => ['生产日期', '购买日期'],
+            'warranty'        => ['保修期(月)', '保修期（月）', '保修期'],
+            'unit'            => ['单位', '计量单位'],
+            'measure'         => ['计量方式'],
+            'price'           => ['单价'],
+            'cost'            => ['成本价'],
+            'min'             => ['最小库存'],
+            'max'             => ['最大库存'],
+            'description'     => ['备注', '描述'],
+        ];
+
+        $header = $data[0] ?? [];
+        $map = [];
+        foreach ($header as $idx => $raw) {
+            $key = strtolower(trim(str_replace(['*', ' ', '　'], '', (string)$raw)));
+            if ($key === '') {
+                continue;
+            }
+            foreach ($aliases as $field => $names) {
+                if (in_array($key, $names, true) && !isset($map[$field])) {
+                    $map[$field] = $idx;
+                    break;
+                }
+            }
+        }
+
+        // 必须能定位 SKU / 产品名称，否则认定为无表头的旧文件，按固定列序兜底
+        if (!isset($map['sku']) || !isset($map['name'])) {
+            return [
+                'sku' => 0, 'name' => 1, 'category' => 2, 'unit' => 3, 'measure' => 4,
+                'price' => 5, 'cost' => 6, 'min' => 7, 'max' => 8, 'description' => 9,
+            ];
+        }
+
+        return $map;
+    }
+
+    /**
+     * 生产日期归一化：支持 YYYY-MM-DD / YYYY/MM/DD 文本与 Excel 日期序列号
+     * 空值返回 null；无法解析返回 false
+     */
+    private function normalizeImportDate($value)
+    {
+        $raw = trim((string)($value ?? ''));
+        if ($raw === '') {
+            return null;
+        }
+
+        // Excel 日期序列号（1900 起算）
+        if (is_numeric($raw) && (float)$raw > 20000) {
+            $dt = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float)$raw);
+            return $dt->format('Y-m-d');
+        }
+
+        $raw = str_replace(['/', '.'], '-', $raw);
+        $ts = strtotime($raw);
+        if ($ts === false) {
+            return false;
+        }
+        return date('Y-m-d', $ts);
+    }
+
     public function batchImport(Request $request)
     {
         try {
@@ -610,7 +700,9 @@ class ProductController extends BaseController
             
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getPathname());
             $data = $spreadsheet->getActiveSheet()->toArray();
-            
+
+            // 列定位：优先按表头名称匹配（模板已改名/加列），表头识别不了时回退旧模板固定列序
+            $colMap = $this->resolveImportColumns($data);
             // 移除表头并过滤空行
             array_shift($data);
             $data = array_filter($data, function ($row) {
@@ -624,6 +716,7 @@ class ProductController extends BaseController
             $categoryMap = Category::column('id', 'name');
             // 两表均有 code/name 列，直接 column('code') 会产生 SQL 歧义，改用显式字段
             $unitDict = [];
+            $codeToUnitName = [];
             $unitRows = Db::name('dictionary_items')
                 ->alias('i')
                 ->join('dictionary_types t', 't.id = i.type_id')
@@ -633,8 +726,10 @@ class ProductController extends BaseController
                 ->select();
             foreach ($unitRows as $u) {
                 $unitDict[$u['item_name']] = $u['item_code'];
+                $codeToUnitName[$u['item_code']] = $u['item_name'];
             }
             $existingSkus = array_flip(Product::column('sku'));
+            $existingBarcodes = array_flip(array_filter(Product::column('barcode')));
             
             $allowedMeasure = ['count', 'length', 'weight', 'area', 'volume'];
             $skuSeen = [];
@@ -643,10 +738,15 @@ class ProductController extends BaseController
             $warnings = [];
             $line = 1; // Excel 表头占第 1 行
             
+            $col = function (array $row, string $key) use ($colMap) {
+                $idx = $colMap[$key] ?? null;
+                return $idx === null ? null : ($row[$idx] ?? null);
+            };
+
             foreach ($data as $row) {
                 $line++;
-                $sku = trim((string)($row[0] ?? ''));
-                $name = trim((string)($row[1] ?? ''));
+                $sku = trim((string)($col($row, 'sku') ?? ''));
+                $name = trim((string)($col($row, 'name') ?? ''));
                 
                 if ($sku === '' && $name === '') {
                     continue;
@@ -668,7 +768,7 @@ class ProductController extends BaseController
                 $skuSeen[$sku] = true;
                 
                 // 计量方式
-                $measure = strtolower(trim((string)($row[4] ?? '')));
+                $measure = strtolower(trim((string)($col($row, 'measure') ?? '')));
                 if ($measure === '') {
                     $measure = 'count';
                 }
@@ -679,7 +779,7 @@ class ProductController extends BaseController
                 
                 // 分类（匹配不到仅警告，不阻塞）
                 $categoryId = null;
-                $categoryName = trim((string)($row[2] ?? ''));
+                $categoryName = trim((string)($col($row, 'category') ?? ''));
                 if ($categoryName !== '') {
                     if (isset($categoryMap[$categoryName])) {
                         $categoryId = (int) $categoryMap[$categoryName];
@@ -688,30 +788,65 @@ class ProductController extends BaseController
                     }
                 }
                 
-                // 单位：中文名映射字典 code，否则原样入库
-                $unitName = trim((string)($row[3] ?? ''));
-                $unit = $unitName !== '' ? ($unitDict[$unitName] ?? $unitName) : 'pcs';
-                
+                // 单位：与产品表单口径一致，直接存中文名（如 台/米/千克），填 code 时映射回中文名
+                $unitName = trim((string)($col($row, 'unit') ?? ''));
+                if ($unitName === '') {
+                    $unit = '台';
+                } else {
+                    $unit = $codeToUnitName[$unitName] ?? $unitName;
+                }
+
+                // 新增设备字段：品牌 / 型号 / 序列号 / 生产日期 / 保修期 / 备注
+                $brand = trim((string)($col($row, 'brand') ?? ''));
+                $modelNumber = trim((string)($col($row, 'model') ?? ''));
+                $barcode = trim((string)($col($row, 'barcode') ?? ''));
+                if ($barcode !== '' && isset($existingBarcodes[$barcode])) {
+                    $warnings[] = "第 {$line} 行：序列号[{$barcode}] 已存在，已留空";
+                    $barcode = '';
+                }
+                $productionDate = $this->normalizeImportDate($col($row, 'production_date'));
+                if ($productionDate === false) {
+                    $errors[] = ['row' => $line, 'message' => '生产日期格式无效，应为 YYYY-MM-DD'];
+                    continue;
+                }
+                $warrantyRaw = trim((string)($col($row, 'warranty') ?? ''));
+                if ($warrantyRaw !== '' && (!is_numeric($warrantyRaw) || (int)$warrantyRaw < 0)) {
+                    $errors[] = ['row' => $line, 'message' => '保修期(月) 必须为非负整数'];
+                    continue;
+                }
+                $warrantyMonths = $warrantyRaw === '' ? 0 : (int) $warrantyRaw;
+                $description = trim((string)($col($row, 'description') ?? ''));
+
                 // 数值字段
-                $price = ($row[5] ?? '') === '' ? 0 : (float) $row[5];
-                $costPrice = ($row[6] ?? '') === '' ? 0 : (float) $row[6];
+                $priceRaw = $col($row, 'price');
+                $costRaw = $col($row, 'cost');
+                $price = ($priceRaw ?? '') === '' ? 0 : (float) $priceRaw;
+                $costPrice = ($costRaw ?? '') === '' ? 0 : (float) $costRaw;
                 if ($price < 0 || $costPrice < 0) {
                     $errors[] = ['row' => $line, 'message' => '单价/成本价不能为负数'];
                     continue;
                 }
-                
+
+                $minRaw = $col($row, 'min');
+                $maxRaw = $col($row, 'max');
                 $rows[] = [
-                    'sku'             => $sku,
-                    'name'            => $name,
-                    'category_id'     => $categoryId,
-                    'unit'            => $unit,
-                    'measure_type'    => $measure,
-                    'requires_serial' => $measure === 'count' ? 1 : 0,
-                    'price'           => number_format($price, 4, '.', ''),
-                    'cost_price'      => number_format($costPrice, 4, '.', ''),
-                    'min_stock'       => is_numeric($row[7] ?? '') ? (int) $row[7] : 0,
-                    'max_stock'       => is_numeric($row[8] ?? '') ? (int) $row[8] : 0,
-                    'status'          => 'active'
+                    'sku'              => $sku,
+                    'name'             => $name,
+                    'category_id'      => $categoryId,
+                    'brand'            => $brand !== '' ? $brand : null,
+                    'model_number'     => $modelNumber !== '' ? $modelNumber : null,
+                    'barcode'          => $barcode !== '' ? $barcode : null,
+                    'production_date'  => $productionDate,
+                    'warranty_months'  => $warrantyMonths,
+                    'unit'             => $unit,
+                    'measure_type'     => $measure,
+                    'requires_serial'  => $measure === 'count' ? 1 : 0,
+                    'price'            => number_format($price, 4, '.', ''),
+                    'cost_price'       => number_format($costPrice, 4, '.', ''),
+                    'min_stock'        => is_numeric($minRaw ?? '') ? (int) $minRaw : 0,
+                    'max_stock'        => is_numeric($maxRaw ?? '') ? (int) $maxRaw : 0,
+                    'description'      => $description !== '' ? $description : null,
+                    'status'           => 'active'
                 ];
             }
             

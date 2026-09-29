@@ -1190,7 +1190,7 @@ const ProductsPage: React.FC = () => {
             showIcon
             style={{ marginBottom: 16 }}
             message="请使用「下载模板」提供的 Excel 格式"
-            description="必填：SKU、产品名称；可选：分类（按名称匹配）、单位、计量方式（count/length/weight/area/volume）、单价、成本价、最小/最大库存、备注。SKU 重复的行会被拒绝并提示行号。"
+            description="必填：设备来源（SKU）、产品名称；可选：分类（按名称匹配）、品牌、型号、序列号、生产日期（YYYY-MM-DD）、保修期（月）、单位、计量方式（count/length/weight/area/volume）、单价、成本价、最小/最大库存、备注。表头按名称识别，旧模板也能导入；设备来源重复的行会被拒绝并提示行号。"
           />
           <Upload
             accept=".xlsx,.xls"
