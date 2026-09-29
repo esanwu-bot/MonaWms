@@ -223,6 +223,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
   const watchSource = watch('source');
   const watchItems = watch('items');
   const isPurchaseSource = (watchSource || 'purchase') === 'purchase';
+  const isTransferSource = (watchSource || '') === 'transfer_in';   // P9+：调拨入库
 
   const productMap = React.useMemo(() => {
     const map: Record<string, Product> = {};
@@ -288,6 +289,11 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
         receivedAt: (order as any)?.receivedAt || '',         // C1
         supplierId: order?.supplierId || '',
         notes: order?.notes || '',
+        // P9+：调拨信息回填（列表/详情为 snake_case）
+        transferFrom: (order as any)?.transfer_from || (order as any)?.transferFrom || '',
+        transferRemark: (order as any)?.transfer_remark || (order as any)?.transferRemark || '',
+        handlerName: (order as any)?.handler_name || (order as any)?.handlerName || '',
+        handlerPhone: (order as any)?.handler_phone || (order as any)?.handlerPhone || '',
         items: order?.items || [{
           productId: '',
           quantity: 1,
@@ -313,6 +319,11 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
         message.error(`第 ${i + 1} 行：数量必须大于 0`);
         return;
       }
+    }
+    // P9+：调拨入库含无设备编号物资时，调拨说明必填（后端同样校验）
+    if ((data.source || '') === 'transfer_in' && hasNoSerialItem && !String(data.transferRemark || '').trim()) {
+      message.error('调拨入库含无设备编号（非计件/散料）物资时，请填写调拨说明：从哪里调拨到哪里、经手人姓名与电话');
+      return;
     }
     onSubmit(data);
   };
@@ -497,6 +508,91 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
           <Col span={12} />
         </Row>
 
+        {/* P9+：调拨信息（无设备编号的设备调拨必须留依据：从哪里调拨到哪里、经手人、电话） */}
+        {isTransferSource && (
+          <>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="调出仓库/地点"
+                  help="从哪里调拨（调入仓库为上方已选仓库）"
+                >
+                  <Controller
+                    name="transferFrom"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        placeholder="如：备件仓 / XX基站"
+                        disabled={loading}
+                      />
+                    )}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="经手人姓名">
+                  <Controller
+                    name="handlerName"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        placeholder="调拨经手人姓名"
+                        disabled={loading}
+                      />
+                    )}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item label="经手人电话">
+                  <Controller
+                    name="handlerPhone"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        placeholder="手机号 / 座机"
+                        disabled={loading}
+                      />
+                    )}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12} />
+            </Row>
+
+            <Form.Item
+              label="调拨说明"
+              required={hasNoSerialItem}
+              validateStatus={errors.transferRemark ? 'error' : ''}
+              help={
+                errors.transferRemark?.message
+                || (hasNoSerialItem
+                  ? '当前明细含无设备编号（非计件/散料）物资，必须注明从哪里调拨到哪里及依据'
+                  : '无设备编号的调拨请注明从哪里调拨到哪里')
+              }
+            >
+              <Controller
+                name="transferRemark"
+                control={control}
+                render={({ field }) => (
+                  <Input.TextArea
+                    {...field}
+                    rows={2}
+                    placeholder="例：从备件仓调拨至本仓，无设备编号，依据：XX项目拆回设备清单（2026-09-29）"
+                    disabled={loading}
+                  />
+                )}
+              />
+            </Form.Item>
+          </>
+        )}
+
         <Form.Item label="备注">
           <Controller
             name="notes"
@@ -666,6 +762,11 @@ interface DetailOrder {
   received_at?: string | null;
   expected_date?: string | null;
   notes?: string;
+  // P9+：调拨信息（无设备编号的调拨依据）
+  transfer_from?: string | null;
+  transfer_remark?: string | null;
+  handler_name?: string | null;
+  handler_phone?: string | null;
   items: DetailOrderItem[];
   statistics?: {
     total_items: number;
@@ -1073,6 +1174,21 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
             <Descriptions.Item label="收货进度">
               {receivedQty} / {totalQty}（{order?.statistics?.completion_rate ?? 0}%）
             </Descriptions.Item>
+            {/* P9+：调拨信息（无设备编号的调拨依据） */}
+            {order?.transfer_remark && (
+              <Descriptions.Item label="调拨说明" span={2}>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{order.transfer_remark}</div>
+              </Descriptions.Item>
+            )}
+            {order?.transfer_from && (
+              <Descriptions.Item label="调出仓库/地点">{order.transfer_from}</Descriptions.Item>
+            )}
+            {order?.handler_name && (
+              <Descriptions.Item label="经手人">{order.handler_name}</Descriptions.Item>
+            )}
+            {order?.handler_phone && (
+              <Descriptions.Item label="经手人电话">{order.handler_phone}</Descriptions.Item>
+            )}
             {order?.notes && (
               <Descriptions.Item label="备注" span={2}>
                 {order.notes}
@@ -1311,6 +1427,11 @@ const InboundPage: React.FC = () => {
         ? String(data.receivedAt).slice(0, 10)
         : new Date().toISOString().slice(0, 10),
       notes: data.notes || '',
+      // P9+：调拨信息（无设备编号的调拨依据）
+      transfer_from: data.transferFrom || '',
+      transfer_remark: data.transferRemark || '',
+      handler_name: data.handlerName || '',
+      handler_phone: data.handlerPhone || '',
       items: data.items.map((it) => ({
         product_id: Number(it.productId),
         quantity: it.quantity,
@@ -1518,6 +1639,29 @@ const InboundPage: React.FC = () => {
             {
               title: '供应商',
               dataIndex: ['supplier', 'name'],
+            },
+            {
+              // P9+：调拨信息（无设备编号的调拨依据）
+              title: '调拨信息',
+              dataIndex: 'transfer_remark',
+              width: 260,
+              render: (_: any, record: any) => {
+                if (record.source !== 'transfer_in') return '-';
+                const meta = [
+                  record.transfer_from ? `从 ${record.transfer_from}` : '',
+                  record.handler_name ? `经手人：${record.handler_name}` : '',
+                  record.handler_phone ? `电话：${record.handler_phone}` : '',
+                ].filter(Boolean).join(' ｜ ');
+                if (!record.transfer_remark && !meta) return '-';
+                return (
+                  <div>
+                    {record.transfer_remark && (
+                      <div style={{ whiteSpace: 'pre-wrap' }}>{record.transfer_remark}</div>
+                    )}
+                    {meta && <Text type="secondary">{meta}</Text>}
+                  </div>
+                );
+              },
             },
             {
               title: '入库时间',

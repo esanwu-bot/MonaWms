@@ -237,6 +237,11 @@ class InboundOrderController extends BaseController
             'type' => 'require|in:purchase,return,transfer,other',
             'expected_date' => 'require|date',
             'notes' => 'max:500',
+            // P9+：调拨说明（无设备编号的调拨须注明从哪里调拨到哪里、经手人）
+            'transfer_from' => 'max:120',
+            'transfer_remark' => 'max:500',
+            'handler_name' => 'max:50',
+            'handler_phone' => 'max:30',
             'items' => 'require|array',
             // A4：数量允许小数（计件类在下方按物资计量方式二次校验）
             'items.*.quantity' => 'require|float|>:0',
@@ -254,6 +259,19 @@ class InboundOrderController extends BaseController
         $source = $data['source'] ?? 'purchase';
         if ($source === 'purchase' && empty($data['supplier_id'])) {
             return Response::validateError('来源为采购入库时，供应商必填');
+        }
+
+        // P9+：调拨入库且含无设备编号（非计件）物资时，必须填写调拨说明
+        if ($source === 'transfer_in') {
+            $productIds = array_column($data['items'], 'product_id');
+            $products = Product::whereIn('id', $productIds)->select();
+            $hasNoSerial = false;
+            foreach ($products as $p) {
+                if (!$p->requiresSerial()) { $hasNoSerial = true; break; }
+            }
+            if ($hasNoSerial && trim((string) ($data['transfer_remark'] ?? '')) === '') {
+                return Response::validateError('调拨入库含无设备编号（非计件）物资时，请填写调拨说明：从哪里调拨到哪里、经手人姓名与电话');
+            }
         }
         
         Db::startTrans();
@@ -284,6 +302,11 @@ class InboundOrderController extends BaseController
             $order->type = $data['type'];
             $order->expected_date = $data['expected_date'];
             $order->notes = $data['notes'] ?? '';
+            // P9+：调拨说明（无设备编号的调拨依据）
+            $order->transfer_from = $data['transfer_from'] ?? '';
+            $order->transfer_remark = $data['transfer_remark'] ?? '';
+            $order->handler_name = $data['handler_name'] ?? '';
+            $order->handler_phone = $data['handler_phone'] ?? '';
             $order->save();
             
             // 创建入库单明细
@@ -669,7 +692,12 @@ class InboundOrderController extends BaseController
             'received_at' => 'date',
             'type' => 'in:purchase,return,transfer,other',
             'expected_date' => 'date',
-            'notes' => 'max:500'
+            'notes' => 'max:500',
+            // P9+：调拨说明字段
+            'transfer_from' => 'max:120',
+            'transfer_remark' => 'max:500',
+            'handler_name' => 'max:50',
+            'handler_phone' => 'max:30'
         ]);
         
         if (!$validate->check($data)) {
@@ -705,8 +733,11 @@ class InboundOrderController extends BaseController
                 }
             }
             
-            // 更新字段（I2/C1：来源与入库时间同样可改）
-            $updateFields = ['warehouse_id', 'supplier_id', 'type', 'expected_date', 'notes', 'source', 'received_at'];
+            // 更新字段（I2/C1：来源与入库时间同样可改；P9+：调拨说明可改）
+            $updateFields = [
+                'warehouse_id', 'supplier_id', 'type', 'expected_date', 'notes', 'source', 'received_at',
+                'transfer_from', 'transfer_remark', 'handler_name', 'handler_phone'
+            ];
             
             // I5：来源变更留痕
             $sourceBefore = (string) $order->source;

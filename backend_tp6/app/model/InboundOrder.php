@@ -60,6 +60,10 @@ class InboundOrder extends Model
         'received_date',
         'received_at',   // C1：入库时间
         'source',        // I2：入库来源（字典 inbound_source）
+        'transfer_from',     // P9+：调出仓库/地点（从哪里调拨）
+        'transfer_remark',   // P9+：调拨说明（无设备编号调拨须注明从哪到哪）
+        'handler_name',      // P9+：经手人姓名
+        'handler_phone',     // P9+：经手人电话
         'notes',
         'created_at',
         'updated_at',

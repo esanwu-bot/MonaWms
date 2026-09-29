@@ -312,6 +312,11 @@ export interface InboundOrder {
   /** P8 C1 入库时间（业务发生时间，精确到时分秒） */
   receivedAt?: string | null;
   received_at?: string | null;
+  /** P9+ 调拨信息：调出仓库/地点、调拨说明、经手人、电话 */
+  transfer_from?: string | null;
+  transfer_remark?: string | null;
+  handler_name?: string | null;
+  handler_phone?: string | null;
   /** 单据状态码（后端原始值：pending/approved/received/rejected） */
   status?: string;
   /** 状态中文文本（后端 getStatusTextAttr 输出） */
