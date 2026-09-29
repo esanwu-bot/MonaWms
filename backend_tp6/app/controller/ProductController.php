@@ -161,7 +161,7 @@ class ProductController extends BaseController
             'min_stock' => 'integer|>=:0',
             'max_stock' => 'integer|>=:0',
             'project_id' => 'integer',
-            'status' => 'in:active,inactive'
+            'status' => 'in:active,inactive,repairing,to_scrap'
         ]);
         
         if (!$validate->check($data)) {
@@ -258,7 +258,7 @@ class ProductController extends BaseController
             'min_stock' => 'integer|>=:0',
             'max_stock' => 'integer|>=:0',
             'project_id' => 'integer',
-            'status' => 'in:active,inactive'
+            'status' => 'in:active,inactive,repairing,to_scrap'
         ]);
         
         if (!$validate->check($data)) {

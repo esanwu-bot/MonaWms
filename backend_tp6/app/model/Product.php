@@ -80,9 +80,11 @@ class Product extends Model
     /**
      * 状态枚举
      */
-    const STATUS_ACTIVE = 'active';
+    const STATUS_ACTIVE = 'active';           // 正常在用
     const STATUS_INACTIVE = 'inactive';
     const STATUS_DISCONTINUED = 'discontinued';
+    const STATUS_REPAIRING = 'repairing';     // 返修中
+    const STATUS_TO_SCRAP = 'to_scrap';       // 待报废
     
     /**
      * P8 计量方式枚举（A1）
@@ -156,9 +158,11 @@ class Product extends Model
     public function getStatusTextAttr($value, $data)
     {
         $statuses = [
-            self::STATUS_ACTIVE => '启用',
+            self::STATUS_ACTIVE => '正常在用',
             self::STATUS_INACTIVE => '禁用',
-            self::STATUS_DISCONTINUED => '停产'
+            self::STATUS_DISCONTINUED => '停产',
+            self::STATUS_REPAIRING => '返修中',
+            self::STATUS_TO_SCRAP => '待报废'
         ];
         
         return $statuses[$data['status']] ?? '未知';

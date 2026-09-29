@@ -118,6 +118,8 @@ const productSchema = z.object({
   maxStock: z.number().min(0, '最大库存不能为负数'),
   barcode: z.string().optional(),
   barcodeImage: z.string().optional(),
+  // 状态：正常在用 / 返修中 / 待报废（active / repairing / to_scrap）
+  status: z.enum(['active', 'repairing', 'to_scrap']).optional(),
   projectId: z.string().optional(),
 });
 
@@ -166,6 +168,9 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
       categoryPath: [] as string[],
       unit: product?.unit || '',
       measureType: (product?.measure_type as any) || 'count',
+      status: (['active', 'repairing', 'to_scrap'].includes(String((product as any)?.status))
+        ? (product as any).status
+        : 'active') as any,
       unitPrice: product?.price || 0,
       minStock: product?.min_stock || 0,
       maxStock: product?.max_stock || 0,
@@ -269,6 +274,9 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
         categoryPath: findCategoryPath(categoryTree, product?.category_id),
         unit: product?.unit || '',
         measureType: (product?.measure_type as any) || 'count',
+        status: (['active', 'repairing', 'to_scrap'].includes(String((product as any)?.status))
+          ? (product as any).status
+          : 'active') as any,
         unitPrice: product?.price || 0,
         minStock: product?.min_stock || 0,
         maxStock: product?.max_stock || 0,
@@ -461,6 +469,25 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
                       placeholder="0 表示无保修"
                       disabled={loading}
                     />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="状态"
+                validateStatus={errors.status ? 'error' : ''}
+                help={errors.status?.message}
+              >
+                <Controller
+                  name="status"
+                  control={control}
+                  render={({ field }) => (
+                    <Select {...field} disabled={loading}>
+                      <Option value="active">正常在用</Option>
+                      <Option value="repairing">返修中</Option>
+                      <Option value="to_scrap">待报废</Option>
+                    </Select>
                   )}
                 />
               </Form.Item>
@@ -904,7 +931,7 @@ const ProductsPage: React.FC = () => {
       max_stock: data.maxStock ?? 0,
       barcode: data.barcode || null,
       barcode_image: data.barcodeImage || null,
-      status: 'active',
+      status: data.status || 'active',
       ...(data.projectId ? { project_id: Number(data.projectId) } : {}),
     };
 
@@ -983,11 +1010,18 @@ const ProductsPage: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (status: string) => (
-        <Tag color={status === 'active' ? 'green' : 'red'}>
-          {status === 'active' ? '启用' : '禁用'}
-        </Tag>
-      ),
+      // 状态口径：正常在用 / 返修中 / 待报废（历史禁用/停产值兼容显示）
+      render: (status: string) => {
+        const map: Record<string, { text: string; color: string }> = {
+          active: { text: '正常在用', color: 'green' },
+          repairing: { text: '返修中', color: 'orange' },
+          to_scrap: { text: '待报废', color: 'volcano' },
+          inactive: { text: '禁用', color: 'default' },
+          discontinued: { text: '停产', color: 'default' },
+        };
+        const conf = map[status] || { text: status, color: 'default' };
+        return <Tag color={conf.color}>{conf.text}</Tag>;
+      },
     },
     {
       title: '操作',
