@@ -79,7 +79,7 @@ const outboundItemSchema = z.object({
 
 // 出库单验证
 const outboundOrderSchema = z.object({
-  orderNumber: z.string().min(1, '请输入出库单号'),
+  orderNumber: z.string().optional(),        // 单号由后端自动生成（OUT+日期+流水号），前端只读
   warehouseId: z.string().min(1, '请选择仓库'),
   // D2：领用信息与「客户」并存，客户不再强制
   customerId: z.string().optional(),
@@ -188,7 +188,7 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
   React.useEffect(() => {
     if (open) {
       reset({
-        orderNumber: order?.orderNumber || `OUT${Date.now()}`,
+        orderNumber: order?.orderNumber || '',
         warehouseId: order?.warehouseId || '',
         customerId: order?.customerId || '',
         receiverUnit: (order as any)?.receiverUnit || '',
@@ -261,7 +261,7 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
         layout="vertical"
         onFinish={handleSubmit(handleFormSubmit)}
         initialValues={{
-          orderNumber: order?.orderNumber || `OUT${Date.now()}`,
+          orderNumber: order?.orderNumber || '',
           warehouseId: order?.warehouseId || '',
           customerId: order?.customerId || '',
           notes: order?.notes || '',
@@ -278,9 +278,7 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
           <Col span={12}>
             <Form.Item
               label="出库单号"
-              required
-              validateStatus={errors.orderNumber ? 'error' : ''}
-              help={errors.orderNumber?.message}
+              help="由系统自动生成，无需填写"
             >
               <Controller
                 name="orderNumber"
@@ -288,8 +286,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                 render={({ field }) => (
                   <Input
                     {...field}
-                    placeholder="请输入出库单号"
-                    disabled={loading || !!order}
+                    placeholder="保存后由系统自动生成（OUT+日期+流水号）"
+                    disabled
                   />
                 )}
               />
@@ -557,7 +555,7 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
         {fields.map((field, index) => (
           <Card key={field.id} style={{ marginBottom: 16, padding: 16 }}>
             <Row gutter={[16, 16]} align="middle">
-              <Col span={6}>
+              <Col span={8}>
                 <Form.Item
                   label="产品"
                   required
@@ -588,7 +586,7 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                   />
                 </Form.Item>
               </Col>
-              <Col span={4}>
+              <Col span={5}>
                 <Form.Item
                   label="请求数量"
                   required
@@ -633,30 +631,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                   </Form.Item>
                 </Col>
               )}
-              <Col span={4}>
-                <Form.Item
-                  label="单价"
-                  required
-                  validateStatus={errors.items?.[index]?.unitPrice ? 'error' : ''}
-                  help={errors.items?.[index]?.unitPrice?.message}
-                >
-                  <Controller
-                    name={`items.${index}.unitPrice`}
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        type="number"
-                        placeholder="请输入单价"
-                        disabled={loading}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                        prefix="¥"
-                      />
-                    )}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={order ? 4 : 6}>
+              {/* 单价字段按业务要求隐藏，提交时默认 0 */}
+              <Col span={order ? 5 : 9}>
                 <Form.Item
                   label="备注"
                   validateStatus={errors.items?.[index]?.remark ? 'error' : ''}

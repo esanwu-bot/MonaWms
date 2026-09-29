@@ -156,83 +156,163 @@ class InboundOrderItem extends Model
     }
     
     /**
-     * 收货
+     * 收货（P9：总账与明细账同事务分离登记）
+     *
+     * 计件类（普件）：按件写 SN 台账（in_stock + 仓库/库位归属），总账 +N/件；SN 全局唯一，重复入库直接报错
+     * 散料类（长度/重量等）：写批次台账（initial=remaining=N），总账 +N
+     * 库存总账（inventory）行锁更新，batch_number 统一空串口径（MySQL 唯一索引中 NULL 可重复）
+     *
+     * @param string|int|float $quantity 收货数量
+     * @param int|null $locationId 库位ID
+     * @param string|null $batchNumber 批次号/卷号（散料必填性由前端约束，留空则自动生成）
+     * @param string|null $expiryDate 过期日期
+     * @param array $serials SN 编码数组（计件类必填，个数必须等于数量；支持批量粘贴拆分后的数组）
+     * @param int $operatorId 操作人
+     * @return bool
      */
-    public function receive($quantity, $locationId = null, $batchNumber = null, $expiryDate = null)
+    public function receive($quantity, $locationId = null, $batchNumber = null, $expiryDate = null, array $serials = [], int $operatorId = 0)
     {
         $quantity = (string) $quantity;
         if (bccomp($quantity, '0', 4) <= 0) {
             throw new \InvalidArgumentException('收货数量必须大于0');
         }
-        
+
         // A4：按物资计量方式校验数量精度（计件类必须正整数，长度/重量类允许 4 位小数）
+        $isPiece = false;
         if ($this->product) {
             $this->product->assertQuantityValid($quantity);
+            $isPiece = $this->product->requiresSerial();
         }
-        
+
         if (bccomp(bcadd((string)$this->received_quantity, $quantity, 4), (string)$this->quantity, 4) > 0) {
             throw new \InvalidArgumentException('收货数量不能超过计划数量');
         }
-        
+
+        // P9：计件类必须按件登记 SN，个数与数量一致
+        if ($isPiece) {
+            $needCount = (int) bcmul($quantity, '1', 0);
+            $serials = array_values(array_filter(array_map('trim', $serials)));
+            if (count($serials) !== $needCount) {
+                throw new \InvalidArgumentException(
+                    '计件类物资必须按件录入序列号，本次收货 ' . $needCount . ' 件，实到 ' . count($serials) . ' 个 SN'
+                );
+            }
+        }
+
+        // P9：batch_number 统一口径（'' 而非 NULL），否则唯一键 (product,location,batch) 会拆行
+        $batchNumber = trim((string) ($batchNumber ?? ''));
+
         $this->startTrans();
         try {
             // 更新收货数量（bcadd，禁止 float 累加）
             $this->received_quantity = bcadd((string)$this->received_quantity, $quantity, 4);
-            
+
             // 更新库位（如果提供）
             if ($locationId) {
                 $this->location_id = $locationId;
             }
-            
-            // 更新批次号（如果提供）
-            if ($batchNumber) {
+
+            // 更新批次号（如果提供，统一写 '' 口径）
+            if ($batchNumber !== '') {
                 $this->batch_number = $batchNumber;
             }
-            
+
             // 更新过期日期（如果提供）
             if ($expiryDate) {
                 $this->expiry_date = $expiryDate;
             }
-            
+
             $this->save();
-            
-            // 更新库存
+
+            // 更新库存总账（并发安全：行锁，禁止先查后改）
             if ($this->location_id) {
                 $inventory = Inventory::where([
-                    'product_id' => $this->product_id,
-                    'location_id' => $this->location_id,
+                    'product_id'   => $this->product_id,
+                    'location_id'  => $this->location_id,
                     'batch_number' => $this->batch_number ?: ''
-                ])->find();
-                
+                ])->lock(true)->find();
+
                 if ($inventory) {
                     $inventory->quantity = bcadd((string)$inventory->quantity, $quantity, 4);
                     $inventory->available_quantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
                     $inventory->save();
                 } else {
-                    Inventory::create([
+                    $inventory = Inventory::create([
                         'product_id' => $this->product_id,
                         'location_id' => $this->location_id,
                         'quantity' => $quantity,
                         'reserved_quantity' => 0,
-                        'batch_number' => $this->batch_number,
+                        'available_quantity' => $quantity,
+                        'batch_number' => $this->batch_number ?: '',
                         'expiry_date' => $this->expiry_date
                     ]);
                 }
-                
+
+                // P9：明细账分流登记 —— 计件写 SN 台账，散料写批次台账
+                $warehouseId = (int) ($this->inboundOrder->warehouse_id ?? 0);
+                if ($isPiece) {
+                    foreach ($serials as $snCode) {
+                        $snCode = trim((string) $snCode);
+                        if ($snCode === '') {
+                            continue;
+                        }
+                        // SN 全局唯一：已存在（含历史已出库）即拒绝，防止重复入库
+                        $exists = SerialNumber::where('serial_number', $snCode)->lock(true)->find();
+                        if ($exists) {
+                            throw new \app\common\BizException(
+                                'DUPLICATE_CODE',
+                                '序列号重复入库：' . $snCode . '（已存在于 SN 台账）'
+                            );
+                        }
+                        SerialNumber::create([
+                            'serial_number' => $snCode,
+                            'product_id'    => $this->product_id,
+                            'warehouse_id'  => $warehouseId,
+                            'location_id'   => $this->location_id,
+                            'stock_id'      => $inventory->id,
+                            'inbound_id'    => $this->inbound_order_id,
+                            'status'        => SerialNumber::STATUS_IN_STOCK,
+                            'location'      => '',
+                            'notes'         => '入库收货自动登记'
+                        ]);
+                    }
+                } else {
+                    // 散料批次台账：入库 initial=remaining=N；未指定卷号时自动生成（时间戳保证不撞唯一键）
+                    $batchNo = $batchNumber !== '' ? $batchNumber : ('AUTO-' . date('YmdHis') . '-' . $this->id);
+                    InventoryBatch::create([
+                        'product_id'        => $this->product_id,
+                        'warehouse_id'      => $warehouseId,
+                        'location_id'       => $this->location_id,
+                        'batch_no'          => $batchNo,
+                        'initial_quantity'  => $quantity,
+                        'remaining_quantity'=> $quantity,
+                        'unit'              => $this->unit ?: ($this->product->unit ?? ''),
+                        'status'            => InventoryBatch::STATUS_ACTIVE,
+                        'inbound_item_id'   => $this->id,
+                        'inbound_order_id'  => $this->inbound_order_id,
+                        'inbound_at'        => date('Y-m-d H:i:s')
+                    ]);
+                    // 散料批次号回写明细，出库时可指定/反查
+                    if ($batchNumber === '') {
+                        $this->batch_number = $batchNo;
+                        $this->save();
+                    }
+                }
+
                 // 记录库存变动
                 InventoryTransaction::createTransaction([
                     'product_id' => $this->product_id,
                     'location_id' => $this->location_id,
                     'type' => InventoryTransaction::TYPE_IN,
                     'quantity' => $quantity,
-                    'balance_quantity' => $inventory ? $inventory->quantity : $quantity,
-                    'operator_id' => $this->inboundOrder->operator_id,
+                    'balance_quantity' => $inventory->quantity,
+                    'operator_id' => $operatorId ?: ($this->inboundOrder->operator_id ?? 0),
                     'reason' => '入库收货',
                     'reference_type' => InventoryTransaction::REFERENCE_INBOUND,
                     'reference_id' => $this->inbound_order_id
                 ]);
             }
-            
+
             $this->commit();
             return true;
         } catch (\Exception $e) {

@@ -289,7 +289,11 @@ class WarehouseController extends BaseController
             foreach ($warehouses as $warehouse) {
                 $options[] = [
                     'value' => $warehouse->id,
-                    'label' => $warehouse->code . ' - ' . $warehouse->name
+                    'label' => $warehouse->code . ' - ' . $warehouse->name,
+                    // 附加完整字段：入库单表单 AutoComplete 需要 name/code 回显
+                    'id' => $warehouse->id,
+                    'code' => $warehouse->code,
+                    'name' => $warehouse->name,
                 ];
             }
             

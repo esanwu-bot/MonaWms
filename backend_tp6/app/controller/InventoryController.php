@@ -12,6 +12,7 @@ use app\model\InventoryTransaction;
 use app\common\library\Response;
 use think\Request;
 use think\facade\Validate;
+use think\facade\Db;
 
 /**
  * 库存管理控制器
@@ -329,7 +330,93 @@ class InventoryController extends BaseController
     }
     
     /**
-     * 获取库存统计
+     * P9: 总账 ↔ 明细账对账
+     *
+     * 计件类：inventory.quantity 必须等于该仓 SN 台账 in_stock 计数
+     * 散料类：inventory.quantity 必须等于批次台账 remaining 合计
+     * 返回差异明细（product × warehouse 粒度），供盘点/修数依据
+     */
+    public function reconcile(Request $request)
+    {
+        try {
+            // 按商品 × 仓库聚合总账
+            $ledger = Db::name('inventory')
+                ->field('product_id, warehouse_id, SUM(quantity) as total_qty')
+                ->group('product_id, warehouse_id')
+                ->select()->toArray();
+
+            // 计件类明细账：SN 在库计数（忽略 warehouse 为 NULL 的存量 SN——无归属无法对账，单独列出）
+            $snCount = Db::name('serial_numbers')
+                ->field('product_id, warehouse_id, COUNT(*) as cnt')
+                ->where('status', 'in_stock')
+                ->where('warehouse_id', '>', 0)
+                ->group('product_id, warehouse_id')
+                ->select()->toArray();
+            $snMap = [];
+            foreach ($snCount as $row) {
+                $snMap[$row['product_id'] . '-' . $row['warehouse_id']] = $row['cnt'];
+            }
+
+            // 散料明细账：批次余量合计
+            $batchSum = Db::name('inventory_batches')
+                ->field('product_id, warehouse_id, SUM(remaining_quantity) as total_remaining')
+                ->group('product_id, warehouse_id')
+                ->select()->toArray();
+            $batchMap = [];
+            foreach ($batchSum as $row) {
+                $batchMap[$row['product_id'] . '-' . $row['warehouse_id']] = $row['total_remaining'];
+            }
+
+            // 商品计量方式（计件 → SN 对账；散料 → 批次对账）
+            $products = Db::name('products')->column('measure_type, name, sku', 'id');
+
+            $diffs = [];
+            $checked = 0;
+            foreach ($ledger as $row) {
+                $pid = (int)$row['product_id'];
+                $wid = (int)$row['warehouse_id'];
+                $key = $pid . '-' . $wid;
+                $isPiece = ($products[$pid]['measure_type'] ?? 'count') === 'count';
+                $detailQty = $isPiece
+                    ? ($snMap[$key] ?? '0')
+                    : ($batchMap[$key] ?? '0');
+
+                $checked++;
+                if (bccomp((string)$row['total_qty'], (string)$detailQty, 4) !== 0) {
+                    $diffs[] = [
+                        'product_id'    => $pid,
+                        'product_name'  => $products[$pid]['name'] ?? '',
+                        'sku'           => $products[$pid]['sku'] ?? '',
+                        'warehouse_id'  => $wid,
+                        'ledger_type'   => $isPiece ? 'sn' : 'batch',
+                        'inventory_qty' => $row['total_qty'],
+                        'detail_qty'    => $detailQty,
+                        'diff'          => bcsub((string)$row['total_qty'], (string)$detailQty, 4)
+                    ];
+                }
+            }
+
+            // 无归属的存量 SN（无法参与对账，提示人工补录 warehouse_id）
+            $orphanSn = Db::name('serial_numbers')
+                ->where('status', 'in_stock')
+                ->whereNull('warehouse_id')
+                ->count();
+
+            return Response::success([
+                'checked'     => $checked,          // 对账口径内的 商品×仓库 组合数
+                'diff_count'  => count($diffs),     // 差异数
+                'is_balanced' => count($diffs) === 0,
+                'orphan_sn'   => $orphanSn,         // 无仓库归属的在库 SN（存量数据）
+                'diffs'       => $diffs
+            ], count($diffs) === 0 ? '对账平衡：总账与明细账一致' : '发现 ' . count($diffs) . ' 处差异');
+
+        } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
+            return Response::serverError('对账失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 库存统计
      */
     public function statistics(Request $request)
     {

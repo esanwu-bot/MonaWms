@@ -10,6 +10,9 @@ use app\model\Product;
 use app\model\Location;
 use app\model\Inventory;
 use app\model\InventoryTransaction;
+use app\model\InventoryBatch;
+use app\model\SerialNumber;
+use app\model\SerialNumberHistory;
 use think\exception\ValidateException;
 use think\db\exception\DataNotFoundException;
 use think\db\exception\ModelNotFoundException;
@@ -408,7 +411,7 @@ class InboundOrderService
     }
 
     /**
-     * 取消入库订单
+     * 取消入库订单（P9：补事务——回滚总账/明细账与改状态必须同事务）
      * @param int $id 订单ID
      * @param int $operatorId 操作员ID
      * @param string $reason 取消原因
@@ -417,23 +420,34 @@ class InboundOrderService
      */
     public function cancel(int $id, int $operatorId, string $reason = ''): bool
     {
-        $order = $this->getDetail($id);
+        Db::startTrans();
+        try {
+            $order = $this->getDetail($id);
 
-        if (!in_array($order->status, ['pending', 'receiving'])) {
-            throw new ValidateException('当前状态不允许取消');
+            if (!in_array($order->status, ['pending', 'receiving'])) {
+                throw new ValidateException('当前状态不允许取消');
+            }
+
+            // 如果已经开始收货，需要回滚库存 + 明细账
+            if ($order->status === 'receiving') {
+                $this->rollbackInventory($id);
+            }
+
+            $order->status = 'cancelled';
+            $order->operator_id = $operatorId;
+            $order->notes = $order->notes . '\n取消原因：' . $reason;
+            $order->updated_time = date('Y-m-d H:i:s');
+            $order->save();
+
+            Db::commit();
+            return true;
+        } catch (\app\common\BizException $e) {
+            Db::rollback();
+            throw $e;
+        } catch (\Exception $e) {
+            Db::rollback();
+            throw new ValidateException($e->getMessage());
         }
-
-        // 如果已经开始收货，需要回滚库存
-        if ($order->status === 'receiving') {
-            $this->rollbackInventory($id);
-        }
-
-        $order->status = 'cancelled';
-        $order->operator_id = $operatorId;
-        $order->notes = $order->notes . '\n取消原因：' . $reason;
-        $order->updated_time = date('Y-m-d H:i:s');
-        
-        return $order->save();
     }
 
     /**
@@ -600,7 +614,11 @@ class InboundOrderService
     }
 
     /**
-     * 回滚库存（取消订单时使用）
+     * 回滚库存（取消订单时使用，P9：总账 + SN 台账 + 批次台账三方联动）
+     * - 总账按已收数量扣回（行锁）
+     * - 该单登记的 SN 撤销登记（删除记录 + 历史留痕；实物未入成库，撤销后 SN 应可重新登记，
+     *   若走软删会被 serial_number 唯一键挡住，故删除 + serial_number_history 审计留痕）
+     * - 散料批次回退：批次未被出库消耗时撤行；已被消耗则拒绝取消（改走红冲）
      * @param int $orderId 订单ID
      * @return void
      */
@@ -613,7 +631,8 @@ class InboundOrderService
         foreach ($items as $item) {
             $inventory = Inventory::where('product_id', $item->product_id)
                 ->where('location_id', $item->location_id)
-                ->where('batch_number', $item->batch_number)
+                ->where('batch_number', $item->batch_number ?: '')
+                ->lock(true)
                 ->find();
 
             if ($inventory) {
@@ -634,6 +653,39 @@ class InboundOrderService
                     'reference_id' => $orderId,
                     'created_time' => date('Y-m-d H:i:s')
                 ]);
+            }
+
+            // P9：撤销该单登记的 SN（实物退回，登记无效；删除以释放唯一键，历史表留痕）
+            $sns = SerialNumber::where('inbound_id', $orderId)
+                ->where('product_id', $item->product_id)
+                ->select();
+            foreach ($sns as $sn) {
+                SerialNumberHistory::create([
+                    'serial_number_id' => $sn->id,
+                    'event_type'       => 'return',
+                    'status_before'    => (string)$sn->status,
+                    'status_after'     => 'cancelled',
+                    'reference_type'   => 'inbound_order_cancel',
+                    'reference_id'     => $orderId,
+                    'operator_id'      => 0,
+                    'notes'            => '入库单取消，撤销 SN 登记：' . $sn->serial_number,
+                    'created_at'       => date('Y-m-d H:i:s')
+                ]);
+                $sn->delete();
+            }
+
+            // P9：散料批次回退——未被出库消耗（remaining==initial）则撤行，否则拒绝取消
+            $batches = InventoryBatch::where('inbound_order_id', $orderId)
+                ->where('product_id', $item->product_id)
+                ->lock(true)
+                ->select();
+            foreach ($batches as $batch) {
+                if (bccomp((string)$batch->remaining_quantity, (string)$batch->initial_quantity, 4) !== 0) {
+                    throw new ValidateException(
+                        '批次 ' . $batch->batch_no . ' 已被出库消耗，不能直接取消，请走红冲流程'
+                    );
+                }
+                $batch->delete();
             }
         }
     }

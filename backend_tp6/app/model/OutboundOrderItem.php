@@ -51,6 +51,7 @@ class OutboundOrderItem extends Model
         'unit_price',
         'requires_serial',
         'batch_number',
+        'picked_batches',    // P9: 批次扣减轨迹 JSON [{batch_id,batch_no,location_id,quantity}]
         'notes',
         'created_at',
         'updated_at'
@@ -143,14 +144,15 @@ class OutboundOrderItem extends Model
     }
     
     /**
-     * 拣货
-     */
-    /**
-     * 拣货/出库（D3：不是单纯的加减）
-     * 同一事务内完成：库存扣减（行锁）+ SN 状态联动 + 库存流水
+     * 拣货/出库（D3+P9：总账与明细账同事务同步扣减）
+     *
+     * 计件类（普件）：扫 SN 校验"本仓+在库"后状态流转（in_stock→in_use），总账 -1/件
+     * 散料类：按指定批次或 FIFO 锁批次行扣余量（扣到 0 置 exhausted），总账 -N；扣减轨迹落 picked_batches
+     * 预留联动：startPicking 预留了整单数量，本次拣多少就释放多少 reserved
+     *
      * @param string|float|int $quantity 数量（按计量方式可带 4 位小数）
      * @param int|null $locationId 库位
-     * @param string|null $batchNumber 批次
+     * @param string|null $batchNumber 批次（散料类可指定卷号，留空走 FIFO）
      * @param array $serials SN 编码数组（计件类必填，个数必须等于数量）
      * @param int $operatorId 操作人
      * @return bool
@@ -158,22 +160,22 @@ class OutboundOrderItem extends Model
     public function pick($quantity, $locationId = null, $batchNumber = null, array $serials = [], int $operatorId = 0)
     {
         $quantity = (string) $quantity;
-        
+
         if (bccomp($quantity, '0', 4) <= 0) {
             throw new \InvalidArgumentException('拣货数量必须大于0');
         }
-        
+
         // A4：按计量方式校验数量精度
+        $needSerial = $this->product ? $this->product->requiresSerial() : false;
         if ($this->product) {
             $this->product->assertQuantityValid($quantity);
         }
-        
+
         if (bccomp(bcadd((string)$this->picked_quantity, $quantity, 4), (string)$this->quantity, 4) > 0) {
             throw new \InvalidArgumentException('拣货数量不能超过计划数量');
         }
-        
+
         // E1：计件类必须按件录 SN，长度/重量类跳过
-        $needSerial = $this->product ? $this->product->requiresSerial() : false;
         if ($needSerial) {
             $needCount = (int) bcmul($quantity, '1', 0);
             if (count($serials) !== $needCount) {
@@ -182,97 +184,188 @@ class OutboundOrderItem extends Model
                 );
             }
         }
-        
+
+        // P9：batch_number 统一口径
+        $batchNumber = trim((string) ($batchNumber ?? ''));
+
         $this->startTrans();
         try {
             // 更新拣货数量
             $this->picked_quantity = bcadd((string)$this->picked_quantity, $quantity, 4);
-            
+
             if ($locationId) {
                 $this->location_id = $locationId;
             }
-            if ($batchNumber) {
+            if ($batchNumber !== '') {
                 $this->batch_number = $batchNumber;
             }
-            $this->save();
-            
-            // 更新库存（并发安全：行锁，禁止先查后改）
-            if ($this->location_id) {
-                $inventory = Inventory::where([
-                    'product_id'   => $this->product_id,
-                    'location_id'  => $this->location_id,
-                    'batch_number' => $this->batch_number ?: ''
-                ])->lock(true)->find();
-                
-                if (!$inventory) {
-                    throw new \app\common\BizException('STOCK_INSUFFICIENT', '库存不存在', [[
-                        'product_id' => $this->product_id,
-                        'required'   => $quantity,
-                        'available'  => '0'
-                    ]]);
+
+            $warehouseId = (int) ($this->outboundOrder->warehouse_id ?? 0);
+            $pickedBatches = [];
+
+            if ($needSerial) {
+                // ===== 计件（普件）：总账行锁扣减 + SN 状态流转 =====
+                if ($this->location_id) {
+                    $this->decreaseInventory($this->location_id, $this->batch_number ?: '', $quantity, $operatorId);
                 }
-                
-                // 可用库存 = 现有 - 预留；不足时抛缺料明细
-                $available = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
-                if (bccomp($available, $quantity, 4) < 0) {
-                    throw new \app\common\BizException('STOCK_INSUFFICIENT', '可用库存不足', [[
+
+                // D3+P9：SN 单件状态联动（在库 → 正在用），校验"本仓 + 在库"
+                foreach ($serials as $snCode) {
+                    $sn = SerialNumber::where('serial_number', trim((string)$snCode))->lock(true)->find();
+                    if (!$sn) {
+                        throw new \app\common\BizException('SERIAL_NOT_FOUND', '序列号不存在：' . $snCode);
+                    }
+                    if ($sn->product_id != $this->product_id) {
+                        throw new \app\common\BizException('SERIAL_PRODUCT_MISMATCH', '序列号与物资不匹配：' . $snCode);
+                    }
+                    if (!in_array((string)$sn->status, [SerialNumber::STATUS_IN_STOCK, SerialNumber::STATUS_REPAIRING], true)) {
+                        throw new \app\common\BizException('SERIAL_NOT_AVAILABLE', '序列号当前状态不可出库：' . $snCode);
+                    }
+                    // P9：归属校验（存量 SN 无 warehouse_id 时跳过兼容）
+                    if ($sn->warehouse_id && (int)$sn->warehouse_id !== $warehouseId) {
+                        throw new \app\common\BizException('SERIAL_NOT_AVAILABLE', '序列号不在本仓，无法出库：' . $snCode);
+                    }
+                    if ($sn->location_id && $this->location_id && (int)$sn->location_id !== (int)$this->location_id) {
+                        throw new \app\common\BizException('SERIAL_NOT_AVAILABLE', '序列号不在本库位，无法出库：' . $snCode);
+                    }
+
+                    $sn->outbound_id = $this->outbound_order_id;
+                    $sn->save();
+                    $sn->changeStatus(
+                        SerialNumber::STATUS_IN_USE,
+                        $operatorId,
+                        '出库领用',
+                        'outbound_order',
+                        (int) $this->outbound_order_id
+                    );
+                }
+            } else {
+                // ===== 散料：批次台账余量扣减（指定批次或 FIFO，可跨批次），总账按批次实际库位同步扣 =====
+                $batches = InventoryBatch::where('product_id', $this->product_id)
+                    ->where('warehouse_id', $warehouseId)
+                    ->where('status', InventoryBatch::STATUS_ACTIVE)
+                    ->where('remaining_quantity', '>', 0);
+                if ($batchNumber !== '') {
+                    $batches->where('batch_no', $batchNumber);
+                }
+                // FIFO：按入库时间升序；一条 SELECT FOR UPDATE 按序锁多行，并发顺序一致
+                $batches = $batches->order('inbound_at', 'asc')->lock(true)->select();
+
+                $remaining = $quantity;
+                foreach ($batches as $batch) {
+                    if (bccomp($remaining, '0', 4) <= 0) {
+                        break;
+                    }
+                    $take = bccomp((string)$batch->remaining_quantity, $remaining, 4) >= 0
+                        ? $remaining
+                        : (string)$batch->remaining_quantity;
+
+                    // 扣批次余量；扣到 0 置"已用完"
+                    $batch->remaining_quantity = bcsub((string)$batch->remaining_quantity, $take, 4);
+                    if (bccomp((string)$batch->remaining_quantity, '0', 4) <= 0) {
+                        $batch->status = InventoryBatch::STATUS_EXHAUSTED;
+                    }
+                    $batch->save();
+
+                    // 总账按批次实际库位扣减
+                    $this->decreaseInventory((int)$batch->location_id, (string)$batch->batch_no, $take, $operatorId);
+
+                    $pickedBatches[] = [
+                        'batch_id'   => (int)$batch->id,
+                        'batch_no'   => (string)$batch->batch_no,
+                        'location_id'=> (int)$batch->location_id,
+                        'quantity'   => $take
+                    ];
+                    $remaining = bcsub($remaining, $take, 4);
+                }
+
+                if (bccomp($remaining, '0', 4) > 0) {
+                    $available = bcsub($quantity, $remaining, 4);
+                    throw new \app\common\BizException('STOCK_INSUFFICIENT', '批次余量不足（FIFO）', [[
                         'product_id'   => $this->product_id,
                         'product_name' => $this->product->name ?? '',
                         'unit'         => $this->unit ?: ($this->product->unit ?? ''),
                         'required'     => $quantity,
                         'available'    => $available,
-                        'shortage'     => bcsub($quantity, $available, 4)
+                        'shortage'     => $remaining
                     ]]);
                 }
-                
-                $inventory->quantity = bcsub((string)$inventory->quantity, $quantity, 4);
-                $inventory->available_quantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
-                $inventory->save();
-                
-                // 记录库存变动
-                InventoryTransaction::createTransaction([
-                    'product_id' => $this->product_id,
-                    'location_id' => $this->location_id,
-                    'type' => InventoryTransaction::TYPE_OUT,
-                    'quantity' => $quantity,
-                    'balance_quantity' => $inventory->quantity,
-                    'operator_id' => $operatorId ?: ($this->outboundOrder->operator_id ?? 0),
-                    'reason' => '出库拣货',
-                    'reference_type' => InventoryTransaction::REFERENCE_OUTBOUND,
-                    'reference_id' => $this->outbound_order_id
-                ]);
+
+                // 轨迹落库（取消回滚按此精确回退批次余量）；批次号回写首个实际批次
+                if ($pickedBatches) {
+                    $this->batch_number = $pickedBatches[0]['batch_no'];
+                }
             }
-            
-            // D3：SN 单件状态联动（在库 → 正在用），并写 SN 历史
-            foreach ($serials as $snCode) {
-                $sn = SerialNumber::where('serial_number', trim((string)$snCode))->lock(true)->find();
-                if (!$sn) {
-                    throw new \app\common\BizException('SERIAL_NOT_FOUND', '序列号不存在：' . $snCode);
-                }
-                if ($sn->product_id != $this->product_id) {
-                    throw new \app\common\BizException('SERIAL_PRODUCT_MISMATCH', '序列号与物资不匹配：' . $snCode);
-                }
-                if (!in_array((string)$sn->status, [SerialNumber::STATUS_IN_STOCK, SerialNumber::STATUS_REPAIRING], true)) {
-                    throw new \app\common\BizException('SERIAL_NOT_AVAILABLE', '序列号当前状态不可出库：' . $snCode);
-                }
-                
-                $sn->outbound_id = $this->outbound_order_id;
-                $sn->save();
-                $sn->changeStatus(
-                    SerialNumber::STATUS_IN_USE,
-                    $operatorId,
-                    '出库领用',
-                    'outbound_order',
-                    (int) $this->outbound_order_id
-                );
-            }
-            
+
+            // P9：扣减轨迹（计件为空数组保持干净）
+            $this->picked_batches = $pickedBatches ? json_encode($pickedBatches, JSON_UNESCAPED_UNICODE) : null;
+            $this->save();
+
             $this->commit();
             return true;
         } catch (\Exception $e) {
             $this->rollback();
             throw $e;
         }
+    }
+
+    /**
+     * P9：总账扣减（行锁）+ 预留联动释放 + 流水
+     *
+     * startPicking 按整单预留了 reserved；拣货即消耗——本次拣多少，quantity 和 reserved 同步减多少。
+     * reserved 为 UNSIGNED，残留脏数据不足时 clamp 到 0，不抛错（对账任务兜底暴露）。
+     */
+    private function decreaseInventory(int $locationId, string $batchNumber, string $quantity, int $operatorId): void
+    {
+        $inventory = Inventory::where([
+            'product_id'   => $this->product_id,
+            'location_id'  => $locationId,
+            'batch_number' => $batchNumber !== '' ? $batchNumber : ''
+        ])->lock(true)->find();
+
+        if (!$inventory) {
+            throw new \app\common\BizException('STOCK_INSUFFICIENT', '库存不存在', [[
+                'product_id' => $this->product_id,
+                'required'   => $quantity,
+                'available'  => '0'
+            ]]);
+        }
+
+        // 可用库存 = 现有 - 预留；不足时抛缺料明细
+        $available = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
+        if (bccomp($available, $quantity, 4) < 0) {
+            throw new \app\common\BizException('STOCK_INSUFFICIENT', '可用库存不足', [[
+                'product_id'   => $this->product_id,
+                'product_name' => $this->product->name ?? '',
+                'unit'         => $this->unit ?: ($this->product->unit ?? ''),
+                'required'     => $quantity,
+                'available'    => $available,
+                'shortage'     => bcsub($quantity, $available, 4)
+            ]]);
+        }
+
+        $inventory->quantity = bcsub((string)$inventory->quantity, $quantity, 4);
+        // P9：释放对应预留（拣货即消耗预留）
+        if (bccomp((string)$inventory->reserved_quantity, $quantity, 4) >= 0) {
+            $inventory->reserved_quantity = bcsub((string)$inventory->reserved_quantity, $quantity, 4);
+        } else {
+            $inventory->reserved_quantity = '0';
+        }
+        $inventory->available_quantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
+        $inventory->save();
+
+        // 记录库存变动
+        InventoryTransaction::createTransaction([
+            'product_id' => $this->product_id,
+            'location_id' => $locationId,
+            'type' => InventoryTransaction::TYPE_OUT,
+            'quantity' => $quantity,
+            'balance_quantity' => $inventory->quantity,
+            'operator_id' => $operatorId ?: ($this->outboundOrder->operator_id ?? 0),
+            'reason' => '出库拣货',
+            'reference_type' => InventoryTransaction::REFERENCE_OUTBOUND,
+            'reference_id' => $this->outbound_order_id
+        ]);
     }
     
     /**

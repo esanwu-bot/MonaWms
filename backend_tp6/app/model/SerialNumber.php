@@ -41,6 +41,8 @@ class SerialNumber extends Model
         'id',
         'serial_number',      // 序列号
         'product_id',         // 关联产品ID
+        'warehouse_id',       // P9: 所属仓库ID（出库校验"本仓在库"）
+        'location_id',        // P9: 当前库位ID
         'stock_id',           // 当前库存ID（如果在库存中）
         'inbound_id',         // 入库单ID
         'outbound_id',        // 出库单ID（如果已出库）
@@ -133,6 +135,33 @@ class SerialNumber extends Model
     public function histories()
     {
         return $this->hasMany(SerialNumberHistory::class, 'serial_number_id');
+    }
+
+    /**
+     * P9: 取消出库时回退为"在库"（不走 changeStatus 流转校验——业务回退是合法路径，而非状态机流转）
+     * 同步清空 outbound_id，SN 回到可再出库状态
+     */
+    public function revertToStock(int $operatorId = 0, string $reason = '', string $referenceType = '', int $referenceId = 0): bool
+    {
+        $from = (string) $this->status;
+
+        $this->status = self::STATUS_IN_STOCK;
+        $this->outbound_id = null;
+        $this->save();
+
+        SerialNumberHistory::create([
+            'serial_number_id' => $this->id,
+            'event_type'       => 'return',
+            'status_before'    => $from,
+            'status_after'     => self::STATUS_IN_STOCK,
+            'reference_type'   => $referenceType,
+            'reference_id'     => $referenceId,
+            'operator_id'      => $operatorId,
+            'notes'            => $reason ?: '出库取消回退',
+            'created_at'       => date('Y-m-d H:i:s')
+        ]);
+
+        return true;
     }
     
     /**

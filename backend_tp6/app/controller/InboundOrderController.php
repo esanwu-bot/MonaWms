@@ -818,43 +818,54 @@ class InboundOrderController extends BaseController
             // A4：数量允许小数，计件类由 Service/Model 按计量方式二次校验
             'quantity' => 'require|float|>:0',
             'batch_number' => 'max:50',
-            'expiry_date' => 'date'
+            'expiry_date' => 'date',
+            // P9：SN 批量录入（计件类必填，个数需等于数量）
+            'serials' => 'array'
         ]);
-        
+
         if (!$validate->check($data)) {
             return Response::validateError($validate->getError());
         }
-        
+
         try {
             $order = InboundOrder::find($id);
-            
+
             if (!$order) {
                 return Response::notFound('入库单不存在');
             }
-            
+
             // 收货真正增加库存，属于过账动作，仅仓库管理员可操作
             Grant::assert('inbound:post', (int) $order->warehouse_id);
-            
+
             if ($order->status != InboundOrder::STATUS_RECEIVING) {
                 return Response::error('入库单状态不正确，无法收货');
             }
-            
+
             $item = InboundOrderItem::find($data['item_id']);
             if (!$item || $item->inbound_order_id != $id) {
                 return Response::error('入库单明细不存在');
             }
-            
+
             $location = Location::find($data['location_id']);
             if (!$location) {
                 return Response::error('库位不存在');
             }
-            
-            // 执行收货
+
+            // P9：SN 支持数组或批量粘贴文本（换行/逗号/空格分隔）
+            $serials = $data['serials'] ?? [];
+            if (is_string($serials)) {
+                $serials = preg_split('/[\r\n,\s]+/', trim($serials), -1, PREG_SPLIT_NO_EMPTY);
+            }
+            $serials = is_array($serials) ? array_values(array_filter(array_map('trim', $serials))) : [];
+
+            // 执行收货（P9：计件写 SN 台账 / 散料写批次台账，与总账同事务）
             $item->receive(
                 $data['quantity'],
                 $data['location_id'],
                 $data['batch_number'] ?? null,
-                $data['expiry_date'] ?? null
+                $data['expiry_date'] ?? null,
+                $serials,
+                (int) Current::idOrNull()
             );
             
             return Response::success([

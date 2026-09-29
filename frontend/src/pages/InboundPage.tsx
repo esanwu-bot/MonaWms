@@ -45,7 +45,8 @@ import {
   ReloadOutlined,
   CloseOutlined,
   PlayCircleOutlined,
-  StopOutlined
+  StopOutlined,
+  SyncOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -57,7 +58,6 @@ import { userService, type UserOption } from '../services/userService';
 import type {
   InboundOrder,
   Product,
-  Supplier,
   CreateInboundOrderRequest,
   UpdateInboundOrderRequest,
   InboundOrderQueryParams,
@@ -67,6 +67,7 @@ import BatchImportDialog from '../components/BatchImportDialog';
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { Step } = Steps;
+const { TextArea } = Input;
 
 // P8 I1：入库来源（字典 inbound_source，后端可维护，这里做兜底）
 const INBOUND_SOURCE_FALLBACK = [
@@ -110,7 +111,7 @@ const inboundOrderItemSchema = z.object({
 
 // 入库单验证
 const inboundOrderSchema = z.object({
-  orderNumber: z.string().min(1, '请输入订单号'),
+  orderNumber: z.string().optional(),        // 单号由后端自动生成（IN+日期+流水号），前端只读
   warehouseId: z.string().min(1, '请选择仓库'),
   source: z.string().min(1, '请选择来源'),   // I2：来源（defaultValues 兜底 purchase）
   supplierId: z.string().optional(),
@@ -177,21 +178,21 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
     name: 'items',
   });
 
-  // 获取仓库列表
+  // 获取仓库列表（index 是分页结构会导致下拉无数据，改用 options 纯数组接口）
   const { data: warehousesData } = useQuery({
-    queryKey: queryKeys.warehouses.all,
+    queryKey: ['warehouses', 'options'],
     queryFn: async () => {
-      const response = await api.get('/warehouses');
-      return response.data.data;
+      const response = await api.get('/warehouses/options');
+      return Array.isArray(response.data?.data) ? response.data.data : [];
     },
   });
 
-  // 获取供应商列表
+  // 获取供应商列表（同上，改用 options 接口）
   const { data: suppliersData } = useQuery({
-    queryKey: queryKeys.suppliers.all,
+    queryKey: ['suppliers', 'options'],
     queryFn: async () => {
-      const response = await api.get<Supplier[]>('/suppliers');
-      return Array.isArray(response.data.data) ? response.data.data : [];
+      const response = await api.get('/suppliers/options');
+      return Array.isArray(response.data?.data) ? response.data.data : [];
     },
   });
 
@@ -249,6 +250,21 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
     return p ? `${p.name}（${p.sku}）` : '';
   };
 
+  // 仓库检索（AutoComplete）：按名称 / 编码过滤
+  const [warehouseDisplay, setWarehouseDisplay] = useState('');
+  const warehouseList = Array.isArray(warehousesData) ? (warehousesData as any[]) : [];
+  const warehouseOptions = warehouseList.map((w) => ({
+    value: `${w.name}（${w.code}）`,
+    warehouseId: w.id,
+    label: (
+      <Space>
+        {w.name}
+        <Tag>{w.code}</Tag>
+      </Space>
+    ),
+  }));
+  const selectedWarehouse = warehouseList.find((w) => String(w.id) === String(watch('warehouseId')));
+
   // A4：计件类数量必须为正整数，长度/重量类允许 4 位小数
   const quantityMetaOf = (index: number) => {
     const pid = String(watchItems?.[index]?.productId || '');
@@ -264,6 +280,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
 
   React.useEffect(() => {
     if (open) {
+      setWarehouseDisplay('');
       reset({
         orderNumber: order?.orderNumber || '',
         warehouseId: order?.warehouseId || '',
@@ -347,8 +364,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
           <Col span={12}>
             <Form.Item
               label="入库单号"
-              validateStatus={errors.orderNumber ? 'error' : ''}
-              help={errors.orderNumber?.message}
+              help="由系统自动生成，无需填写"
             >
               <Controller
                 name="orderNumber"
@@ -356,8 +372,8 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                 render={({ field }) => (
                   <Input
                     {...field}
-                    placeholder="请输入入库单号"
-                    disabled={loading || !!order}
+                    placeholder="保存后由系统自动生成（IN+日期+流水号）"
+                    disabled
                   />
                 )}
               />
@@ -373,20 +389,29 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                 name="warehouseId"
                 control={control}
                 render={({ field }) => (
-                  <Select
-                    {...field}
-                    placeholder="请选择仓库"
+                  <AutoComplete
+                    style={{ width: '100%' }}
+                    value={warehouseDisplay || (selectedWarehouse ? `${selectedWarehouse.name}（${selectedWarehouse.code}）` : '')}
                     disabled={loading}
-                  >
-                    {Array.isArray(warehousesData) ? warehousesData.map((warehouse) => (
-                      <Option key={warehouse.id} value={warehouse.id}>
-                        <Space>
-                          {warehouse.name}
-                          <Tag>{warehouse.code}</Tag>
-                        </Space>
-                      </Option>
-                    )) : []}
-                  </Select>
+                    allowClear
+                    placeholder="输入名称 / 编码检索仓库"
+                    options={warehouseOptions}
+                    filterOption={(input, option) =>
+                      String(option?.value ?? '').toLowerCase().includes(input.trim().toLowerCase())
+                    }
+                    onSearch={(kw) => {
+                      setWarehouseDisplay(kw);
+                      if (field.value) field.onChange('');
+                    }}
+                    onClear={() => {
+                      setWarehouseDisplay('');
+                      field.onChange('');
+                    }}
+                    onSelect={(_v, option: any) => {
+                      field.onChange(option.warehouseId);
+                      setWarehouseDisplay('');
+                    }}
+                  />
                 )}
               />
             </Form.Item>
@@ -461,10 +486,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                   >
                     {Array.isArray(suppliersData) ? suppliersData.map((supplier) => (
                       <Option key={supplier.id} value={supplier.id}>
-                        <Space>
-                          {supplier.name}
-                          <Tag>{supplier.code}</Tag>
-                        </Space>
+                        {supplier.name}
                       </Option>
                     )) : []}
                   </Select>
@@ -507,7 +529,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
         {fields.map((field, index) => (
           <Card key={field.id} style={{ marginBottom: 16 }}>
             <Row gutter={16} align="middle">
-              <Col span={8}>
+              <Col span={9}>
                 <Form.Item
                   label="产品"
                   validateStatus={errors.items?.[index]?.productId ? 'error' : ''}
@@ -552,7 +574,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                   />
                 </Form.Item>
               </Col>
-              <Col span={4}>
+              <Col span={5}>
                 <Form.Item
                   label="数量"
                   validateStatus={errors.items?.[index]?.quantity ? 'error' : ''}
@@ -577,28 +599,8 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                 </Form.Item>
               </Col>
 
-              <Col span={5}>
-                <Form.Item
-                  label="单价"
-                  validateStatus={errors.items?.[index]?.unitPrice ? 'error' : ''}
-                  help={errors.items?.[index]?.unitPrice?.message}
-                >
-                  <Controller
-                    name={`items.${index}.unitPrice`}
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        type="number"
-                        prefix="¥"
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                        disabled={loading}
-                      />
-                    )}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={6}>
+              {/* 单价字段按业务要求隐藏，提交时默认 0 */}
+              <Col span={9}>
                 <Form.Item label="批次号">
                   <Controller
                     name={`items.${index}.batchNumber`}
@@ -775,18 +777,6 @@ const InboundOrderDetailDialog: React.FC<InboundOrderDetailDialogProps> = ({
               render: (text, record) => `${text} ${record.product?.unit || '件'}`,
             },
             {
-              title: '单价',
-              dataIndex: 'unitPrice',
-              align: 'right',
-              render: (text) => `¥${text.toFixed(2)}`,
-            },
-            {
-              title: '金额',
-              align: 'right',
-              render: (_, record) => 
-                `¥${(record.quantity * record.unitPrice).toFixed(2)}`,
-            },
-            {
               title: '批次号',
               dataIndex: 'batchNumber',
               render: (text) => text || '-',
@@ -840,12 +830,12 @@ const InboundPage: React.FC = () => {
     },
   });
 
-  // 获取仓库列表
+  // 获取仓库列表（index 是分页结构，改用 options 纯数组接口，避免筛选下拉无数据）
   const { data: warehousesData } = useQuery({
-    queryKey: queryKeys.warehouses.all,
+    queryKey: ['warehouses', 'options'],
     queryFn: async () => {
-        const response = await api.get('/warehouses');
-        return response.data.data;
+        const response = await api.get('/warehouses/options');
+        return Array.isArray(response.data?.data) ? response.data.data : [];
       },
   });
 

@@ -81,6 +81,7 @@ Route::group('api', function () {
             Route::get('', 'InventoryController/index');            // 库存列表
             Route::get('statistics', 'InventoryController/statistics'); // 库存统计
             Route::get('expiring', 'InventoryController/expiring'); // 即将过期库存
+            Route::get('reconcile', 'InventoryController/reconcile'); // P9: 总账与明细账对账
             Route::get(':id', 'InventoryController/read');          // 库存详情
             Route::post('adjust', 'InventoryController/adjust');    // 库存调整
             Route::post('reserve', 'InventoryController/reserve');  // 预留库存

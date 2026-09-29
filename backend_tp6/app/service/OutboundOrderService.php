@@ -10,6 +10,8 @@ use app\model\Product;
 use app\model\Location;
 use app\model\Inventory;
 use app\model\InventoryTransaction;
+use app\model\InventoryBatch;
+use app\model\SerialNumber;
 use think\exception\ValidateException;
 use think\db\exception\DataNotFoundException;
 use think\db\exception\ModelNotFoundException;
@@ -654,13 +656,21 @@ class OutboundOrderService
     private function reserveInventory(int $orderId, int $operatorId): void
     {
         $items = OutboundOrderItem::where('outbound_order_id', $orderId)->select();
-        
+
         foreach ($items as $item) {
+            // P9：行锁 + batch 口径统一；库存行缺失时给出可读错误（原实现直接 fatal）
             $inventory = Inventory::where('product_id', $item->product_id)
                 ->where('location_id', $item->location_id)
-                ->where('batch_number', $item->batch_number)
+                ->where('batch_number', $item->batch_number ?: '')
+                ->lock(true)
                 ->find();
-            
+
+            if (!$inventory) {
+                throw new ValidateException(
+                    '库存不存在，无法预留：商品#' . $item->product_id . ' 库位#' . $item->location_id . ' 批次' . ($item->batch_number ?: '-')
+                );
+            }
+
             $inventory->reserved_quantity = bcadd((string)$inventory->reserved_quantity, (string)$item->quantity, 4);
             $inventory->available_quantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
             $inventory->updated_time = date('Y-m-d H:i:s');
@@ -669,21 +679,34 @@ class OutboundOrderService
     }
 
     /**
-     * 释放预留库存
+     * 释放预留库存（P9：只释放未拣货部分）
+     *
+     * startPicking 按整单 quantity 预留；pick() 拣货时已同步消耗了 picked 部分的预留。
+     * 取消时只能释放剩余的（quantity - picked_quantity），否则会把 reserved 减成负数。
      * @param int $orderId 订单ID
      */
     private function releaseReservedInventory(int $orderId): void
     {
         $items = OutboundOrderItem::where('outbound_order_id', $orderId)->select();
-        
+
         foreach ($items as $item) {
+            // P9：未拣货部分才需要释放
+            $toRelease = bcsub((string)$item->quantity, (string)$item->picked_quantity, 4);
+            if (bccomp($toRelease, '0', 4) <= 0) {
+                continue;
+            }
+
             $inventory = Inventory::where('product_id', $item->product_id)
                 ->where('location_id', $item->location_id)
-                ->where('batch_number', $item->batch_number)
+                ->where('batch_number', $item->batch_number ?: '')
+                ->lock(true)
                 ->find();
-            
+
             if ($inventory) {
-                $inventory->reserved_quantity = bcsub((string)$inventory->reserved_quantity, (string)$item->quantity, 4);
+                // 预留为 UNSIGNED，clamp 到 0
+                $inventory->reserved_quantity = bccomp((string)$inventory->reserved_quantity, $toRelease, 4) >= 0
+                    ? bcsub((string)$inventory->reserved_quantity, $toRelease, 4)
+                    : '0';
                 $inventory->available_quantity = bcsub((string)$inventory->quantity, (string)$inventory->reserved_quantity, 4);
                 $inventory->updated_time = date('Y-m-d H:i:s');
                 $inventory->save();
@@ -722,7 +745,10 @@ class OutboundOrderService
     }
 
     /**
-     * 回滚库存（取消订单时使用）
+     * 回滚库存（取消订单时使用，P9：总账 + SN 台账 + 批次台账三方联动）
+     * 1) 总账按已拣数量加回（行锁）
+     * 2) 该单出库的 SN 回退为"在库"（in_use → in_stock）
+     * 3) 散料按 picked_batches 轨迹精确回退批次余量
      * @param int $orderId 订单ID
      */
     private function rollbackInventory(int $orderId): void
@@ -734,7 +760,8 @@ class OutboundOrderService
         foreach ($items as $item) {
             $inventory = Inventory::where('product_id', $item->product_id)
                 ->where('location_id', $item->location_id)
-                ->where('batch_number', $item->batch_number)
+                ->where('batch_number', $item->batch_number ?: '')
+                ->lock(true)
                 ->find();
 
             if ($inventory) {
@@ -755,6 +782,32 @@ class OutboundOrderService
                     'reference_id' => $orderId,
                     'created_time' => date('Y-m-d H:i:s')
                 ]);
+            }
+
+            // P9：该单出库的 SN 回退为在库（恢复可再出库状态）
+            $sns = SerialNumber::where('outbound_id', $orderId)
+                ->where('product_id', $item->product_id)
+                ->where('status', SerialNumber::STATUS_IN_USE)
+                ->select();
+            foreach ($sns as $sn) {
+                $sn->revertToStock(0, '出库订单取消回退', 'outbound_order_cancel', $orderId);
+            }
+
+            // P9：散料按扣减轨迹回退批次余量（exhausted 恢复 active）
+            if (!empty($item->picked_batches)) {
+                $tracks = json_decode((string)$item->picked_batches, true);
+                if (is_array($tracks)) {
+                    foreach ($tracks as $track) {
+                        $batch = InventoryBatch::where('id', (int)($track['batch_id'] ?? 0))->lock(true)->find();
+                        if ($batch) {
+                            $batch->remaining_quantity = bcadd((string)$batch->remaining_quantity, (string)($track['quantity'] ?? '0'), 4);
+                            if (bccomp((string)$batch->remaining_quantity, '0', 4) > 0) {
+                                $batch->status = InventoryBatch::STATUS_ACTIVE;
+                            }
+                            $batch->save();
+                        }
+                    }
+                }
             }
         }
     }
