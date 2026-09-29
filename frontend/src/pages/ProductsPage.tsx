@@ -960,7 +960,7 @@ const ProductsPage: React.FC = () => {
 
   const columns = [
     {
-      title: 'SKU',
+      title: '设备来源',
       dataIndex: 'sku',
       key: 'sku',
       width: 120,
@@ -1093,7 +1093,7 @@ const ProductsPage: React.FC = () => {
           <Row gutter={16}>
             <Col span={8}>
               <Input
-                placeholder="搜索产品名称、SKU或条码"
+                placeholder="搜索产品名称、设备来源或序列号"
                 prefix={<SearchOutlined />}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
