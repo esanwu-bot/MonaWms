@@ -22,6 +22,7 @@ import {
   Badge,
   FloatButton,
   DatePicker,
+  AutoComplete,
   message
 } from 'antd';
 import dayjs from 'dayjs';
@@ -194,12 +195,13 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
     },
   });
 
-  // 获取产品列表
+  // 获取产品列表（分页接口返回 {list,total}，之前直接当数组用导致下拉无数据）
   const { data: productsData } = useQuery({
     queryKey: queryKeys.products.all,
     queryFn: async () => {
-      const response = await api.get<Product[]>('/products');
-      return response.data.data;
+      const response = await api.get('/products', { params: { limit: 500 } });
+      const d = response.data?.data;
+      return Array.isArray(d) ? d : (d?.list || []);
     },
   });
 
@@ -228,6 +230,24 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
     }
     return map;
   }, [productsData]);
+
+  // 产品检索（AutoComplete）：支持名称 / 设备来源(sku) / 序列号(barcode) / 型号
+  const [productSearchMap, setProductSearchMap] = React.useState<Record<number, string>>({});
+  const filterProducts = (kw: string): Product[] => {
+    const list = Array.isArray(productsData) ? (productsData as Product[]) : [];
+    const k = kw.trim().toLowerCase();
+    if (!k) return list.slice(0, 50);
+    return list
+      .filter((p: any) =>
+        [p.name, p.sku, p.barcode, p.model_number]
+          .some((v) => String(v || '').toLowerCase().includes(k)))
+      .slice(0, 50);
+  };
+  const productDisplay = (index: number, pid: any) => {
+    if (productSearchMap[index] !== undefined) return productSearchMap[index];
+    const p = productMap[String(pid)];
+    return p ? `${p.name}（${p.sku}）` : '';
+  };
 
   // A4：计件类数量必须为正整数，长度/重量类允许 4 位小数
   const quantityMetaOf = (index: number) => {
@@ -343,10 +363,6 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
               />
             </Form.Item>
           </Col>
-
-        </Row>
-
-        <Row gutter={16}>
           <Col span={12}>
             <Form.Item
               label="仓库"
@@ -456,6 +472,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
               />
             </Form.Item>
           </Col>
+          <Col span={12} />
         </Row>
 
         <Form.Item label="备注">
@@ -500,20 +517,37 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                     name={`items.${index}.productId`}
                     control={control}
                     render={({ field }) => (
-                      <Select
-                        {...field}
-                        placeholder="请选择产品"
+                      <AutoComplete
+                        style={{ width: '100%' }}
+                        value={productDisplay(index, field.value)}
                         disabled={loading}
-                      >
-                        {Array.isArray(productsData) ? productsData.map((product) => (
-                          <Option key={product.id} value={product.id}>
+                        allowClear
+                        placeholder="输入名称 / 设备来源 / 序列号 / 型号检索"
+                        options={filterProducts(productSearchMap[index] ?? '').map((p: any) => ({
+                          value: `${p.name}（${p.sku || '-'}）`,
+                          productId: p.id,
+                          label: (
                             <div>
-                              <div>{product.name}</div>
-                              <Text type="secondary">SKU: {product.sku}</Text>
+                              <div>{p.name}</div>
+                              <Text type="secondary">
+                                来源: {p.sku || '-'} ｜ 序列号: {p.barcode || '-'} ｜ 型号: {p.model_number || '-'}
+                              </Text>
                             </div>
-                          </Option>
-                        )) : []}
-                      </Select>
+                          ),
+                        }))}
+                        onSearch={(kw) => {
+                          setProductSearchMap((m) => ({ ...m, [index]: kw }));
+                          if (field.value) field.onChange('');
+                        }}
+                        onClear={() => {
+                          setProductSearchMap((m) => ({ ...m, [index]: '' }));
+                          field.onChange('');
+                        }}
+                        onSelect={(_v, option: any) => {
+                          field.onChange(option.productId);
+                          setProductSearchMap((m) => ({ ...m, [index]: option.value }));
+                        }}
+                      />
                     )}
                   />
                 </Form.Item>
@@ -543,7 +577,7 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                 </Form.Item>
               </Col>
 
-              <Col span={4}>
+              <Col span={5}>
                 <Form.Item
                   label="单价"
                   validateStatus={errors.items?.[index]?.unitPrice ? 'error' : ''}
@@ -564,8 +598,8 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
                   />
                 </Form.Item>
               </Col>
-              <Col span={4}>
-                <Form.Item label="备注">
+              <Col span={6}>
+                <Form.Item label="批次号">
                   <Controller
                     name={`items.${index}.batchNumber`}
                     control={control}
@@ -942,7 +976,12 @@ const InboundPage: React.FC = () => {
 
   const handleDownloadTemplate = async () => {
     try {
-      const response = await fetch('/api/inbound-orders/template');
+      const response = await fetch('/api/inbound-orders/template', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (!response.ok) throw new Error('下载失败');
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);

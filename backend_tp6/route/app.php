@@ -92,6 +92,7 @@ Route::group('api', function () {
             Route::get('', 'InboundOrderController/index');         // 入库订单列表
             Route::post('', 'InboundOrderController/save');         // 创建入库订单
             Route::get('statistics', 'InboundOrderController/statistics'); // 入库统计
+            Route::get('download-template', 'InboundOrderController/downloadTemplate'); // 下载导入模板（须在 :id 之前）
             Route::get(':id', 'InboundOrderController/read');       // 入库订单详情
             Route::put(':id', 'InboundOrderController/update');     // 更新入库订单
             Route::delete(':id', 'InboundOrderController/delete');  // 删除入库订单

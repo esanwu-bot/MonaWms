@@ -210,21 +210,10 @@ class InboundOrderController extends BaseController
                 return Response::serverError('模板文件不存在或无法读取');
             }
 
-            // 设置正确的文件名，使用URL编码处理中文
-            $filename = 'inbound_import_template.xlsx';
-            
-            // 设置响应头
-            $headers = [
-                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'Content-Disposition' => 'attachment; filename="' . $filename . '"; filename*=UTF-8\'\'' . rawurlencode('入库单导入模板.xlsx'),
-                'Content-Length' => filesize($templatePath),
-                'Cache-Control' => 'max-age=0',
-                'Expires' => '0',
-                'Last-Modified' => gmdate('D, d M Y H:i:s') . ' GMT',
-                'Pragma' => 'public'
-            ];
+            // download() 第 3 参必须是 bool，不能传 headers；文件名由 helper 处理编码
+            $filename = '入库单导入模板.xlsx';
 
-            return download($templatePath, $filename, $headers);
+            return download($templatePath, $filename);
 
         } catch (\app\common\BizException $e) { throw $e; } catch (\Exception $e) {
             return Response::serverError('下载模板失败：' . $e->getMessage());
