@@ -61,9 +61,10 @@ export const warehouseService = {
   
   // 获取所有活跃仓库（用于下拉选择）
   getActiveWarehouses: async (): Promise<Warehouse[]> => {
-    const response = await api.get<Warehouse[]>('/warehouses', {
+    const response = await api.get('/warehouses', {
       params: { isActive: true, pageSize: 1000 }
     });
-    return response.data.data;
+    const data = response.data?.data;
+    return Array.isArray(data) ? data : (data?.list ?? []);
   },
 };
