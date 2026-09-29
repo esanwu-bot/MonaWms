@@ -605,6 +605,7 @@ const InventoryPage: React.FC = () => {
   const queryParams: InventoryQueryParams = {
     page,
     pageSize: pageSize,
+    limit: pageSize,
     search,
     warehouseId: warehouseFilter || undefined,
     categoryId: categoryFilter || undefined,
@@ -705,14 +706,20 @@ const InventoryPage: React.FC = () => {
     },
     {
       title: '仓库',
-      dataIndex: 'warehouse',
+      dataIndex: 'warehouse_id',
       key: 'warehouse',
-      render: (warehouse: Warehouse) => (
-        <Space>
-          <DatabaseOutlined />
-          <Text>{warehouse?.name}</Text>
-        </Space>
-      ),
+      render: (_: unknown, record: any) => {
+        const warehouseId = record.warehouse_id ?? record.warehouseId;
+        const warehouse = Array.isArray(warehousesData)
+          ? warehousesData.find((w: any) => String(w.id) === String(warehouseId))
+          : undefined;
+        return (
+          <Space>
+            <DatabaseOutlined />
+            <Text>{warehouse?.name || '-'}</Text>
+          </Space>
+        );
+      },
     },
     {
       title: '当前库存',
@@ -746,10 +753,14 @@ const InventoryPage: React.FC = () => {
     },
     {
       title: '最后更新',
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
+      dataIndex: 'updated_at',
+      key: 'updated_at',
       render: (updatedAt: string) => (
-        <Text type="secondary">{new Date(updatedAt).toLocaleDateString()}</Text>
+        <Text type="secondary">
+          {updatedAt && !Number.isNaN(new Date(updatedAt).getTime())
+            ? new Date(updatedAt).toLocaleString()
+            : '-'}
+        </Text>
       ),
     },
   ];
@@ -836,7 +847,9 @@ const InventoryPage: React.FC = () => {
             <Table
               columns={columns}
               dataSource={inventoryItems}
-              rowKey={(record) => `${record.productId}-${record.warehouseId}`}
+              rowKey={(record: any) =>
+                `${record.product_id ?? record.productId ?? 'x'}-${record.warehouse_id ?? record.warehouseId ?? 'x'}-${record.location_id ?? record.locationId ?? 'x'}-${record.batch_number ?? ''}`
+              }
               loading={isLoading}
               pagination={{
                 current: page,
