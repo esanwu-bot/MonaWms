@@ -759,6 +759,7 @@ class ProductController extends BaseController
             
             $allowedMeasure = ['count', 'length', 'weight', 'area', 'volume'];
             $skuSeen = [];
+            $barcodeSeen = [];
             $rows = [];
             $errors = [];
             $warnings = [];
@@ -827,9 +828,16 @@ class ProductController extends BaseController
                 $brand = trim((string)($col($row, 'brand') ?? ''));
                 $modelNumber = trim((string)($col($row, 'model') ?? ''));
                 $barcode = trim((string)($col($row, 'barcode') ?? ''));
+                if ($barcode !== '' && isset($barcodeSeen[$barcode])) {
+                    $errors[] = ['row' => $line, 'message' => "文件内序列号[{$barcode}] 重复"];
+                    continue;
+                }
                 if ($barcode !== '' && isset($existingBarcodes[$barcode])) {
                     $warnings[] = "第 {$line} 行：序列号[{$barcode}] 已存在，已留空";
                     $barcode = '';
+                }
+                if ($barcode !== '') {
+                    $barcodeSeen[$barcode] = true;
                 }
                 $productionDate = $this->normalizeImportDate($col($row, 'production_date'));
                 if ($productionDate === false) {
@@ -857,6 +865,7 @@ class ProductController extends BaseController
                 $minRaw = $col($row, 'min');
                 $maxRaw = $col($row, 'max');
                 $rows[] = [
+                    '_line'            => $line,   // 写库失败时用于回报行号
                     'sku'              => $sku,
                     'name'             => $name,
                     'category_id'      => $categoryId,
@@ -877,26 +886,38 @@ class ProductController extends BaseController
                 ];
             }
             
-            if (!empty($errors)) {
+            // 失败行不阻塞：仅导入校验通过的行，失败原因按行返回
+            if (empty($rows)) {
                 return json([
                     'code'    => 400,
                     'success' => false,
-                    'message' => '数据验证失败',
-                    'errors'  => $errors
+                    'message' => '没有可导入的有效数据',
+                    'data'    => [
+                        'success_count' => 0,
+                        'fail_count'    => count($errors),
+                        'total_count'   => count($errors),
+                        'errors'        => $errors,
+                        'warnings'      => $warnings
+                    ]
                 ]);
             }
-            if (empty($rows)) {
-                return Response::validateError('没有可导入的有效数据');
-            }
-            
+
             Db::startTrans();
             try {
                 $successCount = 0;
                 foreach ($rows as $row) {
-                    $row['created_at'] = date('Y-m-d H:i:s');
-                    $row['updated_at'] = date('Y-m-d H:i:s');
-                    Product::create($row);
-                    $successCount++;
+                    try {
+                        $row['created_at'] = date('Y-m-d H:i:s');
+                        $row['updated_at'] = date('Y-m-d H:i:s');
+                        Product::create($row);
+                        $successCount++;
+                    } catch (\Exception $e) {
+                        // 单行写库失败（唯一键冲突等）记为失败行，继续导入其余行
+                        $errors[] = [
+                            'row'     => $row['_line'] ?? null,
+                            'message' => '写库失败：' . $e->getMessage()
+                        ];
+                    }
                 }
                 Db::commit();
             } catch (\app\common\BizException $e) {
@@ -906,14 +927,21 @@ class ProductController extends BaseController
                 Db::rollback();
                 throw $e;
             }
-            
+
+            $failCount = count($errors);
+            $message = $failCount > 0
+                ? "导入完成：成功 {$successCount} 行，失败 {$failCount} 行"
+                : "批量导入成功，共导入 {$successCount} 条产品记录";
+
             return json([
                 'code'    => 200,
                 'success' => true,
-                'message' => "批量导入成功，共导入 {$successCount} 条产品记录",
+                'message' => $message,
                 'data'    => [
                     'success_count' => $successCount,
-                    'total_count'   => count($rows),
+                    'fail_count'    => $failCount,
+                    'total_count'   => $successCount + $failCount,
+                    'errors'        => $errors,
                     'warnings'      => $warnings
                 ]
             ]);

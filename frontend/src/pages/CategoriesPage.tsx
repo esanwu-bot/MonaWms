@@ -16,6 +16,12 @@ import {
   Tooltip,
   Table,
   Breadcrumb,
+  Upload,
+  Progress,
+  Divider,
+  Statistic,
+  Row,
+  Col,
 } from 'antd';
 import {
   PlusOutlined,
@@ -23,6 +29,8 @@ import {
   DeleteOutlined,
   SearchOutlined,
   FolderOutlined,
+  UploadOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -246,6 +254,93 @@ const CategoriesPage: React.FC = () => {
   // 下钻：null=展示一级；否则展示该分类的子分类
   const [currentParentId, setCurrentParentId] = useState<string | null>(null);
 
+  // ===== 批量导入 =====
+  const [isBatchImportVisible, setIsBatchImportVisible] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importStatus, setImportStatus] = useState<'idle' | 'uploading' | 'processing' | 'success' | 'error'>('idle');
+  const [importResult, setImportResult] = useState<any>(null);
+
+  const handleBatchImport = () => {
+    setIsBatchImportVisible(true);
+    setImportStatus('idle');
+    setImportProgress(0);
+    setImportResult(null);
+    setImportFile(null);
+  };
+
+  // 生成并下载 Excel 导入模板
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/categories/download-template`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      if (!response.ok) throw new Error('下载失败');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `分类导入模板_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      message.success('模板下载成功');
+    } catch (error) {
+      message.error('模板下载失败，请重试');
+    }
+  };
+
+  // 提交导入
+  const handleImportSubmit = async () => {
+    if (!importFile) {
+      message.error('请选择要导入的文件');
+      return;
+    }
+    setImportStatus('uploading');
+    setImportProgress(30);
+
+    const formData = new FormData();
+    formData.append('file', importFile);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/categories/batch-import`, {
+        method: 'POST',
+        body: formData,
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      setImportProgress(70);
+      setImportStatus('processing');
+
+      const result = await response.json();
+      setImportProgress(100);
+
+      if (response.ok && (result.success || result.code === 200)) {
+        setImportStatus('success');
+        setImportResult(result.data);
+        message.success(`导入成功！共处理 ${result.data?.success_count ?? 0} 条分类记录`);
+        queryClient.invalidateQueries({ queryKey: ['categories'] });
+      } else {
+        setImportStatus('error');
+        setImportResult(result);
+        message.error(result.message || '导入失败');
+      }
+    } catch (error) {
+      setImportStatus('error');
+      setImportResult({ message: '网络错误，请重试' });
+      message.error('导入失败，请重试');
+    }
+  };
+
+  const resetImportModal = () => {
+    setIsBatchImportVisible(false);
+    setImportFile(null);
+    setImportProgress(0);
+    setImportStatus('idle');
+    setImportResult(null);
+  };
+
   const queryClient = useQueryClient();
 
   // 获取分类树（/categories/tree 返回嵌套结构）
@@ -454,9 +549,17 @@ const CategoriesPage: React.FC = () => {
             prefix={<SearchOutlined />}
             style={{ width: 300 }}
           />
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            {currentParent ? `新增「${currentParent.name}」的子分类` : '新增一级分类'}
-          </Button>
+          <Space>
+            <Button icon={<UploadOutlined />} onClick={handleBatchImport}>
+              批量导入
+            </Button>
+            <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
+              下载模板
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+              {currentParent ? `新增「${currentParent.name}」的子分类` : '新增一级分类'}
+            </Button>
+          </Space>
         </div>
       </Card>
 
@@ -518,6 +621,122 @@ const CategoriesPage: React.FC = () => {
         onSubmit={handleSubmit}
         loading={createMutation.isPending || updateMutation.isPending}
       />
+
+      {/* 批量导入模态框 */}
+      <Modal
+        title="批量导入分类"
+        open={isBatchImportVisible}
+        onCancel={resetImportModal}
+        width={640}
+        footer={[
+          <Button key="cancel" onClick={resetImportModal}>
+            取消
+          </Button>,
+          <Button key="download" icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
+            下载模板
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            loading={importStatus === 'uploading' || importStatus === 'processing'}
+            disabled={!importFile || importStatus === 'success'}
+            onClick={handleImportSubmit}
+          >
+            开始导入
+          </Button>,
+        ]}
+      >
+        <div>
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="请使用「下载模板」提供的 Excel 格式"
+            description="必填：一级分类名称、一级分类编码；可选：二级分类名称+编码（同时填写）、描述、状态（启用/停用）。同一行的二级挂在同行一级之下；一级按编码匹配（已有则更新名称/状态，沿用原编码时提示），二级编码在库内或文件内重复会被拒绝并提示行号。"
+          />
+          <Upload
+            accept=".xlsx,.xls"
+            maxCount={1}
+            beforeUpload={(file) => {
+              const isLt10M = file.size / 1024 / 1024 < 10;
+              if (!isLt10M) {
+                message.error('文件大小不能超过10MB！');
+                return Upload.LIST_IGNORE;
+              }
+              setImportFile(file);
+              return false;
+            }}
+            onRemove={() => setImportFile(null)}
+            fileList={importFile ? [importFile as any] : []}
+          >
+            <Button icon={<UploadOutlined />}>选择 Excel 文件（.xlsx / .xls）</Button>
+          </Upload>
+
+          {importStatus !== 'idle' && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ marginBottom: 8 }}>
+                {importStatus === 'uploading' && <span>上传文件中...</span>}
+                {importStatus === 'processing' && <span>处理数据中...</span>}
+                {importStatus === 'success' && <span style={{ color: '#52c41a' }}>导入完成</span>}
+                {importStatus === 'error' && <span style={{ color: '#ff4d4f' }}>导入失败</span>}
+              </div>
+              <Progress
+                percent={importProgress}
+                status={importStatus === 'success' ? 'success' : importStatus === 'error' ? 'exception' : 'active'}
+              />
+            </div>
+          )}
+
+          {importResult && (
+            <div style={{ marginTop: 16 }}>
+              <Divider>导入结果</Divider>
+              {importStatus === 'success' && (
+                <div>
+                  <Row gutter={16}>
+                    <Col span={8}>
+                      <Statistic title="成功" value={importResult?.success_count ?? 0} valueStyle={{ color: '#52c41a' }} />
+                    </Col>
+                    <Col span={8}>
+                      <Statistic title="总计" value={importResult?.total_count ?? 0} />
+                    </Col>
+                  </Row>
+                  {!!importResult?.warnings?.length && (
+                    <Alert
+                      style={{ marginTop: 12 }}
+                      type="warning"
+                      showIcon
+                      message="部分行有警告"
+                      description={
+                        <ul style={{ margin: 0, paddingLeft: 18 }}>
+                          {importResult.warnings.map((w: string, i: number) => (
+                            <li key={i}>{w}</li>
+                          ))}
+                        </ul>
+                      }
+                    />
+                  )}
+                </div>
+              )}
+              {importStatus === 'error' && (
+                <Alert
+                  type="error"
+                  showIcon
+                  message={importResult?.message || '导入失败'}
+                  description={
+                    Array.isArray(importResult?.errors) && importResult.errors.length > 0 ? (
+                      <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 200, overflow: 'auto' }}>
+                        {importResult.errors.map((e: any, i: number) => (
+                          <li key={i}>第 {e.row} 行：{e.message}</li>
+                        ))}
+                      </ul>
+                    ) : undefined
+                  }
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* 删除确认对话框 */}
       <Modal

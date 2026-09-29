@@ -168,6 +168,8 @@ Route::group('api', function () {
             Route::get('tree', 'CategoryController/tree');          // 分类树
             Route::get('options', 'CategoryController/options');    // 分类选项
             Route::get('statistics', 'CategoryController/statistics'); // 分类统计（须在 :id 之前）
+            Route::get('download-template', 'CategoryController/downloadTemplate'); // 下载导入模板（须在 :id 之前）
+            Route::post('batch-import', 'CategoryController/batchImport');          // 批量导入
             Route::get(':id', 'CategoryController/read');           // 分类详情
             Route::put(':id', 'CategoryController/update');         // 更新分类
             Route::delete(':id', 'CategoryController/delete');      // 删除分类

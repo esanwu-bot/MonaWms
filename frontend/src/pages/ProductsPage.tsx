@@ -794,14 +794,19 @@ const ProductsPage: React.FC = () => {
       const result = await response.json();
       setImportProgress(100);
 
+      const failCount = result?.data?.fail_count ?? (Array.isArray(result?.errors) ? result.errors.length : 0);
       if (response.ok && (result.success || result.code === 200)) {
         setImportStatus('success');
-        setImportResult(result.data);
-        message.success(`导入成功！成功导入 ${result.data?.success_count ?? 0} 条记录`);
+        setImportResult(result.data ? { ...result.data, message: result.message } : result);
+        if (failCount > 0) {
+          message.warning(`导入完成：成功 ${result.data?.success_count ?? 0} 行，失败 ${failCount} 行，请查看下方失败原因`);
+        } else {
+          message.success(`导入成功！成功导入 ${result.data?.success_count ?? 0} 条记录`);
+        }
         queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
       } else {
         setImportStatus('error');
-        setImportResult(result);
+        setImportResult(result.data ? { ...result.data, message: result.message } : result);
         message.error(result.message || '导入失败');
       }
     } catch (error) {
@@ -1235,9 +1240,27 @@ const ProductsPage: React.FC = () => {
                       <Statistic title="成功" value={importResult?.success_count ?? 0} valueStyle={{ color: '#52c41a' }} />
                     </Col>
                     <Col span={8}>
+                      <Statistic title="失败" value={importResult?.fail_count ?? 0} valueStyle={{ color: '#ff4d4f' }} />
+                    </Col>
+                    <Col span={8}>
                       <Statistic title="总计" value={importResult?.total_count ?? 0} />
                     </Col>
                   </Row>
+                  {!!importResult?.errors?.length && (
+                    <Alert
+                      style={{ marginTop: 12 }}
+                      type="error"
+                      showIcon
+                      message={`失败 ${importResult.errors.length} 行（以下行未导入，请修正后重新导入）`}
+                      description={
+                        <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 220, overflow: 'auto' }}>
+                          {importResult.errors.map((e: any, i: number) => (
+                            <li key={i}>第 {e.row} 行：{e.message}</li>
+                          ))}
+                        </ul>
+                      }
+                    />
+                  )}
                   {!!importResult?.warnings?.length && (
                     <Alert
                       style={{ marginTop: 12 }}
