@@ -71,6 +71,14 @@ class ProductController extends BaseController
             if ($search) {
                 $query->withSearch(array_keys($search), $search);
             }
+
+            // 按仓库过滤：仅返回在该仓库存在库存记录的产品（仓库页「管理产品」跳转用）
+            if (!empty($params['warehouse_id'])) {
+                $query->whereRaw(
+                    'id IN (SELECT DISTINCT product_id FROM inventory WHERE warehouse_id = ?)',
+                    [(int)$params['warehouse_id']]
+                );
+            }
             
             // 分页查询
             $result = $query->order('created_at', 'desc')

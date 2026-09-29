@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { getDictionaryItemsByTypeCode } from '../services/dictionaryService';
 import PageHeader from '../components/ui/PageHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -579,6 +580,10 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
 };
 
 const ProductsPage: React.FC = () => {
+  // 支持从仓库页「管理产品」跳转：?warehouseId=&warehouseName= 按仓库过滤
+  const [searchParams, setSearchParams] = useSearchParams();
+  const warehouseId = searchParams.get('warehouseId') || '';
+  const warehouseName = searchParams.get('warehouseName') || '';
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -683,7 +688,7 @@ const ProductsPage: React.FC = () => {
 
   // 获取产品列表
   const { data: productsData, isLoading } = useQuery({
-    queryKey: queryKeys.products.list({ page: currentPage, limit: pageSize, search: searchTerm, categoryId: selectedCategory }),
+    queryKey: queryKeys.products.list({ page: currentPage, limit: pageSize, search: searchTerm, categoryId: selectedCategory, warehouseId }),
     queryFn: async () => {
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -691,6 +696,7 @@ const ProductsPage: React.FC = () => {
         ...(searchTerm && { search: searchTerm }),
         // 后端读 snake_case（category_id），选一级分类时需含其下二级
         ...(selectedCategory && { category_id: selectedCategory }),
+        ...(warehouseId && { warehouse_id: warehouseId }),
       });
       const response = await api.get<{
         list: Product[];
@@ -911,6 +917,16 @@ const ProductsPage: React.FC = () => {
           </Space>
         }
       />
+      {warehouseId && (
+        <Alert
+          type="info"
+          showIcon
+          closable
+          onClose={() => setSearchParams({})}
+          style={{ marginBottom: 12 }}
+          message={`正在查看「${warehouseName || '指定仓库'}」下有库存/库存记录的产品`}
+        />
+      )}
       <Card>
 
         <div style={{ marginBottom: 16 }}>

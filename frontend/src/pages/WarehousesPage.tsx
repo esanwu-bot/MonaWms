@@ -639,8 +639,9 @@ const WarehousesPage: React.FC = () => {
     transferMutation.mutate(data);
   };
 
+  // 设备已并入产品主数据，此处跳转产品页并按仓库过滤
   const handleManageDevices = (warehouse: Warehouse) => {
-    navigate(`/devices?warehouseId=${warehouse.id}&warehouseName=${encodeURIComponent(warehouse.name)}`);
+    navigate(`/products?warehouseId=${warehouse.id}&warehouseName=${encodeURIComponent(warehouse.name)}`);
   };
 
   const handlePageChange = (newPage: number, newPageSize: number) => {
@@ -847,7 +848,7 @@ const WarehousesPage: React.FC = () => {
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Button type="primary" onClick={() => handleEdit(warehouse)}>查看详情</Button>
-                  <Button type="primary" onClick={() => handleManageDevices(warehouse)}>管理设备</Button>
+                  <Button type="primary" onClick={() => handleManageDevices(warehouse)}>管理产品</Button>
                 </div>
               </Card>
             );
