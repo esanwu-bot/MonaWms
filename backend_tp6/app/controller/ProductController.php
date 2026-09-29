@@ -527,11 +527,10 @@ class ProductController extends BaseController
                 'H1' => '保修期(月)',
                 'I1' => '计量单位',
                 'J1' => '计量方式',
-                'K1' => '单价',
-                'L1' => '成本价',
-                'M1' => '最小库存',
-                'N1' => '最大库存',
-                'O1' => '备注'
+                'K1' => '成本价',
+                'L1' => '最小库存',
+                'M1' => '最大库存',
+                'N1' => '备注'
             ];
             foreach ($headers as $cell => $value) {
                 $sheet->setCellValue($cell, $value);
@@ -548,11 +547,10 @@ class ProductController extends BaseController
             $sheet->setCellValue('H2', '36');
             $sheet->setCellValue('I2', '台');
             $sheet->setCellValue('J2', '计件');
-            $sheet->setCellValue('K2', '12000');
-            $sheet->setCellValue('L2', '9000');
-            $sheet->setCellValue('M2', '5');
-            $sheet->setCellValue('N2', '100');
-            $sheet->setCellValue('O2', '示例数据，导入前请删除本行');
+            $sheet->setCellValue('K2', '9000');
+            $sheet->setCellValue('L2', '5');
+            $sheet->setCellValue('M2', '100');
+            $sheet->setCellValue('N2', '示例数据，导入前请删除本行');
             $sheet->setCellValue('A3', 'SKU-DEMO-002');
             $sheet->setCellValue('B3', '光缆-单模');
             $sheet->setCellValue('C3', '光缆');
@@ -562,14 +560,14 @@ class ProductController extends BaseController
             $sheet->setCellValue('H3', '12');
             $sheet->setCellValue('I3', '米');
             $sheet->setCellValue('J3', '长度');
-            $sheet->setCellValue('O3', '线材类按长度计量，无需序列号');
+            $sheet->setCellValue('N3', '线材类按长度计量，无需序列号');
             
             foreach (['A' => 16, 'B' => 24, 'C' => 14, 'D' => 14, 'E' => 16, 'F' => 18, 'G' => 14,
-                      'H' => 12, 'I' => 8, 'J' => 12, 'K' => 10, 'L' => 10, 'M' => 10, 'N' => 10, 'O' => 30] as $col => $width) {
+                      'H' => 12, 'I' => 8, 'J' => 12, 'K' => 10, 'L' => 10, 'M' => 10, 'N' => 30] as $col => $width) {
                 $sheet->getColumnDimension($col)->setWidth($width);
             }
-            
-            $sheet->getStyle('A1:O1')->applyFromArray([
+
+            $sheet->getStyle('A1:N1')->applyFromArray([
                 'font' => ['bold' => true],
                 'fill' => [
                     'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
