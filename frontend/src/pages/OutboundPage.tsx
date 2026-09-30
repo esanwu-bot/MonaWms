@@ -31,6 +31,7 @@ import {
   Descriptions,
   InputNumber,
   Spin,
+  AutoComplete,
 } from 'antd';
 import {
   PlusOutlined,
@@ -153,32 +154,74 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
     defaultValue: ''
   });
 
-  // 获取仓库列表
+  // 获取仓库列表（/warehouses index 是分页结构会导致下拉恒空，改用 options 纯数组接口）
   const { data: warehousesData } = useQuery({
-    queryKey: queryKeys.warehouses.all,
+    queryKey: ['warehouses', 'options'],
     queryFn: async () => {
-      const response = await api.get('/warehouses');
-      return response.data.data;
+      const response = await api.get('/warehouses/options');
+      return Array.isArray(response.data?.data) ? response.data.data : [];
     },
   });
 
-  // 获取客户列表
+  // 获取客户列表（同上改用 options 接口）
   const { data: customersData } = useQuery({
-    queryKey: queryKeys.customers.all,
+    queryKey: ['customers', 'options'],
     queryFn: async () => {
-      const response = await api.get<Customer[]>('/customers');
-      return response.data.data;
+      const response = await api.get('/customers/options');
+      return Array.isArray(response.data?.data) ? response.data.data : [];
     },
   });
 
-  // 获取产品列表
+  // 获取产品列表（分页接口返回 {list,total}，之前直接当数组用导致下拉恒"暂无数据"）
   const { data: productsData } = useQuery({
     queryKey: queryKeys.products.all,
     queryFn: async () => {
-      const response = await api.get<Product[]>('/products');
-      return response.data.data;
+      const response = await api.get('/products', { params: { limit: 500 } });
+      const d = response.data?.data;
+      return Array.isArray(d) ? d : (d?.list || []);
     },
   });
+
+  // 产品检索（AutoComplete）：支持名称 / 设备来源(sku) / 序列号(barcode) / 型号
+  const [productSearchMap, setProductSearchMap] = React.useState<Record<number, string>>({});
+  const productMap = React.useMemo(() => {
+    const map: Record<string, Product> = {};
+    if (Array.isArray(productsData)) {
+      (productsData as Product[]).forEach((p) => { map[String(p.id)] = p; });
+    }
+    return map;
+  }, [productsData]);
+  const filterProducts = (kw: string): Product[] => {
+    const list = Array.isArray(productsData) ? (productsData as Product[]) : [];
+    const k = kw.trim().toLowerCase();
+    if (!k) return list.slice(0, 50);
+    return list
+      .filter((p: any) =>
+        [p.name, p.sku, p.barcode, p.model_number]
+          .some((v) => String(v || '').toLowerCase().includes(k)))
+      .slice(0, 50);
+  };
+  const productDisplay = (index: number, pid: any) => {
+    if (productSearchMap[index] !== undefined) return productSearchMap[index];
+    const p = productMap[String(pid)];
+    return p ? `${p.name}（${p.sku}）` : '';
+  };
+
+  // 仓库检索（AutoComplete）：按名称 / 编码过滤
+  const [warehouseDisplay, setWarehouseDisplay] = useState('');
+  const warehouseList = Array.isArray(warehousesData) ? (warehousesData as any[]) : [];
+  const warehouseOptions = warehouseList.map((w) => ({
+    value: `${w.name}（${w.code}）`,
+    warehouseId: w.id,
+    label: (
+      <Space>
+        {w.name}
+        <Tag>{w.code}</Tag>
+      </Space>
+    ),
+  }));
+  const selectedWarehouseId = useWatch({ control, name: 'warehouseId', defaultValue: '' });
+  const selectedWarehouse = warehouseList.find((w) => String(w.id) === String(selectedWarehouseId));
 
   // 获取选中客户的详细信息
   const { data: selectedCustomer } = useQuery({
@@ -193,6 +236,8 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
 
   React.useEffect(() => {
     if (open) {
+      setWarehouseDisplay('');
+      setProductSearchMap({});
       reset({
         orderNumber: order?.orderNumber || '',
         warehouseId: order?.warehouseId || '',
@@ -330,22 +375,29 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                 name="warehouseId"
                 control={control}
                 render={({ field }) => (
-                  <Select
-                    {...field}
-                    placeholder="请选择仓库"
+                  <AutoComplete
+                    style={{ width: '100%' }}
+                    value={warehouseDisplay || (selectedWarehouse ? `${selectedWarehouse.name}（${selectedWarehouse.code}）` : '')}
                     disabled={loading}
-                    showSearch
-                    optionFilterProp="children"
+                    allowClear
+                    placeholder="输入名称 / 编码检索仓库"
+                    options={warehouseOptions}
                     filterOption={(input, option) =>
-                      (option?.children as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                      String(option?.value ?? '').toLowerCase().includes(input.trim().toLowerCase())
                     }
-                  >
-                    {Array.isArray(warehousesData) ? warehousesData.map((warehouse) => (
-                      <Option key={warehouse.id} value={warehouse.id}>
-                        {warehouse.name} (编码: {warehouse.code})
-                      </Option>
-                    )) : []}
-                  </Select>
+                    onSearch={(kw) => {
+                      setWarehouseDisplay(kw);
+                      if (field.value) field.onChange('');
+                    }}
+                    onClear={() => {
+                      setWarehouseDisplay('');
+                      field.onChange('');
+                    }}
+                    onSelect={(_v, option: any) => {
+                      field.onChange(option.warehouseId);
+                      setWarehouseDisplay('');
+                    }}
+                  />
                 )}
               />
             </Form.Item>
@@ -370,9 +422,9 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                       (option?.children as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
                     }
                   >
-                    {Array.isArray(customersData) ? customersData.map((customer) => (
+                    {Array.isArray(customersData) ? customersData.map((customer: any) => (
                       <Option key={customer.id} value={customer.id}>
-                        {customer.name} (编码: {customer.code})
+                        {customer.name}
                       </Option>
                     )) : []}
                   </Select>
@@ -572,22 +624,37 @@ const OutboundOrderDialog: React.FC<OutboundOrderDialogProps> = ({
                     name={`items.${index}.productId`}
                     control={control}
                     render={({ field }) => (
-                      <Select
-                        {...field}
-                        placeholder="请选择产品"
+                      <AutoComplete
+                        style={{ width: '100%' }}
+                        value={productDisplay(index, field.value)}
                         disabled={loading}
-                        showSearch
-                        optionFilterProp="children"
-                        filterOption={(input, option) =>
-                          (option?.children as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                        }
-                      >
-                        {Array.isArray(productsData) ? productsData.map((product) => (
-                          <Option key={product.id} value={product.id}>
-                            {product.name} (SKU: {product.sku})
-                          </Option>
-                        )) : []}
-                      </Select>
+                        allowClear
+                        placeholder="输入名称 / 设备来源 / 序列号 / 型号检索"
+                        options={filterProducts(productSearchMap[index] ?? '').map((p: any) => ({
+                          value: `${p.name}（${p.sku || '-'}）`,
+                          productId: p.id,
+                          label: (
+                            <div>
+                              <div>{p.name}</div>
+                              <Text type="secondary">
+                                来源: {p.sku || '-'} ｜ 序列号: {p.barcode || '-'} ｜ 型号: {p.model_number || '-'}
+                              </Text>
+                            </div>
+                          ),
+                        }))}
+                        onSearch={(kw) => {
+                          setProductSearchMap((m) => ({ ...m, [index]: kw }));
+                          if (field.value) field.onChange('');
+                        }}
+                        onClear={() => {
+                          setProductSearchMap((m) => ({ ...m, [index]: '' }));
+                          field.onChange('');
+                        }}
+                        onSelect={(_v, option: any) => {
+                          field.onChange(option.productId);
+                          setProductSearchMap((m) => ({ ...m, [index]: option.value }));
+                        }}
+                      />
                     )}
                   />
                 </Form.Item>

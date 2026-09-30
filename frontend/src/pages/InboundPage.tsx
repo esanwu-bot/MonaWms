@@ -232,12 +232,8 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
   const isPurchaseSource = (watchSource || 'purchase') === 'purchase';
   const isTransferSource = (watchSource || '') === 'transfer_in';   // P9+：调拨入库
 
-  // P9+：明细是否含"无设备编号"（非计件/散料）物资 → 调拨说明必填
-  const hasNoSerialItem = (watchItems || []).some((it: { productId?: string }) => {
-    const product = productMap[String(it?.productId || '')];
-    return (product?.measure_type || 'count') !== 'count';
-  });
-
+  // 产品索引：必须在 hasNoSerialItem 之前声明，
+  // 否则 .some() 同步执行时访问 productMap 会触发 TDZ（声明前访问）运行时错误
   const productMap = React.useMemo(() => {
     const map: Record<string, Product> = {};
     if (Array.isArray(productsData)) {
@@ -245,6 +241,12 @@ const InboundOrderDialog: React.FC<InboundOrderDialogProps> = ({
     }
     return map;
   }, [productsData]);
+
+  // P9+：明细是否含"无设备编号"（非计件/散料）物资 → 调拨说明必填
+  const hasNoSerialItem = (watchItems || []).some((it: { productId?: string }) => {
+    const product = productMap[String(it?.productId || '')];
+    return (product?.measure_type || 'count') !== 'count';
+  });
 
   // 产品检索（AutoComplete）：支持名称 / 设备来源(sku) / 序列号(barcode) / 型号
   const [productSearchMap, setProductSearchMap] = React.useState<Record<number, string>>({});
