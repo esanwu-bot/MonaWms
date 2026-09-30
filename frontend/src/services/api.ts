@@ -1,7 +1,9 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import type { ApiResponse, ErrorResponse } from '../types/api';
-import { useAuthStore } from '../store/authStore';
+// 注意：此处不静态导入 useAuthStore，否则与 authStore -> authService -> api 形成循环依赖，
+// 生产构建会触发 "Cannot access 'X' before initialization"（TDZ）。
+// 改为在拦截器回调内动态 import，此时 store 模块已完成初始化。
 
 // API基础配置
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
@@ -54,6 +56,12 @@ apiClient.interceptors.request.use(
 let isRefreshing = false;
 let failedQueue: Array<{ resolve: Function; reject: Function }> = [];
 
+// 懒加载 authStore，避免与 authStore -> authService -> api 形成循环依赖
+const getAuthStore = async () => {
+  const mod = await import('../store/authStore');
+  return mod.useAuthStore;
+};
+
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
@@ -68,11 +76,12 @@ const processQueue = (error: any, token: string | null = null) => {
 
 // 响应拦截器
 apiClient.interceptors.response.use(
-  (response) => {
+  async (response) => {
     // 检查响应数据中的code字段
     if (response.data && response.data.code === 401) {
       // 使用authStore的forceLogout方法
-      const { forceLogout } = useAuthStore.getState();
+      const authStore = await getAuthStore();
+      const { forceLogout } = authStore.getState();
       forceLogout();
       return Promise.reject(new Error('Token无效或已过期'));
     }
@@ -123,7 +132,8 @@ apiClient.interceptors.response.use(
         } catch (refreshError) {
           // 刷新token失败，使用authStore的forceLogout方法
           processQueue(refreshError, null);
-          const { forceLogout } = useAuthStore.getState();
+          const authStore = await getAuthStore();
+          const { forceLogout } = authStore.getState();
           forceLogout();
           return Promise.reject(refreshError);
         } finally {
@@ -131,7 +141,8 @@ apiClient.interceptors.response.use(
         }
       } else {
         // 没有refreshToken，使用authStore的forceLogout方法
-        const { forceLogout } = useAuthStore.getState();
+        const authStore = await getAuthStore();
+        const { forceLogout } = authStore.getState();
         forceLogout();
       }
     }
