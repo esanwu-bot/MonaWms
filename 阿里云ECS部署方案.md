@@ -34,7 +34,7 @@
 
 | 容器 | 镜像 | 说明 |
 | --- | --- | --- |
-| monawms_mysql | mysql:5.7 | 数据卷持久化；**首次启动**自动导入 `sql/monawms_full_0928.sql`（完整库快照：建库 + 全部表结构 + 演示数据） |
+| monawms_mysql | mysql:5.7 | 数据卷持久化；**首次启动**自动导入 `sql/monawms_full_0930.sql`（完整库快照：建库 + 全部表结构 + 演示数据） |
 | monawms_php | monawms-php-fpm:8.1（自建，仅装扩展） | **挂载 `./backend_tp6` → `/var/www/html`**，改代码即时生效 |
 | monawms_nginx | nginx:1.27-alpine | **挂载 `./frontend/dist`** 与 `./backend_tp6`；对外 9110/9111 |
 
