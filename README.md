@@ -1,5 +1,7 @@
 # MonaWMS — 通信代维物资仓储管理系统
 
+![MonaWMS — 库存永远等于流水汇总](docs/images/banner.png)
+
 > 面向通信代维/小仓库场景的轻量 WMS：物资主数据 → 入库 → 出库 → 库存 → 盘点对账 → 报表导出 → 操作日志审计，全链路闭环。
 > **库存永远等于流水汇总**：库存由 `inventory_transactions` 流水驱动，`inventory` 只是流水汇总的物化快照，二者在同一事务内更新。
 
@@ -13,9 +15,15 @@
 
 > 演示环境为共享实例，请勿录入真实业务数据；管理员可登录后在「用户管理」修改密码。
 
+## 为什么需要 MonaWMS
+
+![没有 MonaWMS 之前 / 有了 MonaWMS 之后](docs/images/before-after.png)
+
 ---
 
 ## 一、功能概览
+
+![20+ 功能模块，覆盖仓库全业务](docs/images/modules.png)
 
 | 模块 | 说明 | 前端页面 |
 |---|---|---|
