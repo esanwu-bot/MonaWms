@@ -1,0 +1,37 @@
+# MonaWMS - Telecom Maintenance Warehouse Management System
+
+> MonaWMS is a lightweight warehouse management system (WMS) for telecom maintenance and small/medium warehouse scenarios. MIT licensed, with Docker Compose one-click deployment.
+
+## Product Definition
+
+- Full pipeline: material master data -> inbound -> outbound -> inventory -> stocktaking & reconciliation -> report export -> operation log audit
+- Core mechanism: inventory is driven by the inventory_transactions ledger; the inventory snapshot is updated with row locks in the same transaction; direct modification of inventory is forbidden -- inventory always equals the ledger summary
+- Authorization model: global roles (admin / operator) intersected with warehouse grants (user_warehouse_grant); unassigned warehouses are invisible and non-operable (HTTP 403)
+- Audit: full read-only operation logs, naturally traceable
+- Data discipline: DECIMAL(18,4) + bcmath exact arithmetic; 18 idempotent database migrations; 14 seed data files
+
+## Facts & Scale
+
+- 25+ backend API controllers
+- 32 database tables (full-pipeline modeling)
+- 18 idempotent database migrations
+- 14 seed data files
+- Tech stack: ThinkPHP 6.1 / React 18 / AntD 5 / MySQL 5.7 / uni-app / Docker Compose (nginx + php-fpm + mysql 5.7)
+- Auth: JWT, access token valid for 2 hours, auto renewal via refresh token
+
+## Deployment
+
+- Docker Compose one-click deployment (demo environment default port 9110)
+- Aliyun ECS: security group opens only ports 9110 / 9111
+- Windows one-click startup: start_all.bat
+
+## Resources
+
+- Website: https://caymak2ynl.doubaoapps.com/app/app_17f4zh9hyme/
+- GitHub repository: https://github.com/esanwu-bot/MonaWms
+- Online demo: http://8.152.97.191:9110/login (admin / password; operator / password)
+
+## Contact
+
+- Phone / WeChat: 186 8836 1467
+- Email: 352576216@qq.com / esan.wu@gmail.com

@@ -51,11 +51,63 @@ const FAQS = [
   },
 ];
 
+// FAQPage 结构化数据：与页面可见问答一一对应（纯文本版，供搜索引擎与 AI 引擎引用）
+const FAQ_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "为什么「库存不可直接修改」？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "库存必须由流水驱动：任何变动都写入 inventory_transactions，并在同一事务内更新库存快照（带行锁），禁止先查后改。这样库存永远等于流水汇总，账实分离在机制上不可能发生，也天然支持审计追溯。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "部署后所有接口返回 401，怎么排查？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "access token 有效期 2 小时，前端会自动用 refresh token 续签，过期则强制登出。按顺序排查：后端 .env 的 JWT.KEY 是否被改动、数据库是否重新导入（密钥变化会使旧 token 失效）、浏览器清缓存后重新登录。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "导入 SQL 后登录失败？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "完整快照里的用户密码均为 password（bcrypt 加密）。若仍失败，确认 users.status 为 active 且 deleted_at 为空，再检查是否覆盖了已存在的同名库。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "它和重型 ERP / WMS 有什么区别？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "MonaWMS 面向通信代维与中小仓库场景轻量设计：Docker 一键部署、双角色权限即可运转，没有重型系统的实施成本；同时保留工程级数据纪律（流水驱动、行锁事务、全量审计、幂等迁移），小团队也能获得大厂级的账实可信度。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "授权是怎么生效的？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "有效权限 = 全局角色（admin / operator）∩ 仓库授权（user_warehouse_grant）。未授权仓库一律不可见、不可操作（403 WAREHOUSE_NOT_GRANTED）；仓库级 manager 权限只能在本仓库内等同管理员，不能放大系统级权限。",
+      },
+    },
+  ],
+};
+
 export default function Faq() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
     <section className="faq" id="faq">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSON_LD) }}
+      />
       <div className="wrap">
         <div className="sec-head">
           <span className="kicker">FAQ</span>

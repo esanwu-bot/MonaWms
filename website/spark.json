@@ -1,5 +1,18 @@
 {
-  "stack": "custom-webapp",
-  "dev": { "command": ["npm", "run", "dev"], "port": 37210 },
-  "build": { "output": "out" }
+  "app": {
+    "id": "app_17f4zh9hyme",
+    "online_url": "https://caymak2ynl.doubaoapps.com/app/app_17f4zh9hyme"
+  },
+  "build": {
+    "output": "out"
+  },
+  "dev": {
+    "command": [
+      "npm",
+      "run",
+      "dev"
+    ],
+    "port": 37210
+  },
+  "stack": "custom-webapp"
 }
