@@ -23,6 +23,3 @@ monawms-*.sql
 # 系统文件
 .DS_Store
 Thumbs.db
-
-# maltose init 生成的示例项目（自带独立 .git，不并入主仓）
-maltose-quickstart/
