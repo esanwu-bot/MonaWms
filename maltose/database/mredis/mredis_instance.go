@@ -8,18 +8,18 @@ import (
 )
 
 const (
-	// DefaultName is the default group name for redis instance.
+	// DefaultName 是 Redis 实例的默认组名。
 	DefaultName = "default"
 )
 
 var (
-	// instances is a map for managing redis instances.
+	// instances 用于管理 Redis 实例的容器。
 	instances = minstance.New()
-	// configs is a map for managing redis configs.
+	// configs 用于管理 Redis 配置的容器。
 	configs = minstance.New()
 )
 
-// Instance returns a redis instance.
+// Instance 返回一个 Redis 实例。
 func Instance(name ...string) *Redis {
 	key := DefaultName
 	if len(name) > 0 && name[0] != "" {
@@ -43,13 +43,13 @@ func Instance(name ...string) *Redis {
 	return nil
 }
 
-// SetConfig sets the redis configuration with the specified name.
+// SetConfig 设置指定名称的 Redis 配置。
 func SetConfig(name string, cfg *Config) {
 	configs.Set(name, cloneConfig(cfg))
 	invalidateInstance(name)
 }
 
-// SetConfigByMap sets the redis configuration with the specified name.
+// SetConfigByMap 通过 map 设置指定名称的 Redis 配置。
 func SetConfigByMap(m map[string]any, name ...string) error {
 	key := DefaultName
 	if len(name) > 0 && name[0] != "" {
@@ -64,7 +64,7 @@ func SetConfigByMap(m map[string]any, name ...string) error {
 	return nil
 }
 
-// ConfigFromMap parses and returns config from given map.
+// ConfigFromMap 从给定 map 解析并返回配置。
 func ConfigFromMap(m map[string]any) (config *Config, err error) {
 	config = defaultConfig()
 	if err := config.SetConfigWithMap(m); err != nil {
@@ -73,8 +73,8 @@ func ConfigFromMap(m map[string]any) (config *Config, err error) {
 	return config, nil
 }
 
-// GetConfig returns the redis configuration with the specified name.
-// If `name` is not passed, it returns configuration of the default name.
+// GetConfig 返回指定名称的 Redis 配置。
+// 若未传入 `name`，则返回默认名称的配置。
 func GetConfig(name ...string) (config *Config, ok bool) {
 	key := DefaultName
 	if len(name) > 0 && name[0] != "" {
@@ -86,7 +86,7 @@ func GetConfig(name ...string) (config *Config, ok bool) {
 	return &Config{}, false
 }
 
-// RemoveConfig removes the redis configuration with the specified name.
+// RemoveConfig 移除指定名称的 Redis 配置。
 func RemoveConfig(name ...string) {
 	key := DefaultName
 	if len(name) > 0 && name[0] != "" {

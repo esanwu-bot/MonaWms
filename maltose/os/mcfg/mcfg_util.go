@@ -2,9 +2,9 @@ package mcfg
 
 import "github.com/graingo/maltose/os/mcfg/internal"
 
-// Merge merges the `src` map into the `dest` map.
-// It performs a deep, case-insensitive merge.
-// The `dest` map is modified in place.
+// Merge 将 `src` 合并到 `dest` 中。
+// 采用深合并且忽略键的大小写。
+// `dest` 会被就地修改。
 func Merge(dest, src map[string]any) map[string]any {
 	internal.DeepMergeMaps(dest, src)
 	return dest

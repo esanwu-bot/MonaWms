@@ -8,14 +8,14 @@ import (
 	"github.com/spf13/cast"
 )
 
-// SearchMap is a case-insensitive search function for a given path in a map.
-// It navigates through a map of string keys to find a value based on a path slice.
+// SearchMap 在 map 中按给定路径进行大小写不敏感的查找。
+// 它沿字符串键逐级查找，根据路径切片定位值。
 func SearchMap(source map[string]any, path []string) any {
 	if len(path) == 0 {
 		return source
 	}
 
-	// Find the next key in a case-insensitive manner.
+	// 以大小写不敏感的方式查找下一个键。
 	key := path[0]
 	var nextVal any
 	var found bool
@@ -36,44 +36,44 @@ func SearchMap(source map[string]any, path []string) any {
 		return nextVal
 	}
 
-	// If we need to go deeper, the next value must be a map.
-	// We use cast.ToStringMap for robust conversion from map[any]any etc.
+	// 若需继续深入，下一级的值必须是 map。
+	// 这里用 cast.ToStringMap 以便从 map[any]any 等类型稳健转换。
 	nestedMap, err := cast.ToStringMapE(nextVal)
 	if err != nil {
-		// It's not a map, so we can't go deeper.
+		// 不是 map，无法继续深入。
 		return nil
 	}
 
 	return SearchMap(nestedMap, path[1:])
 }
 
-// DeepMergeMaps performs a deep, case-insensitive merge of `src` into `dest`.
+// DeepMergeMaps 将 `src` 深度合并到 `dest`，键名比较忽略大小写。
 func DeepMergeMaps(dest, src map[string]any) {
 	for srcK, srcV := range src {
-		// Find the key in dest, case-insensitively.
+		// 在 dest 中忽略大小写查找键。
 		destK, found := FindCaseInsensitiveKey(dest, srcK)
 
 		if !found {
-			// If the key doesn't exist in dest, just add it.
+			// 若 dest 中不存在该键，直接添加。
 			dest[srcK] = srcV
 			continue
 		}
 
-		// The key exists in dest.
+		// dest 中已存在该键。
 		destV := dest[destK]
 
-		// Try to cast both values to maps.
+		// 尝试将两个值都转换为 map。
 		srcMap, srcIsMap := srcV.(map[string]any)
 		destMap, destIsMap := destV.(map[string]any)
 
-		// If both are maps, we recurse.
+		// 若两者都是 map，则递归合并。
 		if srcIsMap && destIsMap {
 			DeepMergeMaps(destMap, srcMap)
 			dest[destK] = destMap
 		} else {
-			// Not both are maps, so src overwrites dest.
-			// If keys have different casing (e.g., 'Server' vs 'server'),
-			// we prefer the key from the src map.
+			// 不全是 map，则 src 覆盖 dest。
+			// 若键的大小写不同（例如 'Server' 与 'server'），
+			// 优先保留 src 中的键。
 			if destK != srcK {
 				delete(dest, destK)
 			}
@@ -82,8 +82,8 @@ func DeepMergeMaps(dest, src map[string]any) {
 	}
 }
 
-// FindCaseInsensitiveKey finds a key in a map case-insensitively
-// and returns the actual key and a boolean indicating if it was found.
+// FindCaseInsensitiveKey 在 map 中忽略大小写查找键，
+// 返回实际的键名以及是否找到的布尔值。
 func FindCaseInsensitiveKey(source map[string]any, key string) (string, bool) {
 	for k := range source {
 		if strings.EqualFold(k, key) {
@@ -98,8 +98,8 @@ var (
 	defaultConfigDir   = []string{".", "/", "config", "/config"}
 )
 
-// SearchConfigFile searches for the configuration file in default directories.
-// It searches for files with the given `name` and supported extensions.
+// SearchConfigFile 在默认目录中搜索配置文件。
+// 按给定 `name` 与支持的扩展名查找文件。
 func SearchConfigFile(name string) (path string, found bool) {
 	for _, dir := range defaultConfigDir {
 		for _, ext := range supportedFileTypes {
@@ -109,7 +109,7 @@ func SearchConfigFile(name string) (path string, found bool) {
 			}
 		}
 	}
-	// Also check for the name directly, in case it includes the extension.
+	// 同时直接按 name 检查，以防其已包含扩展名。
 	if stat, err := os.Stat(name); err == nil && !stat.IsDir() {
 		return name, true
 	}

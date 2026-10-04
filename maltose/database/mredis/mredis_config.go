@@ -8,48 +8,48 @@ import (
 	"github.com/graingo/mconv"
 )
 
-// Config is the configuration object for Redis.
-// Zero-value fields inherit the framework defaults when passed to New.
+// Config 是 Redis 的配置对象。
+// 传给 New 时，零值字段会继承框架默认值。
 type Config struct {
-	// Address is the address of the Redis server.
+	// Address 是 Redis 服务地址。
 	Address string `mconv:"address"`
-	// DB is the database number.
+	// DB 是数据库编号。
 	DB int `mconv:"db"`
-	// User is the user of the Redis server.
+	// User 是 Redis 服务用户名。
 	User string `mconv:"user"`
-	// Password is the password of the Redis server.
+	// Password 是 Redis 服务密码。
 	Password string `mconv:"password"`
-	// MasterName is the master name of the Redis server.
+	// MasterName 是 Redis 服务的 master 名称。
 	MasterName string `mconv:"master_name"`
-	// MinIdleConns is the minimum number of idle connections.
+	// MinIdleConns 是最小空闲连接数。
 	MinIdleConns int `mconv:"min_idle_conns"`
-	// MaxIdleConns is the maximum number of idle connections.
+	// MaxIdleConns 是最大空闲连接数。
 	MaxIdleConns int `mconv:"max_idle_conns"`
-	// MaxRetries is the maximum number of retries before giving up.
+	// MaxRetries 是放弃前的最大重试次数。
 	MaxRetries int `mconv:"max_retries"`
-	// PoolSize is the maximum number of socket connections.
+	// PoolSize 是最大套接字连接数。
 	PoolSize int `mconv:"pool_size"`
-	// MinRetryBackoff is the minimum backoff between each retry.
+	// MinRetryBackoff 是每次重试之间的最小退避时间。
 	MinRetryBackoff time.Duration `mconv:"min_retry_backoff"`
-	// MaxRetryBackoff is the maximum backoff between each retry.
+	// MaxRetryBackoff 是每次重试之间的最大退避时间。
 	MaxRetryBackoff time.Duration `mconv:"max_retry_backoff"`
-	// DialTimeout is the timeout for establishing new connections.
+	// DialTimeout 是建立新连接的超时时间。
 	DialTimeout time.Duration `mconv:"dial_timeout"`
-	// ReadTimeout is the timeout for reading.
+	// ReadTimeout 是读取超时时间。
 	ReadTimeout time.Duration `mconv:"read_timeout"`
-	// WriteTimeout is the timeout for writing.
+	// WriteTimeout 是写入超时时间。
 	WriteTimeout time.Duration `mconv:"write_timeout"`
-	// PoolTimeout is the timeout for getting a connection from the pool.
+	// PoolTimeout 是从连接池获取连接的超时时间。
 	PoolTimeout time.Duration `mconv:"pool_timeout"`
-	// ConnMaxIdleTime is the timeout for idle connections.
+	// ConnMaxIdleTime 是空闲连接的超时时间。
 	ConnMaxIdleTime time.Duration `mconv:"conn_max_idle_time"`
-	// SlowThreshold is the slow threshold for the Redis.
+	// SlowThreshold 是 Redis 的慢命令阈值。
 	SlowThreshold time.Duration `mconv:"slow_threshold"`
-	// Logger is configured through SetLogger or frame/mins component assembly.
+	// Logger 通过 SetLogger 或 frame/mins 组件装配来配置。
 	Logger *mlog.Logger `mconv:"-"`
-	// Hooks is configured through AddHook.
+	// Hooks 通过 AddHook 配置。
 	Hooks []Hook `mconv:"-"`
-	// loggerHook is the internal logger hook instance.
+	// loggerHook 是内部的日志钩子实例。
 	loggerHook Hook `mconv:"-"`
 }
 
@@ -73,7 +73,7 @@ func cloneConfig(config *Config) *Config {
 	return &cloned
 }
 
-// mergeConfig overlays non-zero user values on the Redis defaults.
+// mergeConfig 将用户配置的非零值覆盖到 Redis 默认值之上。
 func mergeConfig(config *Config) *Config {
 	merged := defaultConfig()
 	if config == nil {

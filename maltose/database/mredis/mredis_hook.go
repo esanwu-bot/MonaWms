@@ -12,14 +12,14 @@ import (
 
 // --- loggerHook ---
 
-// loggerHook is a redis hook for logging.
+// loggerHook 是用于记录日志的 Redis 钩子。
 type loggerHook struct {
 	logger        *mlog.Logger
 	slowThreshold time.Duration
 	mu            sync.RWMutex
 }
 
-// newLoggerHook creates a new logger hook.
+// newLoggerHook 创建一个新的日志钩子。
 func newLoggerHook(cfg *Config) *loggerHook {
 	return &loggerHook{
 		logger:        cfg.Logger,
@@ -27,22 +27,22 @@ func newLoggerHook(cfg *Config) *loggerHook {
 	}
 }
 
-// setSlowThreshold updates the slow threshold for the hook.
+// setSlowThreshold 更新钩子的慢命令阈值。
 func (h *loggerHook) setSlowThreshold(d time.Duration) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.slowThreshold = d
 }
 
-// DialHook is called when a connection is dialed. It's part of the redis.Hook interface.
+// DialHook 在建立连接时被调用，属于 redis.Hook 接口的一部分。
 func (h *loggerHook) DialHook(next redis.DialHook) redis.DialHook {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
-		// We don't log dialing, just pass it through.
+		// 不记录拨号过程，直接放行。
 		return next(ctx, network, addr)
 	}
 }
 
-// ProcessHook is called before a command is processed. It's part of the redis.Hook interface.
+// ProcessHook 在命令执行前被调用，属于 redis.Hook 接口的一部分。
 func (h *loggerHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
 	return func(ctx context.Context, cmd redis.Cmder) error {
 		start := time.Now()
@@ -56,6 +56,7 @@ func (h *loggerHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
 
 		if err != nil && err != redis.Nil {
 			// The logger's Errorw method will automatically handle adding the error as a field.
+			// 日志器的 Errorw 方法会自动把 error 作为字段写入。
 			h.logger.Errorw(ctx, err, "redis command error", fields...)
 		} else {
 			h.mu.RLock()
@@ -72,7 +73,7 @@ func (h *loggerHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
 	}
 }
 
-// ProcessPipelineHook is called before a pipeline is processed. It's part of the redis.Hook interface.
+// ProcessPipelineHook 在流水线执行前被调用，属于 redis.Hook 接口的一部分。
 func (h *loggerHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
 	return func(ctx context.Context, cmds []redis.Cmder) error {
 		start := time.Now()
@@ -87,6 +88,7 @@ func (h *loggerHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.P
 
 		if err != nil && err != redis.Nil {
 			// The logger's Errorw method will automatically handle adding the error as a field.
+			// 日志器的 Errorw 方法会自动把 error 作为字段写入。
 			h.logger.Errorw(ctx, err, "redis pipeline error", fields...)
 		} else {
 			h.mu.RLock()

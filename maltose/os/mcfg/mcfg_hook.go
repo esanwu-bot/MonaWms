@@ -6,12 +6,12 @@ import (
 	"sync"
 )
 
-// StatefulHook transforms loaded configuration while retaining state between calls.
+// StatefulHook 在转换已加载配置的同时保留多次调用之间的状态。
 type StatefulHook interface {
 	Hook(ctx context.Context, data map[string]any) (map[string]any, error)
 }
 
-// ConfigHookFunc transforms configuration after an adapter loads it.
+// ConfigHookFunc 在适配器加载配置之后对其进行转换。
 type ConfigHookFunc func(ctx context.Context, data map[string]any) (map[string]any, error)
 
 type hookRegistry struct {
@@ -51,10 +51,10 @@ func (r *hookRegistry) clear() {
 	r.ordered = nil
 }
 
-// RegisterAfterLoadHook registers a process-wide hook that runs after an
-// adapter loads configuration. It accepts ConfigHookFunc, its underlying
-// function signature, or StatefulHook. Register hooks before the first read.
-// Hooks run in registration order.
+// RegisterAfterLoadHook 注册一个进程级钩子，在适配器加载配置后执行。
+// 参数为 ConfigHookFunc、其底层函数签名或 StatefulHook。
+// 请在首次读取配置之前注册钩子。
+// 钩子按注册顺序执行。
 func RegisterAfterLoadHook(hook any) {
 	var hookFunc ConfigHookFunc
 	switch h := hook.(type) {
@@ -71,13 +71,13 @@ func RegisterAfterLoadHook(hook any) {
 	hooks.register(fmt.Sprintf("%p", hook), hookFunc)
 }
 
-// ClearHooks removes all registered hooks.
-// This is intended for testing purposes only.
+// ClearHooks 移除所有已注册的钩子。
+// 该方法仅用于测试。
 func ClearHooks() {
 	hooks.clear()
 }
 
-// runAfterLoadHooks executes all registered after-load hooks in order.
+// runAfterLoadHooks 按注册顺序执行所有加载后钩子。
 func runAfterLoadHooks(ctx context.Context, data map[string]any) (map[string]any, error) {
 	processedData := data
 	var err error

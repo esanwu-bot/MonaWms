@@ -11,7 +11,7 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// Redis is the main struct for redis operations.
+// Redis 是 Redis 操作的主结构体。
 type Redis struct {
 	client redis.UniversalClient
 	config *Config
@@ -20,7 +20,7 @@ type Redis struct {
 
 type Hook redis.Hook
 
-// New creates and returns a new Redis client.
+// New 创建并返回一个新的 Redis 客户端。
 func New(config ...*Config) (*Redis, error) {
 	cfg := defaultConfig()
 	if len(config) > 0 && config[0] != nil {
@@ -72,12 +72,12 @@ func New(config ...*Config) (*Redis, error) {
 	}, nil
 }
 
-// Client returns the underlying universal client.
+// Client 返回底层的通用客户端。
 func (r *Redis) Client() redis.UniversalClient {
 	return r.client
 }
 
-// AddHook adds a hook to the client.
+// AddHook 向客户端添加钩子。
 func (r *Redis) AddHook(hook Hook) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -85,17 +85,17 @@ func (r *Redis) AddHook(hook Hook) {
 	r.client.AddHook(hook)
 }
 
-// Ping checks the connection to the server.
+// Ping 检查与服务端的连接是否正常。
 func (r *Redis) Ping(ctx context.Context) error {
 	return r.client.Ping(ctx).Err()
 }
 
-// Close closes the client, releasing any open resources.
+// Close 关闭客户端，释放所有已打开的资源。
 func (r *Redis) Close() error {
 	return r.client.Close()
 }
 
-// SetSlowThreshold dynamically updates the slow command threshold.
+// SetSlowThreshold 动态更新慢命令阈值。
 func (r *Redis) SetSlowThreshold(d time.Duration) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -7,12 +7,12 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// HSet sets the specified fields to their respective values in the hash stored at key.
+// HSet 将指定字段及其值写入键对应的哈希表。
 func (r *Redis) HSet(ctx context.Context, key string, fields map[string]interface{}) error {
 	return r.client.HSet(ctx, key, fields).Err()
 }
 
-// HGet returns the value associated with field in the hash stored at key.
+// HGet 返回键对应哈希表中指定字段的值。
 func (r *Redis) HGet(ctx context.Context, key, field string) (*mvar.Var, error) {
 	val, err := r.client.HGet(ctx, key, field).Result()
 	if err != nil {

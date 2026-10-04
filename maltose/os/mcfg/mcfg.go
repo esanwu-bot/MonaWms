@@ -16,21 +16,21 @@ var (
 	instances = minstance.New()
 )
 
-// Config is a configuration management object.
+// Config 是配置管理对象。
 type Config struct {
 	adapter    Adapter
-	cachedData *mvar.Var // Used to cache the data after hooks have been executed.
+	cachedData *mvar.Var // 用于缓存钩子执行之后的数据。
 	mu         sync.RWMutex
 }
 
 const (
-	// DefaultInstanceName is the default instance name.
+	// DefaultInstanceName 是默认实例名。
 	DefaultInstanceName = "default"
-	// DefaultConfigFileName is the default config file name.
+	// DefaultConfigFileName 是默认配置文件名。
 	DefaultConfigFileName = "config"
 )
 
-// New creates a new configuration management object and uses the file adapter.
+// New 创建一个新的配置管理对象，并使用文件适配器。
 func New() (*Config, error) {
 	adapterFile, err := NewAdapterFile()
 	if err != nil {
@@ -41,16 +41,16 @@ func New() (*Config, error) {
 	}, nil
 }
 
-// NewWithAdapter creates a new configuration management object with an adapter.
+// NewWithAdapter 使用指定适配器创建配置管理对象。
 func NewWithAdapter(adapter Adapter) *Config {
 	return &Config{
 		adapter: adapter,
 	}
 }
 
-// Instance returns a shared Config with the requested instance name.
-// A named instance loads a matching configuration file, such as "redis.yaml",
-// and panics during initialization when that file cannot be found or parsed.
+// Instance 返回指定实例名的共享 Config。
+// 具名实例会加载对应的配置文件，例如 "redis.yaml"，
+// 若文件找不到或解析失败，初始化时会 panic。
 func Instance(name ...string) *Config {
 	var instanceName = DefaultInstanceName
 	if len(name) > 0 && name[0] != "" {
@@ -71,39 +71,39 @@ func Instance(name ...string) *Config {
 	}).(*Config)
 }
 
-// SetAdapter sets the configuration adapter.
+// SetAdapter 设置配置适配器。
 func (c *Config) SetAdapter(adapter Adapter) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.adapter = adapter
-	c.cachedData = nil // Clear cache when adapter changes.
+	c.cachedData = nil // 适配器变更时清空缓存。
 }
 
-// GetAdapter returns the configuration adapter.
+// GetAdapter 返回配置适配器。
 func (c *Config) GetAdapter() Adapter {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.adapter
 }
 
-// ClearCache clears the internal configuration cache.
-// It should be called when the underlying configuration source has changed.
+// ClearCache 清空内部配置缓存。
+// 当底层配置源发生变化时应调用该方法。
 func (c *Config) ClearCache(_ context.Context) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.cachedData = nil
 }
 
-// getValueByPattern gets the configuration value for the specified key.
-// It uses a temporary viper instance to avoid concurrency issues on a shared instance.
+// getValueByPattern 获取指定键对应的配置值。
+// 这里使用临时的 viper 实例，避免共享实例上的并发问题。
 func (c *Config) getValueByPattern(data map[string]any, pattern string) any {
 	path := strings.Split(pattern, ".")
 	return internal.SearchMap(data, path)
 }
 
-// Get gets the configuration value for the specified key.
-// The optional `def` parameter is the default value. If the configuration value is empty, the default value is returned.
-// If the configuration value is empty and no default value is provided, nil is returned.
+// Get 获取指定键对应的配置值。
+// 可选参数 `def` 为默认值，配置值为空时返回默认值。
+// 若配置值为空且未提供默认值，则返回 nil。
 func (c *Config) Get(ctx context.Context, pattern string, def ...any) (*mvar.Var, error) {
 	data, err := c.Data(ctx)
 	if err != nil {
@@ -127,7 +127,7 @@ func (c *Config) Get(ctx context.Context, pattern string, def ...any) (*mvar.Var
 	return nil, nil
 }
 
-// MustGet acts as function Get, but it panics if error occurs.
+// MustGet 与 Get 行为一致，但出错时会 panic。
 func (c *Config) MustGet(ctx context.Context, pattern string, def ...any) *mvar.Var {
 	v, err := c.Get(ctx, pattern, def...)
 	if err != nil {
@@ -136,7 +136,7 @@ func (c *Config) MustGet(ctx context.Context, pattern string, def ...any) *mvar.
 	return v
 }
 
-// Data returns all configuration data.
+// Data 返回全部配置数据。
 func (c *Config) Data(ctx context.Context) (map[string]any, error) {
 	c.mu.RLock()
 	if c.cachedData != nil {
@@ -150,8 +150,8 @@ func (c *Config) Data(ctx context.Context) (map[string]any, error) {
 		return nil, merror.New("config adapter is nil")
 	}
 
-	// Adapters such as Apollo and Nacos maintain their own live cache. Avoid
-	// caching their raw data here so watch updates remain visible immediately.
+	// Apollo、Nacos 等适配器自身维护实时缓存，
+	// 这里不缓存它们的原始数据，以便监听更新能立刻生效。
 	if hooks.count() == 0 {
 		rawData, err := adapter.Data(ctx)
 		if err != nil {
@@ -163,7 +163,7 @@ func (c *Config) Data(ctx context.Context) (map[string]any, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Double check, as another goroutine might have populated it in the meantime.
+	// 双重检查，因为期间可能有其他 goroutine 已填充缓存。
 	if c.cachedData != nil {
 		return deepCopyMap(c.cachedData.Map()), nil
 	}
@@ -181,16 +181,16 @@ func (c *Config) Data(ctx context.Context) (map[string]any, error) {
 	return deepCopyMap(processedData), nil
 }
 
-// Available checks if the adapter is available.
-// The optional `resource` parameter is the resource name. If the resource name is not empty, it checks if the resource is available.
+// Available 检查适配器是否可用。
+// 可选参数 `resource` 为资源名，非空时检查该资源是否可用。
 func (c *Config) Available(ctx context.Context, resource ...string) bool {
 	return c.adapter.Available(ctx, resource...)
 }
 
-// Struct unmarshals the configuration into a struct.
-// The optional `pattern` parameter is the pattern to unmarshal the configuration into.
-// If you want to specify the key name, you can use the `mconv` tag.
-// It supports custom decoding hooks.
+// Struct 将配置解析到结构体中。
+// 可选参数 `pattern` 指定要解析的配置路径。
+// 如需指定键名，可使用 `mconv` 标签。
+// 支持自定义解码钩子。
 func (c *Config) Struct(ctx context.Context, v any, pattern string, hooks ...mconv.HookFunc) error {
 	var (
 		data map[string]any
@@ -218,7 +218,7 @@ func (c *Config) Struct(ctx context.Context, v any, pattern string, hooks ...mco
 	return mconv.ToStructE(data, v, hooks...)
 }
 
-// String gets the configuration value as a string.
+// String 以 string 类型获取配置值。
 func (c *Config) String(ctx context.Context, pattern string, def ...any) (string, error) {
 	val, err := c.Get(ctx, pattern, def...)
 	if err != nil {
@@ -230,7 +230,7 @@ func (c *Config) String(ctx context.Context, pattern string, def ...any) (string
 	return val.String(), nil
 }
 
-// MustGetString gets a string value and panics if the adapter returns an error.
+// MustGetString 获取 string 值，适配器返回错误时 panic。
 func (c *Config) MustGetString(ctx context.Context, pattern string, def ...any) string {
 	value, err := c.String(ctx, pattern, def...)
 	if err != nil {
@@ -240,12 +240,12 @@ func (c *Config) MustGetString(ctx context.Context, pattern string, def ...any) 
 }
 
 // GetString gets a string value and panics if the adapter returns an error.
-// Deprecated: use String for explicit error handling or MustGetString during startup.
+// Deprecated: 需要显式处理错误请用 String，启动阶段可用 MustGetString。
 func (c *Config) GetString(ctx context.Context, pattern string, def ...any) string {
 	return c.MustGetString(ctx, pattern, def...)
 }
 
-// Int gets the configuration value as an int.
+// Int 以 int 类型获取配置值。
 func (c *Config) Int(ctx context.Context, pattern string, def ...any) (int, error) {
 	val, err := c.Get(ctx, pattern, def...)
 	if err != nil {
@@ -257,7 +257,7 @@ func (c *Config) Int(ctx context.Context, pattern string, def ...any) (int, erro
 	return val.Int(), nil
 }
 
-// MustGetInt gets an int value and panics if the adapter returns an error.
+// MustGetInt 获取 int 值，适配器返回错误时 panic。
 func (c *Config) MustGetInt(ctx context.Context, pattern string, def ...any) int {
 	value, err := c.Int(ctx, pattern, def...)
 	if err != nil {
@@ -267,12 +267,12 @@ func (c *Config) MustGetInt(ctx context.Context, pattern string, def ...any) int
 }
 
 // GetInt gets an int value and panics if the adapter returns an error.
-// Deprecated: use Int for explicit error handling or MustGetInt during startup.
+// Deprecated: 需要显式处理错误请用 Int，启动阶段可用 MustGetInt。
 func (c *Config) GetInt(ctx context.Context, pattern string, def ...any) int {
 	return c.MustGetInt(ctx, pattern, def...)
 }
 
-// Bool gets the configuration value as a bool.
+// Bool 以 bool 类型获取配置值。
 func (c *Config) Bool(ctx context.Context, pattern string, def ...any) (bool, error) {
 	val, err := c.Get(ctx, pattern, def...)
 	if err != nil {
@@ -284,7 +284,7 @@ func (c *Config) Bool(ctx context.Context, pattern string, def ...any) (bool, er
 	return val.Bool(), nil
 }
 
-// MustGetBool gets a bool value and panics if the adapter returns an error.
+// MustGetBool 获取 bool 值，适配器返回错误时 panic。
 func (c *Config) MustGetBool(ctx context.Context, pattern string, def ...any) bool {
 	value, err := c.Bool(ctx, pattern, def...)
 	if err != nil {
@@ -294,12 +294,12 @@ func (c *Config) MustGetBool(ctx context.Context, pattern string, def ...any) bo
 }
 
 // GetBool gets a bool value and panics if the adapter returns an error.
-// Deprecated: use Bool for explicit error handling or MustGetBool during startup.
+// Deprecated: 需要显式处理错误请用 Bool，启动阶段可用 MustGetBool。
 func (c *Config) GetBool(ctx context.Context, pattern string, def ...any) bool {
 	return c.MustGetBool(ctx, pattern, def...)
 }
 
-// Map gets the configuration value as a map.
+// Map 以 map 类型获取配置值。
 func (c *Config) Map(ctx context.Context, pattern string, def ...any) (map[string]any, error) {
 	val, err := c.Get(ctx, pattern, def...)
 	if err != nil {
@@ -311,7 +311,7 @@ func (c *Config) Map(ctx context.Context, pattern string, def ...any) (map[strin
 	return val.Map(), nil
 }
 
-// MustGetMap gets a map value and panics if the adapter returns an error.
+// MustGetMap 获取 map 值，适配器返回错误时 panic。
 func (c *Config) MustGetMap(ctx context.Context, pattern string, def ...any) map[string]any {
 	value, err := c.Map(ctx, pattern, def...)
 	if err != nil {
@@ -321,12 +321,12 @@ func (c *Config) MustGetMap(ctx context.Context, pattern string, def ...any) map
 }
 
 // GetMap gets a map value and panics if the adapter returns an error.
-// Deprecated: use Map for explicit error handling or MustGetMap during startup.
+// Deprecated: 需要显式处理错误请用 Map，启动阶段可用 MustGetMap。
 func (c *Config) GetMap(ctx context.Context, pattern string, def ...any) map[string]any {
 	return c.MustGetMap(ctx, pattern, def...)
 }
 
-// Slice gets the configuration value as a slice.
+// Slice 以切片类型获取配置值。
 func (c *Config) Slice(ctx context.Context, pattern string, def ...any) ([]any, error) {
 	val, err := c.Get(ctx, pattern, def...)
 	if err != nil {
@@ -338,7 +338,7 @@ func (c *Config) Slice(ctx context.Context, pattern string, def ...any) ([]any, 
 	return mconv.ToSlice(val.Val()), nil
 }
 
-// MustGetSlice gets a slice value and panics if the adapter returns an error.
+// MustGetSlice 获取切片值，适配器返回错误时 panic。
 func (c *Config) MustGetSlice(ctx context.Context, pattern string, def ...any) []any {
 	value, err := c.Slice(ctx, pattern, def...)
 	if err != nil {
@@ -348,7 +348,7 @@ func (c *Config) MustGetSlice(ctx context.Context, pattern string, def ...any) [
 }
 
 // GetSlice gets a slice value and panics if the adapter returns an error.
-// Deprecated: use Slice for explicit error handling or MustGetSlice during startup.
+// Deprecated: 需要显式处理错误请用 Slice，启动阶段可用 MustGetSlice。
 func (c *Config) GetSlice(ctx context.Context, pattern string, def ...any) []any {
 	return c.MustGetSlice(ctx, pattern, def...)
 }
