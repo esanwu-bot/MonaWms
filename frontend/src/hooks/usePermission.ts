@@ -12,6 +12,7 @@ const SYSTEM_ACTIONS = new Set([
   'customer:manage',
   'user:manage',
   'grant:manage',
+  'form:manage',
 ]);
 
 function normalize(role?: string): string {

@@ -43,6 +43,8 @@ import StocktakeCountPage from './pages/StocktakeCountPage';
 import ReconcilePage from './pages/ReconcilePage';
 import DictionaryPage from './pages/DictionaryPage';
 import UsersPage from './pages/UsersPage';
+import FormDesignerPage from './pages/FormDesignerPage';
+import FormRecordsPage from './pages/FormRecordsPage';
 
 // 路由保护组件
 interface ProtectedRouteProps {
@@ -168,6 +170,10 @@ function App() {
                 {/* P7 权限与审计 */}
                 <Route path="operation-logs" element={<OperationLogPage />} />
                 <Route path="grant-matrix" element={<GrantMatrixPage />} />
+
+                {/* DIY 低代码表单：设计态 admin 专属（后端二次鉴权），运行态全登录态 */}
+                <Route path="form-designer" element={<FormDesignerPage />} />
+                <Route path="form-records" element={<FormRecordsPage />} />
 
                 {/* 系统设置 */}
                 <Route path="settings" element={<SettingsPage />} />
