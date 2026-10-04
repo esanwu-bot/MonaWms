@@ -1,0 +1,34 @@
+.buildpath
+.hgignore.swp
+.project
+.orig
+.swp
+.idea/
+.settings/
+.vscode/
+.claude/
+vendor/
+pkg/
+bin/
+**/.DS_Store
+.test/
+cmd/gf/main
+cmd/gf/gf
+temp/
+example/log
+go.work
+go.work.sum
+!cmd/gf/go.work
+.windsurfrules
+
+# Ignore for docs
+node_modules
+.docusaurus
+output
+cover.out
+
+# Ignore for AI
+.claude
+.codex
+.agents
+.ace-tool/

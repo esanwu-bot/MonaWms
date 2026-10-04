@@ -1,0 +1,181 @@
+name: 手动发布
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "要发布的版本，例如 v0.3.1"
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    services:
+      redis:
+        image: redis:6
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      mysql:
+        image: mysql:8.0
+        ports:
+          - 3306:3306
+        env:
+          TZ: Asia/Shanghai
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost"
+          --health-interval 5s
+          --health-timeout 1s
+          --health-retries 10
+    env:
+      VERSION: ${{ github.event.inputs.version }}
+      RELEASE_BRANCH: master
+      GOPROXY: "https://proxy.golang.org|direct"
+      LEAF_MODULES: |
+        ./cmd/maltose
+        ./contrib/config/apollo
+        ./contrib/config/nacos
+        ./contrib/metric/otlpmetric
+        ./contrib/trace/otlptrace
+      OBSERVABILITY_MODULE: ./contrib/observability
+      APOLLO_IP: http://localhost:8080
+      APOLLO_APP_ID: SampleApp
+      APOLLO_CLUSTER: default
+      NACOS_IP_ADDR: localhost
+      NACOS_PORT: 8848
+      DB_TYPE: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASS: ""
+      DB_NAME: testdb
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN || github.token }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
+
+      - name: Validate release context
+        id: release-context
+        run: bash .github/scripts/release.sh context
+
+      - name: Start Apollo Containers
+        if: steps.release-context.outputs.mode != 'complete'
+        run: docker compose -f ".github/workflows/apollo/docker-compose.yml" up -d --build
+
+      - name: Start Nacos Containers
+        if: steps.release-context.outputs.mode != 'complete'
+        run: docker compose -f ".github/workflows/nacos/docker-compose.yml" up -d --build
+
+      - name: Wait for Apollo to be ready
+        if: steps.release-context.outputs.mode != 'complete'
+        run: |
+          set -euo pipefail
+          for attempt in {1..60}; do
+            if curl -sf http://localhost:8080 >/dev/null; then
+              echo "Apollo is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::Apollo did not become ready within 120 seconds."
+          exit 1
+
+      - name: Wait for Nacos to be ready
+        if: steps.release-context.outputs.mode != 'complete'
+        run: |
+          set -euo pipefail
+          for attempt in {1..60}; do
+            if curl -sf http://localhost:8848/nacos >/dev/null; then
+              echo "Nacos is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::Nacos did not become ready within 120 seconds."
+          exit 1
+
+      - name: Validate source workspace
+        if: steps.release-context.outputs.mode != 'complete'
+        run: bash .github/scripts/release.sh workspace
+
+      # Publish dependencies before their consumers so every module can commit
+      # a complete go.sum generated without help from the local workspace.
+      - name: Publish root module
+        if: steps.release-context.outputs.root_exists != 'true'
+        run: bash .github/scripts/release.sh root
+
+      - name: Publish first-level modules
+        if: steps.release-context.outputs.leaves_exist != 'true'
+        run: bash .github/scripts/release.sh leaves
+
+      - name: Publish observability module
+        if: steps.release-context.outputs.observability_exists != 'true'
+        run: bash .github/scripts/release.sh observability
+
+      - name: Validate standalone modules
+        if: steps.release-context.outputs.mode != 'complete'
+        run: bash .github/scripts/release.sh standalone
+
+      # Always validate the immutable tag contents. This also protects recovery
+      # runs where every tag exists but the previous run stopped before validation.
+      - name: Validate published modules
+        run: bash .github/scripts/release.sh published
+
+      - name: Check GitHub Release
+        id: github-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "-> GitHub Release ${VERSION} already exists."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "-> GitHub Release ${VERSION} will be created."
+          fi
+
+      - name: Create GitHub Release
+        if: steps.github-release.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: ${{ github.event.inputs.version }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+      - name: Stop Nacos Containers
+        if: always() && steps.release-context.outputs.mode != 'complete'
+        run: docker compose -f ".github/workflows/nacos/docker-compose.yml" down || true
+
+      - name: Stop Apollo Containers
+        if: always() && steps.release-context.outputs.mode != 'complete'
+        run: docker compose -f ".github/workflows/apollo/docker-compose.yml" down || true

@@ -1,0 +1,176 @@
+package apollo
+
+import (
+	"context"
+	"encoding/json"
+
+	"github.com/apolloconfig/agollo/v4"
+	apolloConfig "github.com/apolloconfig/agollo/v4/env/config"
+	"github.com/apolloconfig/agollo/v4/storage"
+	"github.com/go-playground/validator/v10"
+	"github.com/graingo/maltose/errors/merror"
+	"github.com/graingo/maltose/frame/m"
+	"github.com/graingo/maltose/os/mcfg"
+	"github.com/graingo/mconv"
+	"github.com/spf13/viper"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
+)
+
+// Config defines an Apollo Config client.
+type Config struct {
+	AppID             string `binding:"required"` // See apolloConfig.Config.
+	IP                string `binding:"required"` // See apolloConfig.Config.
+	Cluster           string `binding:"required"` // See apolloConfig.Config.
+	NamespaceName     string // See apolloConfig.Config.
+	IsBackupConfig    bool   // See apolloConfig.Config.
+	BackupConfigPath  string // See apolloConfig.Config.
+	Secret            string // See apolloConfig.Config.
+	SyncServerTimeout int    // See apolloConfig.Config.
+	MustStart         bool   // See apolloConfig.Config.
+	Watch             bool   // Watch keeps the in-memory value synchronized with remote changes.
+}
+
+// Client implements mcfg.Adapter using Apollo Config.
+type Client struct {
+	config Config        // Config object when created.
+	client agollo.Client // Apollo client.
+	value  *m.Var        // Configmap content cached. It is json string.
+}
+
+// New creates an Apollo-backed configuration adapter.
+func New(_ context.Context, config Config) (adapter mcfg.Adapter, err error) {
+	// Data validation.
+	err = validator.New().Struct(config)
+	if err != nil {
+		return nil, err
+	}
+
+	if config.NamespaceName == "" {
+		config.NamespaceName = storage.GetDefaultNamespace()
+	}
+	client := &Client{
+		config: config,
+		value:  m.NewVar(nil, true),
+	}
+
+	// Apollo client.
+	client.client, err = agollo.StartWithConfig(func() (*apolloConfig.AppConfig, error) {
+		return &apolloConfig.AppConfig{
+			AppID:             config.AppID,
+			Cluster:           config.Cluster,
+			NamespaceName:     config.NamespaceName,
+			IP:                config.IP,
+			IsBackupConfig:    config.IsBackupConfig,
+			BackupConfigPath:  config.BackupConfigPath,
+			Secret:            config.Secret,
+			SyncServerTimeout: config.SyncServerTimeout,
+			MustStart:         config.MustStart,
+		}, nil
+	})
+	if err != nil {
+		return nil, merror.Wrap(err, `create apollo client failed`)
+	}
+	if config.Watch {
+		client.client.AddChangeListener(client)
+	}
+	return client, nil
+}
+
+// Available checks and returns the backend configuration service is available.
+// The optional parameter `resource` specifies certain configuration resource.
+//
+// Note that this function does not return error as it just does simply check for
+// backend configuration service.
+func (c *Client) Available(_ context.Context, resource ...string) (ok bool) {
+	if len(resource) == 0 && !c.value.IsNil() {
+		return true
+	}
+	var namespace = c.config.NamespaceName
+	if len(resource) > 0 {
+		namespace = resource[0]
+	}
+	return c.client.GetConfig(namespace) != nil
+}
+
+// Get retrieves and returns value by specified `pattern` in current resource.
+// Pattern like:
+// "x.y.z" for map item.
+// "x.0.y" for slice item.
+func (c *Client) Get(ctx context.Context, pattern string) (value any, err error) {
+	if c.value.IsNil() {
+		if err = c.updateLocalValue(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return gjson.Get(c.value.String(), pattern).Value(), nil
+}
+
+// Data returns all configuration data in the current resource.
+func (c *Client) Data(ctx context.Context) (data map[string]any, err error) {
+	if c.value.IsNil() {
+		if err = c.updateLocalValue(ctx); err != nil {
+			return nil, err
+		}
+	}
+	if v := gjson.Parse(c.value.String()).Value(); v != nil {
+		data, ok := v.(map[string]any)
+		if !ok {
+			return nil, merror.New("apollo configuration root must be an object")
+		}
+		return data, nil
+	}
+	return nil, nil
+}
+
+// OnChange is called when config changes.
+func (c *Client) OnChange(_ *storage.ChangeEvent) {
+	_ = c.updateLocalValue(context.Background())
+}
+
+// OnNewestChange is called when any config changes.
+func (c *Client) OnNewestChange(_ *storage.FullChangeEvent) {
+	// Nothing to do.
+}
+
+func (c *Client) updateLocalValue(_ context.Context) (err error) {
+	var s = ""
+	cache := c.client.GetConfigCache(c.config.NamespaceName)
+	cache.Range(func(key, value any) bool {
+		s, err = sjson.Set(s, mconv.ToString(key), value)
+		return err == nil
+	})
+	cache.Clear()
+	if err == nil {
+		c.value.Set(s)
+	}
+	return
+}
+
+func (c *Client) MergeConfigMap(ctx context.Context, data map[string]any) error {
+	currentData, err := c.Data(ctx)
+	if err != nil {
+		return merror.Wrap(err, "failed to get current config")
+	}
+
+	// Use viper for deep merging
+	v := viper.New()
+	if err := v.MergeConfigMap(currentData); err != nil {
+		return merror.Wrap(err, "failed to merge current config")
+	}
+	if err := v.MergeConfigMap(data); err != nil {
+		return merror.Wrap(err, "failed to merge new data")
+	}
+
+	// Marshal the merged data back to a json string.
+	mergedData := v.AllSettings()
+	mergedJSON, err := json.Marshal(mergedData)
+	if err != nil {
+		return merror.Wrap(err, "failed to marshal merged config")
+	}
+
+	// Update the cached value.
+	c.value.Set(string(mergedJSON))
+
+	return nil
+}

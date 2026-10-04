@@ -1,0 +1,354 @@
+package mcfg
+
+import (
+	"context"
+	"strings"
+	"sync"
+
+	"github.com/graingo/maltose/container/minstance"
+	"github.com/graingo/maltose/container/mvar"
+	"github.com/graingo/maltose/errors/merror"
+	"github.com/graingo/maltose/os/mcfg/internal"
+	"github.com/graingo/mconv"
+)
+
+var (
+	instances = minstance.New()
+)
+
+// Config is a configuration management object.
+type Config struct {
+	adapter    Adapter
+	cachedData *mvar.Var // Used to cache the data after hooks have been executed.
+	mu         sync.RWMutex
+}
+
+const (
+	// DefaultInstanceName is the default instance name.
+	DefaultInstanceName = "default"
+	// DefaultConfigFileName is the default config file name.
+	DefaultConfigFileName = "config"
+)
+
+// New creates a new configuration management object and uses the file adapter.
+func New() (*Config, error) {
+	adapterFile, err := NewAdapterFile()
+	if err != nil {
+		return nil, err
+	}
+	return &Config{
+		adapter: adapterFile,
+	}, nil
+}
+
+// NewWithAdapter creates a new configuration management object with an adapter.
+func NewWithAdapter(adapter Adapter) *Config {
+	return &Config{
+		adapter: adapter,
+	}
+}
+
+// Instance returns a shared Config with the requested instance name.
+// A named instance loads a matching configuration file, such as "redis.yaml",
+// and panics during initialization when that file cannot be found or parsed.
+func Instance(name ...string) *Config {
+	var instanceName = DefaultInstanceName
+	if len(name) > 0 && name[0] != "" {
+		instanceName = name[0]
+	}
+
+	return instances.GetOrSetFunc(instanceName, func() any {
+		adapterFile, err := NewAdapterFile()
+		if err != nil {
+			panic(merror.Wrap(err, "create config instance failed"))
+		}
+		if instanceName != DefaultInstanceName {
+			if err := adapterFile.SetFile(instanceName); err != nil {
+				panic(merror.Wrapf(err, `set config file name for instance "%s" failed`, instanceName))
+			}
+		}
+		return NewWithAdapter(adapterFile)
+	}).(*Config)
+}
+
+// SetAdapter sets the configuration adapter.
+func (c *Config) SetAdapter(adapter Adapter) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.adapter = adapter
+	c.cachedData = nil // Clear cache when adapter changes.
+}
+
+// GetAdapter returns the configuration adapter.
+func (c *Config) GetAdapter() Adapter {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.adapter
+}
+
+// ClearCache clears the internal configuration cache.
+// It should be called when the underlying configuration source has changed.
+func (c *Config) ClearCache(_ context.Context) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cachedData = nil
+}
+
+// getValueByPattern gets the configuration value for the specified key.
+// It uses a temporary viper instance to avoid concurrency issues on a shared instance.
+func (c *Config) getValueByPattern(data map[string]any, pattern string) any {
+	path := strings.Split(pattern, ".")
+	return internal.SearchMap(data, path)
+}
+
+// Get gets the configuration value for the specified key.
+// The optional `def` parameter is the default value. If the configuration value is empty, the default value is returned.
+// If the configuration value is empty and no default value is provided, nil is returned.
+func (c *Config) Get(ctx context.Context, pattern string, def ...any) (*mvar.Var, error) {
+	data, err := c.Data(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if data == nil {
+		if len(def) > 0 {
+			return mvar.New(def[0]), nil
+		}
+		return nil, nil
+	}
+
+	value := c.getValueByPattern(data, pattern)
+	if value != nil {
+		return mvar.New(value), nil
+	}
+
+	if len(def) > 0 {
+		return mvar.New(def[0]), nil
+	}
+	return nil, nil
+}
+
+// MustGet acts as function Get, but it panics if error occurs.
+func (c *Config) MustGet(ctx context.Context, pattern string, def ...any) *mvar.Var {
+	v, err := c.Get(ctx, pattern, def...)
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
+// Data returns all configuration data.
+func (c *Config) Data(ctx context.Context) (map[string]any, error) {
+	c.mu.RLock()
+	if c.cachedData != nil {
+		data := deepCopyMap(c.cachedData.Map())
+		c.mu.RUnlock()
+		return data, nil
+	}
+	adapter := c.adapter
+	c.mu.RUnlock()
+	if adapter == nil {
+		return nil, merror.New("config adapter is nil")
+	}
+
+	// Adapters such as Apollo and Nacos maintain their own live cache. Avoid
+	// caching their raw data here so watch updates remain visible immediately.
+	if hooks.count() == 0 {
+		rawData, err := adapter.Data(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return deepCopyMap(rawData), nil
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Double check, as another goroutine might have populated it in the meantime.
+	if c.cachedData != nil {
+		return deepCopyMap(c.cachedData.Map()), nil
+	}
+
+	rawData, err := c.adapter.Data(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	processedData, err := runAfterLoadHooks(ctx, deepCopyMap(rawData))
+	if err != nil {
+		return nil, err
+	}
+	c.cachedData = mvar.New(deepCopyMap(processedData))
+	return deepCopyMap(processedData), nil
+}
+
+// Available checks if the adapter is available.
+// The optional `resource` parameter is the resource name. If the resource name is not empty, it checks if the resource is available.
+func (c *Config) Available(ctx context.Context, resource ...string) bool {
+	return c.adapter.Available(ctx, resource...)
+}
+
+// Struct unmarshals the configuration into a struct.
+// The optional `pattern` parameter is the pattern to unmarshal the configuration into.
+// If you want to specify the key name, you can use the `mconv` tag.
+// It supports custom decoding hooks.
+func (c *Config) Struct(ctx context.Context, v any, pattern string, hooks ...mconv.HookFunc) error {
+	var (
+		data map[string]any
+		err  error
+	)
+	if pattern != "" {
+		mvalue, err := c.Get(ctx, pattern)
+		if err != nil {
+			return err
+		}
+		if mvalue == nil || mvalue.IsNil() {
+			return nil
+		}
+		data = mvalue.Map()
+	} else {
+		data, err = c.Data(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	if data == nil {
+		return nil
+	}
+
+	return mconv.ToStructE(data, v, hooks...)
+}
+
+// String gets the configuration value as a string.
+func (c *Config) String(ctx context.Context, pattern string, def ...any) (string, error) {
+	val, err := c.Get(ctx, pattern, def...)
+	if err != nil {
+		return "", err
+	}
+	if val == nil {
+		return "", nil
+	}
+	return val.String(), nil
+}
+
+// MustGetString gets a string value and panics if the adapter returns an error.
+func (c *Config) MustGetString(ctx context.Context, pattern string, def ...any) string {
+	value, err := c.String(ctx, pattern, def...)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// GetString gets a string value and panics if the adapter returns an error.
+// Deprecated: use String for explicit error handling or MustGetString during startup.
+func (c *Config) GetString(ctx context.Context, pattern string, def ...any) string {
+	return c.MustGetString(ctx, pattern, def...)
+}
+
+// Int gets the configuration value as an int.
+func (c *Config) Int(ctx context.Context, pattern string, def ...any) (int, error) {
+	val, err := c.Get(ctx, pattern, def...)
+	if err != nil {
+		return 0, err
+	}
+	if val == nil {
+		return 0, nil
+	}
+	return val.Int(), nil
+}
+
+// MustGetInt gets an int value and panics if the adapter returns an error.
+func (c *Config) MustGetInt(ctx context.Context, pattern string, def ...any) int {
+	value, err := c.Int(ctx, pattern, def...)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// GetInt gets an int value and panics if the adapter returns an error.
+// Deprecated: use Int for explicit error handling or MustGetInt during startup.
+func (c *Config) GetInt(ctx context.Context, pattern string, def ...any) int {
+	return c.MustGetInt(ctx, pattern, def...)
+}
+
+// Bool gets the configuration value as a bool.
+func (c *Config) Bool(ctx context.Context, pattern string, def ...any) (bool, error) {
+	val, err := c.Get(ctx, pattern, def...)
+	if err != nil {
+		return false, err
+	}
+	if val == nil {
+		return false, nil
+	}
+	return val.Bool(), nil
+}
+
+// MustGetBool gets a bool value and panics if the adapter returns an error.
+func (c *Config) MustGetBool(ctx context.Context, pattern string, def ...any) bool {
+	value, err := c.Bool(ctx, pattern, def...)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// GetBool gets a bool value and panics if the adapter returns an error.
+// Deprecated: use Bool for explicit error handling or MustGetBool during startup.
+func (c *Config) GetBool(ctx context.Context, pattern string, def ...any) bool {
+	return c.MustGetBool(ctx, pattern, def...)
+}
+
+// Map gets the configuration value as a map.
+func (c *Config) Map(ctx context.Context, pattern string, def ...any) (map[string]any, error) {
+	val, err := c.Get(ctx, pattern, def...)
+	if err != nil {
+		return nil, err
+	}
+	if val == nil {
+		return nil, nil
+	}
+	return val.Map(), nil
+}
+
+// MustGetMap gets a map value and panics if the adapter returns an error.
+func (c *Config) MustGetMap(ctx context.Context, pattern string, def ...any) map[string]any {
+	value, err := c.Map(ctx, pattern, def...)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// GetMap gets a map value and panics if the adapter returns an error.
+// Deprecated: use Map for explicit error handling or MustGetMap during startup.
+func (c *Config) GetMap(ctx context.Context, pattern string, def ...any) map[string]any {
+	return c.MustGetMap(ctx, pattern, def...)
+}
+
+// Slice gets the configuration value as a slice.
+func (c *Config) Slice(ctx context.Context, pattern string, def ...any) ([]any, error) {
+	val, err := c.Get(ctx, pattern, def...)
+	if err != nil {
+		return nil, err
+	}
+	if val == nil {
+		return nil, nil
+	}
+	return mconv.ToSlice(val.Val()), nil
+}
+
+// MustGetSlice gets a slice value and panics if the adapter returns an error.
+func (c *Config) MustGetSlice(ctx context.Context, pattern string, def ...any) []any {
+	value, err := c.Slice(ctx, pattern, def...)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+// GetSlice gets a slice value and panics if the adapter returns an error.
+// Deprecated: use Slice for explicit error handling or MustGetSlice during startup.
+func (c *Config) GetSlice(ctx context.Context, pattern string, def ...any) []any {
+	return c.MustGetSlice(ctx, pattern, def...)
+}
