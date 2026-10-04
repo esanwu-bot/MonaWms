@@ -1,4 +1,4 @@
-// Package gen contains the common logic for code generation.
+// Package gen 包含代码生成的公共逻辑。
 package gen
 
 import (
@@ -18,40 +18,40 @@ import (
 	"gorm.io/gorm"
 )
 
-// generateFile creates a file based on a template.
+// generateFile 基于模板创建文件。
 func generateFile(path, tplName, tplContent string, data interface{}) error {
-	// Create the template
+	// 创建模板
 	tpl, err := template.New(tplName).Funcs(funcMap).Parse(tplContent)
 	if err != nil {
 		return merror.Wrapf(err, "failed to parse template %s", tplName)
 	}
 
-	// Ensure the directory exists
+	// 确保目录存在
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return merror.Wrapf(err, "failed to create directory %s", dir)
 	}
 
-	// Execute the template
+	// 执行模板
 	var buf bytes.Buffer
 	if err := tpl.Execute(&buf, data); err != nil {
 		return merror.Wrapf(err, "failed to execute template %s", tplName)
 	}
 
-	// Format the generated code
+	// 格式化生成的代码
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
 		return merror.Wrapf(err, "failed to format generated source for %s", path)
 	}
 
-	// Write the file
+	// 写入文件
 	return os.WriteFile(path, formatted, 0644)
 }
 
-// funcMap contains helper functions for the templates.
+// funcMap 包含模板使用的辅助函数。
 var funcMap = template.FuncMap{
 	"toCamel":     strcase.ToCamel,
-	"toSnake":     strcase.ToSnake, // Add ToSnake for filenames
+	"toSnake":     strcase.ToSnake, // 提供 ToSnake 用于生成文件名
 	"toSingular":  inflection.Singular,
 	"dbTypeToGo":  dbTypeToGo,
 	"makeTags":    makeTags,
@@ -60,7 +60,7 @@ var funcMap = template.FuncMap{
 	"toTitle":     cases.Title(language.English).String,
 }
 
-// dbTypeToGo converts database column types to Go types.
+// dbTypeToGo 将数据库列类型转换为 Go 类型。
 func dbTypeToGo(column gorm.ColumnType) string {
 	t := strings.ToUpper(column.DatabaseTypeName())
 
@@ -108,12 +108,12 @@ func dbTypeToGo(column gorm.ColumnType) string {
 	}
 }
 
-// makeTags creates gorm and json struct tags for a field.
+// makeTags 为字段生成 gorm 与 json 结构体标签。
 func makeTags(column gorm.ColumnType) string {
 	return fmt.Sprintf(`gorm:"column:%s" json:"%s"`, column.Name(), strcase.ToLowerCamel(column.Name()))
 }
 
-// makeRemarks creates remarks for a field.
+// makeRemarks 为字段生成备注说明。
 func makeRemarks(column gorm.ColumnType) string {
 	comment, ok := column.Comment()
 	if !ok || comment == "" {

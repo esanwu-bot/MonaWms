@@ -1,11 +1,11 @@
-// Package gen provides the generation of go code.
+// Package gen 提供代码生成相关的公共逻辑。
 package gen
 
 const (
-	// TplGenController is the template for generating controller files.
-	// This is for the simple case: api/<version>/<file>.go
+	// TplGenController 是生成 controller 文件的模板。
+	// 适用于简单场景：api/<version>/<file>.go
 	TplGenController = `// =================================================================================
-	// Code generated and maintained by Maltose tool. You can edit this file as you like.
+	// 代码由 Maltose 工具生成并维护，可按需自行修改。
 	// =================================================================================
 	package v1
 
@@ -16,24 +16,24 @@ const (
 
 	type c{{.Service}} struct{}
 
-	// New{{.Service}} creates a new controller.
+	// New{{.Service}} 创建一个新的 controller。
 	func New{{.Service}}() *c{{.Service}} {
 		return &c{{.Service}}{}
 	}
 
 	{{range .Functions}}
-	// {{.Name}} is the handler for the {{.Name}} API.
+	// {{.Name}} 是 {{.Name}} API 的处理函数。
 	func (c *c{{$.Service}}) {{.Name}}(ctx context.Context, req *{{$.APIPkg}}.{{.ReqName}}) (res *{{$.APIPkg}}.{{.ResName}}, err error) {
-		// TODO: Replace the zero-value response with business logic.
+		// TODO：将零值响应替换为业务逻辑。
 		return new({{$.APIPkg}}.{{.ResName}}), nil
 	}
 	{{end}}
 `
 
-	// TplGenControllerStruct is the template for the controller struct definition file.
-	// Used for the case: api/<module>/<version>/...
+	// TplGenControllerStruct 是生成 controller 结构体定义文件的模板。
+	// 适用于场景：api/<module>/<version>/...
 	TplGenControllerStruct = `// =================================================================================
-	// Code generated and maintained by Maltose tool. You can edit this file as you like.
+	// 代码由 Maltose 工具生成并维护，可按需自行修改。
 	// =================================================================================
 	package {{.Module}}
 
@@ -44,10 +44,10 @@ const (
 	}
 `
 
-	// TplGenControllerMethod is the template for the controller method implementation file.
-	// Used for the case: api/<module>/<version>/...
+	// TplGenControllerMethod 是生成 controller 方法实现文件的模板。
+	// 适用于场景：api/<module>/<version>/...
 	TplGenControllerMethod = `// =================================================================================
-	// Code generated and maintained by Maltose tool. You can edit this file as you like.
+	// 代码由 Maltose 工具生成并维护，可按需自行修改。
 	// =================================================================================
 	package {{.Module}}
 
@@ -57,28 +57,28 @@ const (
 	)
 
 	{{range .Functions}}
-	// {{.Name}} is the handler for the {{.Name}} API.
+	// {{.Name}} 是 {{.Name}} API 的处理函数。
 	func (c *{{$.Controller}}) {{.Name}}(ctx context.Context, req *{{$.APIPkg}}.{{.ReqName}}) (res *{{$.APIPkg}}.{{.ResName}}, err error) {
-		// TODO: Replace the zero-value response with business logic.
+		// TODO：将零值响应替换为业务逻辑。
 		return new({{$.APIPkg}}.{{.ResName}}), nil
 	}
 	{{end}}
 `
 
-	// TplGenControllerMethodOnly is the template for appending new methods to an existing controller file.
+	// TplGenControllerMethodOnly 是向已有 controller 文件追加方法的模板。
 	TplGenControllerMethodOnly = `
 {{range .Functions}}
-// {{.Name}} is the handler for the {{.Name}} API.
+// {{.Name}} 是 {{.Name}} API 的处理函数。
 func (c *{{$.Controller}}) {{.Name}}(ctx context.Context, req *{{$.APIPkg}}.{{.ReqName}}) (res *{{$.APIPkg}}.{{.ResName}}, err error) {
-	// TODO: Replace the zero-value response with business logic.
+	// TODO：将零值响应替换为业务逻辑。
 	return new({{$.APIPkg}}.{{.ResName}}), nil
 }
 {{end}}
 `
 
-	// TplGenService is the template for generating service files.
+	// TplGenService 是生成 service 文件的模板。
 	TplGenService = `// =================================================================================
-	// Code generated and maintained by Maltose tool. You can edit this file as you like.
+	// 代码由 Maltose 工具生成并维护，可按需自行修改。
 	// =================================================================================
 	package service
 
@@ -86,42 +86,42 @@ func (c *{{$.Controller}}) {{.Name}}(ctx context.Context, req *{{$.APIPkg}}.{{.R
 
 	var local{{.Service}} = New{{.Service}}()
 
-	// New{{.Service}} creates a new service instance.
+	// New{{.Service}} 创建一个新的 service 实例。
 	func New{{.Service}}() *s{{.Service}} {
 		return &s{{.Service}}{}
 	}
 
-	// {{.Service}} returns the default service instance.
+	// {{.Service}} 返回默认的 service 实例。
 	func {{.Service}}() *s{{.Service}} {
 		return local{{.Service}}
 	}
 `
 
-	// TplGenServiceMethodOnly is the template for appending new methods to an existing service file.
+	// TplGenServiceMethodOnly 是向已有 service 文件追加方法的模板。
 	TplGenServiceMethodOnly = `
 {{range .Functions}}
-// {{.Name}} is the handler for the {{.Name}} API.
+// {{.Name}} 是 {{.Name}} API 的处理函数。
 func (s *s{{$.Service}}) {{.Name}}(ctx context.Context, req *{{$.APIPkg}}.{{.ReqName}}) (res *{{$.APIPkg}}.{{.ResName}}, err error) {
-	// TODO: Replace the zero-value response with business logic.
+	// TODO：将零值响应替换为业务逻辑。
 	return new({{$.APIPkg}}.{{.ResName}}), nil
 }
 {{end}}
 `
 
-	// TplGenServiceInterface is the template for the service interface.
+	// TplGenServiceInterface 是生成 service 接口的模板。
 	TplGenServiceInterface = `// =================================================================================
-	// Code generated and maintained by Maltose tool. You can edit this file as you like.
+	// 代码由 Maltose 工具生成并维护，可按需自行修改。
 	// =================================================================================
 	package service
 
 	type I{{.Service}} interface {
-		// TODO: Define your service interface methods here.
+		// TODO：在此定义 service 接口方法。
 	}
 
 	var local{{.Service}} I{{.Service}}
 
-	// {{.Service}} returns the registered implementation of I{{.Service}}.
-	// It panics if no implementation is registered.
+	// {{.Service}} 返回 I{{.Service}} 已注册的实现。
+	// 若未注册任何实现则会 panic。
 	func {{.Service}}() I{{.Service}} {
 		if local{{.Service}} == nil {
 			panic("implement not found for interface I{{.Service}}, forgot register?")
@@ -129,22 +129,22 @@ func (s *s{{$.Service}}) {{.Name}}(ctx context.Context, req *{{$.APIPkg}}.{{.Req
 		return local{{.Service}}
 	}
 
-	// Register{{.Service}} registers an implementation for the I{{.Service}} interface.
+	// Register{{.Service}} 为 I{{.Service}} 接口注册实现。
 	func Register{{.Service}}(i I{{.Service}}) {
 		local{{.Service}} = i
 	}
 `
 
-	// TplGenServiceInterfaceMethodOnly is the template for appending new methods to an existing service interface file.
+	// TplGenServiceInterfaceMethodOnly 是向已有 service 接口文件追加方法的模板。
 	TplGenServiceInterfaceMethodOnly = `
 {{range .Functions}}
 	{{.Name}}(ctx context.Context, req *{{$.APIPkg}}.{{.ReqName}}) (res *{{$.APIPkg}}.{{.ResName}}, err error)
 {{end}}
 `
 
-	// TplGenServiceLogic is the template for the service logic implementation.
+	// TplGenServiceLogic 是生成 service logic 实现的模板。
 	TplGenServiceLogic = `// =================================================================================
-	// Code generated and maintained by Maltose tool. You can edit this file as you like.
+	// 代码由 Maltose 工具生成并维护，可按需自行修改。
 	// =================================================================================
 	package {{.Module}}
 
@@ -161,34 +161,34 @@ func (s *s{{$.Service}}) {{.Name}}(ctx context.Context, req *{{$.APIPkg}}.{{.Req
 
 	type s{{.Service}} struct{}
 
-	// New creates a new service logic implementation.
+	// New 创建一个新的 service logic 实现。
 	func New() service.I{{.Service}} {
 		return &s{{.Service}}{}
 	}
 
 	{{range .Functions}}
 	func (s *s{{$.Service}}) {{.Name}}(ctx context.Context{{if .ReqName}}, input {{if .ReqIsPointer}}*{{end}}{{$.APIPkg}}.{{.ReqName}}{{end}}) ({{if .ResName}}output {{if .ResIsPointer}}*{{end}}{{$.APIPkg}}.{{.ResName}}, {{end}}err error) {
-		// TODO: Implement the business logic of {{.Name}}.
+		// TODO：实现 {{.Name}} 的业务逻辑。
 		{{if .ResName}}{{if .ResIsPointer}}output = new({{$.APIPkg}}.{{.ResName}}){{end}}{{end}}
 		return
 	}
 	{{end}}
 `
 
-	// TplGenServiceLogicAppend is the template for appending new methods to a service logic file.
+	// TplGenServiceLogicAppend 是向已有 service logic 文件追加方法的模板。
 	TplGenServiceLogicAppend = `
 {{range .Functions}}
 func (s *s{{$.Service}}) {{.Name}}(ctx context.Context{{if .ReqName}}, input {{if .ReqIsPointer}}*{{end}}{{$.APIPkg}}.{{.ReqName}}{{end}}) ({{if .ResName}}output {{if .ResIsPointer}}*{{end}}{{$.APIPkg}}.{{.ResName}}, {{end}}err error) {
-	// TODO: Implement the business logic of {{.Name}}.
+	// TODO：实现 {{.Name}} 的业务逻辑。
 	{{if .ResName}}{{if .ResIsPointer}}output = new({{$.APIPkg}}.{{.ResName}}){{end}}{{end}}
 	return
 }
 {{end}}
 `
 
-	// TplGenEntity is the template for generating model entity files.
+	// TplGenEntity 是生成模型 entity 文件的模板。
 	TplGenEntity = `// =================================================================================
-	// Code generated and maintained by Maltose tool. DO NOT EDIT.
+	// 代码由 Maltose 工具生成并维护，请勿修改。
 	// =================================================================================
 package entity
 {{if .HasTime}}
@@ -198,22 +198,22 @@ import "time"
 import "github.com/shopspring/decimal"
 {{end}}
 
-// {{.StructName}} is the golang structure for table {{.TableName}}.
+// {{.StructName}} 是数据表 {{.TableName}} 对应的 Go 结构体。
 type {{.StructName}} struct {
 {{- range .Columns}}
     {{toCamel .Name}} {{dbTypeToGo .}} ` + "`{{makeTags .}}`" + ` {{makeRemarks .}}
 {{- end}}
 }
 
-	// TableName returns the name of the table.
+	// TableName 返回数据表名。
 	func (*{{.StructName}}) TableName() string {
     return "{{.TableName}}"
 }
 `
 
-	// TplGenDaoInternal is the template for generating internal DAO files.
+	// TplGenDaoInternal 是生成 internal DAO 文件的模板。
 	TplGenDaoInternal = `// =================================================================================
-	// Code generated and maintained by Maltose tool. DO NOT EDIT.
+	// 代码由 Maltose 工具生成并维护，请勿修改。
 	// =================================================================================
 package internal
 
@@ -238,8 +238,8 @@ import (
 		return d.DB.WithContext(ctx).Create(data).Error
 	}
 
-	// FirstOrCreate finds the first record that matches the given conditions, or creates a new one if not found.
-	// The found/created record is returned.
+	// FirstOrCreate 查找符合给定条件的第一条记录，未找到时创建新记录。
+	// 返回查到或新建的记录。
 	func (d *{{.DaoName}}) FirstOrCreate(ctx context.Context, condition map[string]any) (*entity.{{.StructName}}, error) {
 		var result entity.{{.StructName}}
 		err := d.DB.WithContext(ctx).Where(condition).FirstOrCreate(&result).Error
@@ -249,13 +249,13 @@ import (
 		return &result, nil
 	}
 
-	// Update updates a full record by its primary key.
-	// It will update all fields, including zero values.
+	// Update 按主键更新整条记录。
+	// 会更新全部字段，包括零值字段。
 	func (d *{{.DaoName}}) Update(ctx context.Context, data *entity.{{.StructName}}) error {
 		return d.DB.WithContext(ctx).Save(data).Error
 	}
 
-	// UpdateColumns updates specific columns of a record by its primary key.
+	// UpdateColumns 按主键更新记录的指定列。
 	func (d *{{.DaoName}}) UpdateColumns(ctx context.Context, id any, updates map[string]any) error {
 		return d.DB.WithContext(ctx).Model(&entity.{{.StructName}}{}).Where("id = ?", id).Updates(updates).Error
 	}
@@ -269,38 +269,38 @@ import (
 		err := d.DB.WithContext(ctx).First(&result, id).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, nil // Record not found is not a system error
+				return nil, nil // 记录不存在不算系统错误
 			}
 			return nil, err
 		}
 		return &result, nil
 }
 
-// FindOne retrieves a single record that matches the given conditions.
+// FindOne 查询符合给定条件的单条记录。
 	func (d *{{.DaoName}}) FindOne(ctx context.Context, condition map[string]any) (*entity.{{.StructName}}, error) {
 	var result entity.{{.StructName}}
 		err := d.DB.WithContext(ctx).Where(condition).First(&result).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, nil // Record not found is not a system error
+				return nil, nil // 记录不存在不算系统错误
 			}
 			return nil, err
 		}
 		return &result, nil
 	}
 
-	// FindList retrieves a list of records based on conditions, with ordering.
+	// FindList 按条件查询记录列表，支持排序。
 	func (d *{{.DaoName}}) FindList(ctx context.Context, condition map[string]any, orderBy ...string) ([]*entity.{{.StructName}}, error) {
 		var list  []*entity.{{.StructName}}
 		
 		db := d.DB.WithContext(ctx).Model(&entity.{{.StructName}}{}).Where(condition)
 
-		// Apply ordering and pagination
+		// 应用排序与分页
 		if len(orderBy) > 0 {
 			db = db.Order(orderBy[0])
 		}
 
-		// Execute the query
+		// 执行查询
 		err := db.Find(&list).Error
 		if err != nil {
 			return nil, err
@@ -309,7 +309,7 @@ import (
 		return list, nil
 	}
 
-	// FindPageList retrieves a list of records based on conditions, with pagination and ordering.
+	// FindPageList 按条件分页查询记录列表，支持排序。
 	func (d *{{.DaoName}}) FindPageList(ctx context.Context, condition map[string]any, page, pageSize int, orderBy ...string) ([]*entity.{{.StructName}}, int64, error) {
 		var (
 			list  []*entity.{{.StructName}}
@@ -318,13 +318,13 @@ import (
 		
 		db := d.DB.WithContext(ctx).Model(&entity.{{.StructName}}{}).Where(condition)
 
-		// Get total count for pagination
+		// 获取分页用的总记录数
 		err := db.Count(&total).Error
 		if err != nil {
 			return nil, 0, err
 		}
 
-		// Apply ordering and pagination
+		// 应用排序与分页
 		if len(orderBy) > 0 {
 			db = db.Order(orderBy[0])
 		}
@@ -332,7 +332,7 @@ import (
 			db = db.Offset((page - 1) * pageSize).Limit(pageSize)
 		}
 
-		// Execute the query
+		// 执行查询
 		err = db.Find(&list).Error
 		if err != nil {
 			return nil, 0, err
@@ -342,9 +342,9 @@ import (
 	}
 	`
 
-	// TplGenDao is the template for generating user-extendable DAO files.
+	// TplGenDao 是生成可扩展 DAO 文件的模板。
 	TplGenDao = `// =================================================================================
-	// Code generated and maintained by Maltose tool. You can edit this file as you like.
+	// 代码由 Maltose 工具生成并维护，可按需自行修改。
 	// =================================================================================
 package dao
 
@@ -364,9 +364,9 @@ type {{.DaoName}} struct {
 	}
 	`
 
-	// TplGenLogicManifest is the template for the main logic file that imports all logic packages.
+	// TplGenLogicManifest 是导入全部 logic 包的主 logic 文件模板。
 	TplGenLogicManifest = `// =================================================================================
-// Code generated and maintained by Maltose tool. DO NOT EDIT.
+// 代码由 Maltose 工具生成并维护，请勿修改。
 // =================================================================================
 package logic
 

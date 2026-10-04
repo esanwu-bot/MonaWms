@@ -10,14 +10,14 @@ import (
 	"github.com/jinzhu/inflection"
 )
 
-// ModelGenerator holds the configuration for generating model files.
+// ModelGenerator 保存生成 model 文件所需的配置。
 type ModelGenerator struct {
 	Dst     string
 	Table   string
 	Exclude string
 }
 
-// NewModelGenerator creates a new ModelGenerator.
+// NewModelGenerator 创建一个新的 ModelGenerator。
 func NewModelGenerator(dst, table, exclude string) *ModelGenerator {
 	return &ModelGenerator{
 		Dst:     dst,
@@ -26,13 +26,13 @@ func NewModelGenerator(dst, table, exclude string) *ModelGenerator {
 	}
 }
 
-// Gen generates only the entity files.
+// Gen 仅生成 entity 文件。
 func (g *ModelGenerator) Gen() error {
 	if err := initDB(); err != nil {
 		return err
 	}
 
-	// filter tables
+	// 过滤数据表
 	var filteredTables []TableInfo
 	if g.Table != "" {
 		tableNames := strings.Split(g.Table, ",")

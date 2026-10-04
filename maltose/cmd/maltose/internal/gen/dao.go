@@ -12,14 +12,14 @@ import (
 	"gorm.io/gorm"
 )
 
-// DaoGenerator holds the configuration for generating DAO files.
+// DaoGenerator 保存生成 DAO 文件所需的配置。
 type DaoGenerator struct {
 	Dst        string
 	ModulePath string
 	ModuleRoot string
 }
 
-// NewDaoGenerator creates a new DaoGenerator.
+// NewDaoGenerator 创建一个新的 DaoGenerator。
 func NewDaoGenerator(dst string) (*DaoGenerator, error) {
 	moduleName, moduleRoot, err := utils.GetModuleInfo(dst)
 	if err != nil {
@@ -33,7 +33,7 @@ func NewDaoGenerator(dst string) (*DaoGenerator, error) {
 	}, nil
 }
 
-// daoTplData holds all the template variables for generating DAO and entity files.
+// daoTplData 保存生成 DAO 与 entity 文件所需的全部模板变量。
 type daoTplData struct {
 	TableName   string
 	StructName  string
@@ -44,7 +44,7 @@ type daoTplData struct {
 	HasDecimal  bool
 }
 
-// Gen generates only the DAO files.
+// Gen 仅生成 DAO 文件。
 func (g *DaoGenerator) Gen() error {
 	if err := initDB(); err != nil {
 		return err

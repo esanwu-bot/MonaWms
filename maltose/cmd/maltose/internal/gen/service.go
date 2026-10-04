@@ -1,4 +1,4 @@
-// Package gen contains the common logic for code generation.
+// Package gen 包含代码生成的公共逻辑。
 package gen
 
 import (
@@ -19,18 +19,18 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
-// ServiceGenerator holds the configuration for generating services.
+// ServiceGenerator 保存生成 service 所需的配置。
 type ServiceGenerator struct {
-	Src               string // Source path for API definition files
-	Dst               string // Destination path for generated files
-	ServiceName       string // The name for single service generation.
-	ModuleName        string // Go module name
-	ModuleRoot        string // File system path to the module root
-	InterfaceMode     bool   // Whether to generate service with interface
+	Src               string // API 定义文件的源路径
+	Dst               string // 生成文件的目标路径
+	ServiceName       string // 单个 service 生成时使用的名称
+	ModuleName        string // Go 模块名
+	ModuleRoot        string // 模块根目录在文件系统中的路径
+	InterfaceMode     bool   // 是否生成带接口的 service
 	processedServices map[string]bool
 }
 
-// Function holds the parsed information of a function.
+// serviceFunction 保存解析后的函数信息。
 type serviceFunction struct {
 	Name         string
 	ReqName      string
@@ -39,7 +39,7 @@ type serviceFunction struct {
 	ResIsPointer bool
 }
 
-// ServiceTplData is the data structure for the service template.
+// serviceTplData 是 service 模板所需的数据结构。
 type serviceTplData struct {
 	Module       string
 	Service      string
@@ -81,7 +81,7 @@ func NewServiceGenerator(src, dst, serviceName string, interfaceMode bool) (*Ser
 	}, nil
 }
 
-// Gen generates the service and controller files.
+// Gen 生成 service 与 controller 文件。
 func (g *ServiceGenerator) Gen() error {
 	if g.ServiceName != "" {
 		return g.genSimpleService()
@@ -94,7 +94,7 @@ func (g *ServiceGenerator) Gen() error {
 		}
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".go") {
 			if err := g.genFromFile(path); err != nil {
-				// A real error occurred, stop the walk.
+				// 发生真正的错误，停止遍历。
 				return merror.Wrap(err, "failed to generate service file")
 			}
 		}
@@ -138,20 +138,20 @@ func (g *ServiceGenerator) genFromFile(file string) error {
 	}
 
 	if info == nil {
-		// This happens when a file is parsed but contains no valid Req/Res structs.
-		// It's not an error, we just skip it by returning nil.
+		// 文件解析成功但不包含有效的 Req/Res 结构体时会走到这里。
+		// 这不属于错误，直接返回 nil 跳过即可。
 		utils.PrintWarn("⚠️ No valid API definitions found in {{.File}}, skipping.", utils.TplData{"File": filepath.Base(file)})
 		return nil
 	}
 
-	// The package for the controller to import is always ".../internal/service".
+	// controller 需要导入的包始终是 ".../internal/service"。
 	info.SvcPackage = strings.ReplaceAll(filepath.Join(g.ModuleName, "internal", "service"), "\\", "/")
 
-	// --- Service File Generation (Create or Append based on Module) ---
-	// Sanitize module name for different use cases.
-	// For filename: "user-center" -> "user_center"
+	// --- service 文件生成（按模块决定创建或追加）---
+	// 针对不同用途规范化模块名。
+	// 文件名场景："user-center" -> "user_center"
 	snakeCaseModule := strcase.ToSnake(info.Module)
-	// For struct name: "user-center" -> "UserCenter"
+	// 结构体名场景："user-center" -> "UserCenter"
 	camelCaseModule := strcase.ToCamel(info.Module)
 
 	svcOutputPath := filepath.Join(g.Dst, "service", snakeCaseModule+".go")
@@ -163,28 +163,28 @@ func (g *ServiceGenerator) genFromFile(file string) error {
 		svcAppendTpl = TplGenServiceInterfaceMethodOnly
 	}
 
-	// Use generateOrAppend to create the service file or append to it.
-	// Note: We need to adapt the logic slightly for services, as the `data` for the template
-	// needs to have its `Service` field based on the module, not the file.
+	// 使用 generateOrAppend 创建 service 文件或向其追加内容。
+	// 注意：service 场景需要稍作调整，
+	// 模板 `data` 的 `Service` 字段要基于模块名而非文件名。
 	serviceData := *info
-	serviceData.Service = camelCaseModule // Use CamelCase for the service struct name.
+	serviceData.Service = camelCaseModule // 结构体名使用驼峰命名
 
 	if err := g.generateOrAppend(svcOutputPath, svcFullTpl, svcAppendTpl, &serviceData); err != nil {
 		return merror.Wrap(err, "failed to generate or append service file")
 	}
 
-	// --- Controller Generation (Create or Append) ---
-	// Sanitize the module name for the controller's package path.
-	// This converts "user-center" to "usercenter" for a valid package name.
+	// --- Controller 生成（创建或追加）---
+	// 规范化 controller 包路径中的模块名。
+	// 这里会把 "user-center" 转换为合法的包名 "usercenter"。
 	cleanControllerModule := sanitizeModuleName(info.Module)
 
-	// Case 1: Professional layout like api/<module>/<version>/...
+	// 情况 1：专业布局，形如 api/<module>/<version>/...
 	if info.Version != "" && !strings.EqualFold(info.Module, info.Version) {
-		// Prepare a separate data object for controller templates to avoid side effects.
+		// 为 controller 模板单独准备一份数据，避免产生副作用。
 		controllerData := *info
 		controllerData.Module = cleanControllerModule
 
-		// Handle controller struct file (create if not exist, otherwise skip)
+		// 处理 controller 结构体文件（不存在则创建，已存在则跳过）
 		controllerStructPath := filepath.Join(g.Dst, "controller", cleanControllerModule, cleanControllerModule+".go")
 		if _, err := os.Stat(controllerStructPath); os.IsNotExist(err) {
 			if err := generateFile(controllerStructPath, "controllerStruct", TplGenControllerStruct, &controllerData); err != nil {
@@ -192,27 +192,27 @@ func (g *ServiceGenerator) genFromFile(file string) error {
 			}
 		}
 
-		// Handle controller method file (create or append)
+		// 处理 controller 方法文件（创建或追加）
 		methodFileName := fmt.Sprintf("%s_%s.go", cleanControllerModule, strings.ToLower(info.Version))
 		controllerMethodPath := filepath.Join(g.Dst, "controller", cleanControllerModule, methodFileName)
 		return g.generateOrAppend(controllerMethodPath, TplGenControllerMethod, TplGenControllerMethodOnly, &controllerData)
 	}
 
-	// Case 2: Simple layout like api/<version>/...
-	// In this layout, the controller file is directly under the version directory,
-	// and the package name is derived from the version (e.g., "v1"), so no sanitization is needed for the module path.
+	// 情况 2：简单布局，形如 api/<version>/...
+	// 该布局下 controller 文件直接位于版本目录中，
+	// 包名由版本推导（如 "v1"），因此模块路径无需规范化。
 	controllerPath := filepath.Join(g.Dst, "controller", info.VersionLower, info.FileName)
 	return g.generateOrAppend(controllerPath, TplGenController, TplGenControllerMethodOnly, info)
 }
 
-// generateOrAppend handles the logic of creating a new file or appending to an existing one.
+// generateOrAppend 处理创建新文件或向已有文件追加内容的逻辑。
 func (g *ServiceGenerator) generateOrAppend(filePath, fullTpl, appendTpl string, data *serviceTplData) error {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		// File does not exist, generate a new one from scratch.
+		// 文件不存在，从头生成新文件。
 		return generateFile(filePath, "controller", fullTpl, data)
 	}
 
-	// File exists, proceed with append logic.
+	// 文件已存在，进入追加逻辑。
 	existingMethods, err := parseGoFileForMethods(filePath)
 	if err != nil {
 		return merror.Wrapf(err, "could not parse existing controller file %s", filePath)
@@ -235,10 +235,10 @@ func (g *ServiceGenerator) generateOrAppend(filePath, fullTpl, appendTpl string,
 		return appendToFile(filePath, appendTpl, &appendData)
 	}
 
-	return nil // Nothing to append
+	return nil // 没有需要追加的内容
 }
 
-// appendToFile executes a template and appends the result to a file.
+// appendToFile 执行模板并把结果追加到文件中。
 func appendToFile(filePath, tplContent string, data *serviceTplData) error {
 	var buffer bytes.Buffer
 	tpl, err := template.New("method").Parse(tplContent)
@@ -249,7 +249,7 @@ func appendToFile(filePath, tplContent string, data *serviceTplData) error {
 		return merror.Wrap(err, "failed to execute append template")
 	}
 
-	// Format the generated code before appending.
+	// 追加前先格式化生成的代码。
 	formatted, err := format.Source(buffer.Bytes())
 	if err != nil {
 		return merror.Wrapf(err, "failed to format generated service code for %s", filePath)
@@ -267,7 +267,7 @@ func appendToFile(filePath, tplContent string, data *serviceTplData) error {
 	return nil
 }
 
-// parseGoFileForMethods parses a Go file and returns a set of its method names.
+// parseGoFileForMethods 解析 Go 文件并返回其方法名集合。
 func parseGoFileForMethods(path string) (map[string]struct{}, error) {
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, path, nil, 0)
@@ -296,7 +296,7 @@ func (p *Parser) parse() (*serviceTplData, error) {
 	var functions []serviceFunction
 	var moduleName, versionName, structBaseName, fileName string
 
-	// --- Enhanced Path Parsing Logic ---
+	// --- 增强的路径解析逻辑 ---
 	fullPath := p.fset.File(p.file.Pos()).Name()
 	absPath, err := filepath.Abs(fullPath)
 	if err != nil {
@@ -327,21 +327,21 @@ func (p *Parser) parse() (*serviceTplData, error) {
 		versionName = parts[apiIndex+2]
 		fileName = parts[len(parts)-1]
 		structBaseName = strings.TrimSuffix(fileName, ".go")
-		// api/v1/hello.go -> api/hello/v1/hello.go (module=hello, version=v1)
-	} else if len(parts) > apiIndex+2 { // Covers api/<version>/<file>.go AND api/<module>/<file>.go
+		// api/v1/hello.go -> api/hello/v1/hello.go（module=hello，version=v1）
+	} else if len(parts) > apiIndex+2 { // 覆盖 api/<version>/<file>.go 与 api/<module>/<file>.go
 		part1 := parts[apiIndex+1]
 		fileName = parts[len(parts)-1]
 		structBaseName = strings.TrimSuffix(fileName, ".go")
 
-		// Heuristic: if the directory name looks like a version (v1, v2...), treat it as a version.
+		// 启发式判断：若目录名形如版本号（v1、v2...），则视为版本目录。
 		isVersionLike := len(part1) > 1 && part1[0] == 'v' && part1[1] >= '0' && part1[1] <= '9'
 
-		if isVersionLike { // Case: api/v1/hello.go
+		if isVersionLike { // 情况：api/v1/hello.go
 			versionName = part1
-			moduleName = part1 // Treat version as module for simplicity in this layout
-		} else { // Case: api/hello/hello.go
+			moduleName = part1 // 该布局下简化处理，把版本当作模块名
+		} else { // 情况：api/hello/hello.go
 			moduleName = part1
-			versionName = "v1" // Default version to v1 as per documentation
+			versionName = "v1" // 按文档约定默认版本为 v1
 		}
 	} else {
 		return nil, merror.Newf("path format not supported. Use 'api/<version>/<file>.go' or 'api/<module>/<version>/<file>.go' or 'api/<module>/<file>.go': %s", fullPath)
@@ -360,7 +360,7 @@ func (p *Parser) parse() (*serviceTplData, error) {
 		Functions:    nil,
 	}
 
-	// For simple case, controller name is c<Service>
+	// 简单布局下，controller 名称为 c<Service>
 	if strings.EqualFold(moduleName, versionName) {
 		info.Controller = "c" + strcase.ToCamel(structBaseName)
 	}
@@ -372,7 +372,7 @@ func (p *Parser) parse() (*serviceTplData, error) {
 		}
 		info.APIModule = filepath.ToSlash(filepath.Join(p.module, relDir))
 	} else {
-		// Fallback for when module root is not found
+		// 未找到模块根目录时的兜底处理
 		apiModuleDir := filepath.ToSlash(filepath.Dir(fullPath))
 		if p.module != "" {
 			if i := strings.Index(apiModuleDir, p.module); i != -1 {
@@ -381,7 +381,7 @@ func (p *Parser) parse() (*serviceTplData, error) {
 		}
 	}
 
-	// --- Robust Req/Res Parsing Logic ---
+	// --- 健壮的 Req/Res 解析逻辑 ---
 	reqs := make(map[string]bool)
 	ress := make(map[string]bool)
 
@@ -411,9 +411,9 @@ func (p *Parser) parse() (*serviceTplData, error) {
 		}
 	}
 
-	// After iterating through all declarations, if no functions were found,
-	// it means the file might be a support file (e.g., defining shared types)
-	// and not an API entrypoint file, so we should skip it.
+	// 遍历完所有声明后若仍未找到任何函数，
+	// 说明该文件可能是辅助文件（例如定义共享类型），
+	// 而非 API 入口文件，应当跳过。
 	if len(functions) == 0 {
 		return nil, nil
 	}

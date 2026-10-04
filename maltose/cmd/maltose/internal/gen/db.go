@@ -14,22 +14,22 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// ErrEnvFileNeedUpdate indicates that the .env file is missing and needs to be created from .env.example.
+// ErrEnvFileNeedUpdate 表示缺少 .env 文件，需要由 .env.example 创建。
 var ErrEnvFileNeedUpdate = errors.New("env file need update")
 
-// shared state for generation
+// 生成过程中共享的状态
 var (
 	db     *gorm.DB
 	tables []TableInfo
 )
 
-// initDB ensures the database connection is initialized.
+// initDB 确保数据库连接已完成初始化。
 func initDB() error {
 	if db != nil {
-		return nil // Already initialized
+		return nil // 已初始化
 	}
 
-	// Load .env file if it exists
+	// 若 .env 文件存在则加载
 	if _, err := os.Stat(".env"); os.IsNotExist(err) {
 		if err := createEnvExample(); err != nil {
 			return err
@@ -59,7 +59,7 @@ func initDB() error {
 		return err
 	}
 
-	// Inspect the database schema
+	// 检查数据库表结构
 	utils.PrintInfo("🔍 Inspecting database schema...", nil)
 	tables, err = GetTables(db)
 	if err != nil {
@@ -83,7 +83,7 @@ DB_NAME=your_database_name
 	return os.WriteFile(".env.example", []byte(content), 0644)
 }
 
-// DBInfo holds all the necessary information for a database connection.
+// DBInfo 保存数据库连接所需的全部信息。
 type DBInfo struct {
 	DBType string
 	Host   string
@@ -93,13 +93,13 @@ type DBInfo struct {
 	Name   string
 }
 
-// TableInfo holds information about a database table.
+// TableInfo 保存数据表的信息。
 type TableInfo struct {
 	Name    string
 	Columns []gorm.ColumnType
 }
 
-// GetDBConnection creates and returns a GORM DB instance.
+// GetDBConnection 创建并返回 GORM DB 实例。
 func GetDBConnection(info DBInfo) (*gorm.DB, error) {
 	var dialector gorm.Dialector
 
@@ -125,7 +125,7 @@ func GetDBConnection(info DBInfo) (*gorm.DB, error) {
 	return db, nil
 }
 
-// GetTables retrieves all tables and their column information from the database.
+// GetTables 从数据库中获取所有数据表及其列信息。
 func GetTables(db *gorm.DB) ([]TableInfo, error) {
 	tableNames, err := db.Migrator().GetTables()
 	if err != nil {

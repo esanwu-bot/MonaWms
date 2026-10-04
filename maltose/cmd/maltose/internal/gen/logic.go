@@ -1,4 +1,4 @@
-// Package gen contains the common logic for code generation.
+// Package gen 包含代码生成的公共逻辑。
 package gen
 
 import (
@@ -19,7 +19,7 @@ import (
 	"github.com/graingo/maltose/errors/merror"
 )
 
-// LogicGenerator holds the configuration for generating logic files.
+// LogicGenerator 保存生成 logic 文件所需的配置。
 type LogicGenerator struct {
 	Src        string
 	Dst        string
@@ -36,7 +36,7 @@ type logicFunction struct {
 	ResIsPointer bool
 }
 
-// logicTplData is the data structure for the logic template.
+// logicTplData 是 logic 模板所需的数据结构。
 type logicTplData struct {
 	Module     string
 	Service    string
@@ -67,7 +67,7 @@ func NewLogicGenerator(src, dst string, overwrite bool) (*LogicGenerator, error)
 	}, nil
 }
 
-// Gen generates the logic file from a service interface file.
+// Gen 根据 service 接口文件生成 logic 文件。
 func (g *LogicGenerator) Gen() error {
 	utils.PrintInfo("🔍 Scanning directory: {{.Path}}", utils.TplData{"Path": filepath.Base(g.Src)})
 	generatedPackages := make(map[string]struct{})
@@ -79,7 +79,7 @@ func (g *LogicGenerator) Gen() error {
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".go") {
 			pkgPath, err := g.genFromFile(path)
 			if err != nil {
-				return err // A real error happened, stop the walk
+				return err // 发生真正的错误，停止遍历
 			}
 			if pkgPath != "" {
 				generatedPackages[pkgPath] = struct{}{}
@@ -97,7 +97,7 @@ func (g *LogicGenerator) Gen() error {
 		for p := range generatedPackages {
 			packages = append(packages, p)
 		}
-		sort.Strings(packages) // for stable order
+		sort.Strings(packages) // 保证顺序稳定
 		if err := g.generateLogicManifest(packages); err != nil {
 			return err
 		}
@@ -119,27 +119,27 @@ func (g *LogicGenerator) genFromFile(file string) (string, error) {
 		return "", merror.Wrapf(err, "failed to parse service file %s", file)
 	}
 	if genInfo == nil || len(genInfo.Functions) == 0 {
-		// Not a valid service interface with methods, skip.
+		// 不是带方法的有效 service 接口，跳过。
 		return "", nil
 	}
 
-	// Logic file goes into internal/logic/<module>/<file>.go
+	// logic 文件输出到 internal/logic/<module>/<file>.go
 	logicDir := filepath.Join(g.ModuleRoot, g.Dst, "logic", genInfo.Module)
 	logicOutputPath := filepath.Join(logicDir, genInfo.FileName)
 
 	pkgPath := path.Join(g.ModuleName, g.Dst, "logic", genInfo.Module)
 
-	// Check if file exists
+	// 检查文件是否已存在
 	if _, err := os.Stat(logicOutputPath); err == nil && !g.Overwrite {
-		// File exists and we are in append mode (default), try to append if new methods are found.
+		// 文件已存在且处于追加模式（默认），若发现新方法则尝试追加。
 		if _, err := g.appendToFile(logicOutputPath, genInfo); err != nil {
 			return "", err
 		}
-		// Whether new methods were appended or not, the service is valid and should be in the manifest.
+		// 无论是否追加了新方法，该 service 都是有效的，应当写入清单。
 		return pkgPath, nil
 	}
 
-	// If we are here, it means file doesn't exist, OR it exists and we want to overwrite.
+	// 走到这里说明文件不存在，或文件存在但需要覆盖。
 	if err := os.MkdirAll(logicDir, os.ModePerm); err != nil {
 		return "", merror.Wrapf(err, "failed to create logic directory %s", logicDir)
 	}
@@ -172,7 +172,7 @@ func (g *LogicGenerator) generateLogicManifest(packages []string) error {
 func (g *LogicGenerator) appendToFile(path string, genInfo *logicTplData) (bool, error) {
 	existingMethods, err := parseExistingLogicMethods(path)
 	if err != nil {
-		return false, err // Or maybe just warn and skip? Better to return error.
+		return false, err // 也可以只告警并跳过，但返回错误更合适。
 	}
 
 	var methodsToAppend []logicFunction
@@ -192,11 +192,11 @@ func (g *LogicGenerator) appendToFile(path string, genInfo *logicTplData) (bool,
 		return false, nil
 	}
 
-	// We have methods to append.
-	appendData := *genInfo // copy
+	// 存在需要追加的方法。
+	appendData := *genInfo // 副本
 	appendData.Functions = methodsToAppend
 
-	// Generate the code snippet to append
+	// 生成待追加的代码片段
 	var buffer bytes.Buffer
 	tpl, err := template.New("serviceLogicAppend").Parse(TplGenServiceLogicAppend)
 	if err != nil {
@@ -206,13 +206,13 @@ func (g *LogicGenerator) appendToFile(path string, genInfo *logicTplData) (bool,
 		return false, merror.Wrap(err, "failed to execute append template")
 	}
 
-	// Format the generated code before appending.
+	// 追加前先格式化生成的代码。
 	formatted, err := format.Source(buffer.Bytes())
 	if err != nil {
 		return false, merror.Wrapf(err, "failed to format generated logic for %s", path)
 	}
 
-	// Append to file
+	// 追加到文件
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return false, merror.Wrap(err, "failed to open logic file for appending")
@@ -251,13 +251,13 @@ func parseExistingLogicMethods(filePath string) (map[string]struct{}, error) {
 	return methods, nil
 }
 
-// LogicParser parses a service interface file.
+// LogicParser 解析 service 接口文件。
 type LogicParser struct {
 	fset   *token.FileSet
 	module string
 }
 
-// parse parses the service interface file and extracts necessary data for the template.
+// parse 解析 service 接口文件，提取模板所需的数据。
 func (p *LogicParser) parse(filePath string) (*logicTplData, error) {
 	node, err := parser.ParseFile(p.fset, filePath, nil, parser.ParseComments)
 	if err != nil {
@@ -266,10 +266,10 @@ func (p *LogicParser) parse(filePath string) (*logicTplData, error) {
 
 	var serviceName string
 	var functions []logicFunction
-	imports := make(map[string]string) // alias -> full path
+	imports := make(map[string]string) // 别名 -> 完整路径
 	var foundInterface bool
 
-	// 1. Get imports
+	// 1. 获取导入包
 	for _, i := range node.Imports {
 		path := strings.Trim(i.Path.Value, `"`)
 		if i.Name != nil {
@@ -288,7 +288,7 @@ func (p *LogicParser) parse(filePath string) (*logicTplData, error) {
 			return true
 		}
 
-		// Check for interface
+		// 检查是否为接口
 		if iface, ok := typeSpec.Type.(*ast.InterfaceType); ok {
 			if strings.HasPrefix(typeSpec.Name.Name, "I") {
 				foundInterface = true
@@ -307,7 +307,7 @@ func (p *LogicParser) parse(filePath string) (*logicTplData, error) {
 					params := funcType.Params
 					results := funcType.Results
 
-					// --- Method signature validation ---
+					// --- 方法签名校验 ---
 					if params == nil || results == nil ||
 						params.NumFields() < 1 || params.NumFields() > 2 ||
 						results.NumFields() < 1 || results.NumFields() > 2 ||
@@ -318,7 +318,7 @@ func (p *LogicParser) parse(filePath string) (*logicTplData, error) {
 						continue
 					}
 
-					// --- Request Parsing (if it exists) ---
+					// --- 请求参数解析（若存在）---
 					var reqPkg, reqName string
 					var reqIsPointer bool
 					if params.NumFields() == 2 {
@@ -326,7 +326,7 @@ func (p *LogicParser) parse(filePath string) (*logicTplData, error) {
 						reqPkg, reqName, reqIsPointer = parseType(reqField.Type)
 					}
 
-					// --- Response Parsing (if it exists) ---
+					// --- 响应参数解析（若存在）---
 					var resPkg, resName string
 					var resIsPointer bool
 					if results.NumFields() == 2 {
@@ -352,7 +352,7 @@ func (p *LogicParser) parse(filePath string) (*logicTplData, error) {
 						}
 					}
 				}
-				return false // Stop after finding the first interface
+				return false // 找到第一个接口后停止
 			}
 		}
 
@@ -361,29 +361,29 @@ func (p *LogicParser) parse(filePath string) (*logicTplData, error) {
 
 	if !foundInterface {
 		utils.PrintWarn("not_have_service_interface", nil)
-		return nil, nil // Not a service file we can process.
+		return nil, nil // 不是可处理的 service 文件。
 	}
 
 	if serviceName == "" {
-		return nil, nil // Not a service interface file, just skip.
+		return nil, nil // 不是 service 接口文件，直接跳过。
 	}
 
 	fileName := filepath.Base(filePath)
 
-	// The module name for logic should be derived from the service file name,
-	// but sanitized to be a valid Go package name.
-	// E.g., "user_center.go" -> "user_center" -> "usercenter"
+	// logic 的模块名由 service 文件名推导而来，
+	// 但需要规范化为合法的 Go 包名。
+	// 例如："user_center.go" -> "user_center" -> "usercenter"
 	dirtyModuleName := strings.TrimSuffix(fileName, ".go")
 	cleanModuleName := sanitizeModuleName(dirtyModuleName)
 
 	svcPackage := strings.ReplaceAll(filepath.Join(p.module, "internal", "service"), "\\", "/")
 
 	info := &logicTplData{
-		Module:     cleanModuleName, // Use the sanitized name for package and directory
+		Module:     cleanModuleName, // 包名与目录使用规范化后的名称
 		Service:    serviceName,
 		APIModule:  apiModule,
 		APIPkg:     apiPkg,
-		FileName:   fileName, // Keep the original filename with underscores for the output file
+		FileName:   fileName, // 输出文件保留带下划线的原始文件名
 		Functions:  functions,
 		SvcPackage: svcPackage,
 	}
