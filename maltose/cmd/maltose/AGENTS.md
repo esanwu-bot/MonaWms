@@ -16,7 +16,7 @@
 - 保持可编辑产物与标记为 `DO NOT EDIT` 的产物之间的区别。
 - 写入或追加生成代码前，先完成格式化和语法解析。
 - 模板变化时，验证生成的包名、import、receiver 类型、指针语义、零值处理、文件权限和重复运行行为。
-- 推荐生成的应用结构发生变化时，更新 `maltose-quickstart`。
+- 推荐生成的应用结构发生变化时，更新本仓库的 `maltose-quickstart/` 子目录；`cli/new.go` 默认从主仓的该子目录拉取模板，可用 `--repo-url`、`--template-dir` 或 `MALTOSE_QUICKSTART_REPO`、`MALTOSE_QUICKSTART_SUBDIR` 覆盖。
 
 ## 验证
 

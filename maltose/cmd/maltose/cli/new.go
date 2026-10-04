@@ -21,21 +21,52 @@ import (
 
 var moduleFlag string
 var repoURLFlag string
+var templateDirFlag string
 
-const defaultQuickstartRepository = "https://github.com/graingo/maltose-quickstart.git"
+const (
+	// defaultQuickstartRepository 是默认模板仓库。
+	defaultQuickstartRepository = "https://github.com/esanwu-bot/MonaWms.git"
+	// defaultQuickstartSubDir 是模板在仓库中的子目录。
+	// 模板不再单独建仓，而是随主仓一起维护，因此需要按子目录提取。
+	defaultQuickstartSubDir = "maltose-quickstart"
+	// 环境变量用于覆盖默认仓库与子目录，便于私有化部署或本地联调。
+	envQuickstartRepo   = "MALTOSE_QUICKSTART_REPO"
+	envQuickstartSubDir = "MALTOSE_QUICKSTART_SUBDIR"
+)
+
+// resolveTemplateSource 计算最终使用的模板仓库与子目录。
+// 优先级：命令行标志 > 环境变量 > 内置默认值；
+// 自定义仓库默认整体作为模板，除非显式指定子目录。
+func resolveTemplateSource() (repoURL string, templateDir string) {
+	repoURL = defaultQuickstartRepository
+	templateDir = defaultQuickstartSubDir
+
+	if env := os.Getenv(envQuickstartRepo); env != "" {
+		repoURL = env
+		templateDir = ""
+	}
+	if env := os.Getenv(envQuickstartSubDir); env != "" {
+		templateDir = env
+	}
+	if repoURLFlag != "" {
+		repoURL = repoURLFlag
+		templateDir = templateDirFlag
+	}
+	if templateDirFlag != "" {
+		templateDir = templateDirFlag
+	}
+	return repoURL, templateDir
+}
 
 // newCmd 基于 Maltose 快速开始模板仓库创建项目。
 var newCmd = &cobra.Command{
 	Use:   "new [project-name]",
 	Short: "Create a new Maltose project.",
-	Long:  "Creates a new Maltose project from the quickstart repository, rewrites its module imports, and prepares its dependencies.",
+	Long:  "Creates a new Maltose project from the quickstart template, rewrites its module imports, and prepares its dependencies. The template normally lives in a subdirectory of the template repository.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
-		repoURL := defaultQuickstartRepository
-		if repoURLFlag != "" {
-			repoURL = repoURLFlag
-		}
+		repoURL, templateDir := resolveTemplateSource()
 		modulePath := moduleFlag
 		if modulePath == "" {
 			modulePath = filepath.ToSlash(filepath.Clean(projectName))
@@ -50,8 +81,12 @@ var newCmd = &cobra.Command{
 		}
 
 		utils.PrintInfo("🚀 Creating new Maltose project at './{{.ProjectName}}'...", utils.TplData{"ProjectName": projectName})
-		utils.PrintInfo("📥 Cloning project template from {{.RepoURL}}...", utils.TplData{"RepoURL": repoURL})
-		if err := createProject(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), cwd, projectName, modulePath, repoURL); err != nil {
+		if templateDir != "" {
+			utils.PrintInfo("📥 Cloning template directory '{{.TemplateDir}}' from {{.RepoURL}}...", utils.TplData{"TemplateDir": templateDir, "RepoURL": repoURL})
+		} else {
+			utils.PrintInfo("📥 Cloning project template from {{.RepoURL}}...", utils.TplData{"RepoURL": repoURL})
+		}
+		if err := createProject(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), cwd, projectName, modulePath, repoURL, templateDir); err != nil {
 			return err
 		}
 
@@ -66,17 +101,18 @@ var newCmd = &cobra.Command{
 }
 
 // createProject 克隆、定制并准备一个新的 Maltose 项目。
-func createProject(ctx context.Context, stdout, stderr io.Writer, cwd, projectName, modulePath, repoURL string) (err error) {
+// templateDir 非空时，只取模板仓库中的该子目录作为项目内容。
+func createProject(ctx context.Context, stdout, stderr io.Writer, cwd, projectName, modulePath, repoURL, templateDir string) (err error) {
 	target, err := projectTarget(cwd, projectName)
 	if err != nil {
 		return err
 	}
+	if err := ensureAbsentDir(target); err != nil {
+		return err
+	}
 
-	cloneCmd := exec.CommandContext(ctx, "git", "clone", "--", repoURL, target)
-	cloneCmd.Stdout = stdout
-	cloneCmd.Stderr = stderr
-	if err := cloneCmd.Run(); err != nil {
-		return merror.Wrap(err, "cloning template repository failed")
+	if err := fetchTemplate(ctx, stdout, stderr, target, repoURL, templateDir); err != nil {
+		return err
 	}
 
 	completed := false
@@ -102,6 +138,90 @@ func createProject(ctx context.Context, stdout, stderr io.Writer, cwd, projectNa
 	}
 
 	completed = true
+	return nil
+}
+
+// fetchTemplate 把模板内容放置到 target。
+// templateDir 为空表示模板位于仓库根目录，直接浅克隆；
+// 否则先克隆到暂存目录，再把该子目录提升为项目根目录。
+func fetchTemplate(ctx context.Context, stdout, stderr io.Writer, target, repoURL, templateDir string) error {
+	if templateDir == "" {
+		return runGit(ctx, stdout, stderr, "", "clone", "--depth", "1", "--", repoURL, target)
+	}
+
+	// 模板只是仓库的一小部分，用稀疏检出避免下载整个仓库。
+	staging := target + ".maltose-template"
+	if err := os.RemoveAll(staging); err != nil {
+		return merror.Wrapf(err, "failed to clean staging directory %s", staging)
+	}
+	defer func() {
+		_ = os.RemoveAll(staging)
+	}()
+
+	sparseErr := runGit(ctx, stdout, stderr, "", "clone", "--depth", "1", "--filter=blob:none", "--sparse", "--", repoURL, staging)
+	if sparseErr != nil {
+		// 旧版 Git 或服务端不支持部分克隆时，退化为完整浅克隆。
+		_ = os.RemoveAll(staging)
+		if err := runGit(ctx, stdout, stderr, "", "clone", "--depth", "1", "--", repoURL, staging); err != nil {
+			return err
+		}
+	} else if err := runGit(ctx, stdout, stderr, staging, "sparse-checkout", "set", templateDir); err != nil {
+		return merror.Wrapf(err, "failed to sparse-checkout template directory %s", templateDir)
+	}
+
+	return promoteTemplateDir(staging, target, templateDir)
+}
+
+// promoteTemplateDir 把暂存目录中的子目录移动为项目根目录。
+func promoteTemplateDir(staging, target, templateDir string) error {
+	source := filepath.Join(staging, filepath.FromSlash(templateDir))
+	info, err := os.Stat(source)
+	if err != nil {
+		return merror.Wrapf(err, "template directory %s is missing in the repository", templateDir)
+	}
+	if !info.IsDir() {
+		return merror.Newf("template path %s is not a directory", templateDir)
+	}
+	if err := os.RemoveAll(target); err != nil {
+		return merror.Wrapf(err, "failed to prepare project directory %s", target)
+	}
+	if err := os.Rename(source, target); err != nil {
+		return merror.Wrapf(err, "failed to move template directory to %s", target)
+	}
+	return nil
+}
+
+// ensureAbsentDir 确保目标路径尚不存在或为空目录，避免覆盖已有项目。
+func ensureAbsentDir(target string) error {
+	info, err := os.Stat(target)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return merror.Wrapf(err, "failed to inspect project directory %s", target)
+	}
+	if !info.IsDir() {
+		return merror.Newf("project path %s already exists and is not a directory", target)
+	}
+	entries, err := os.ReadDir(target)
+	if err != nil {
+		return merror.Wrapf(err, "failed to read project directory %s", target)
+	}
+	if len(entries) > 0 {
+		return merror.Newf("project directory %s already exists and is not empty", target)
+	}
+	return nil
+}
+
+// runGit 在指定目录执行 git 命令，dir 为空时使用当前目录。
+func runGit(ctx context.Context, stdout, stderr io.Writer, dir string, args ...string) error {
+	command := exec.CommandContext(ctx, "git", args...)
+	command.Dir = dir
+	command.Stdout = stdout
+	command.Stderr = stderr
+	if err := command.Run(); err != nil {
+		return merror.Wrapf(err, "git %s failed", strings.Join(args, " "))
+	}
 	return nil
 }
 
@@ -206,6 +326,7 @@ func init() {
 	rootCmd.AddCommand(newCmd)
 	newCmd.Flags().StringVar(&moduleFlag, "module", "", "Specify the Go module path for the new project.")
 	newCmd.Flags().StringVar(&repoURLFlag, "repo-url", "", "Specify a custom git repository URL for the project template.")
+	newCmd.Flags().StringVar(&templateDirFlag, "template-dir", "", "Specify a subdirectory inside the template repository that holds the project template.")
 }
 
 func projectTarget(cwd, projectName string) (string, error) {

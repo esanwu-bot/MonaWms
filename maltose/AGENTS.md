@@ -58,6 +58,6 @@ Apollo 和 Nacos 集成测试依赖真实服务。服务不可用时明确说明
 ## 文档与提交
 
 - 公共 API、配置项、CLI 行为、生成结构或用户工作流发生变化时，更新 `maltose-docs`。
-- 推荐应用结构或脚手架生成行为发生变化时，更新 `maltose-quickstart`。
+- 推荐应用结构或脚手架生成行为发生变化时，更新本仓库的 `maltose-quickstart/` 子目录（它是 `maltose new` 的模板来源）。
 - 提交保持聚焦，使用 `feat:`、`fix:`、`refactor:`、`chore:` 等 Conventional Commit 前缀。
 - 默认分支为 `master`。任务未明确要求切换分支时保持当前分支，不要在 Maltose 提交中混入兄弟仓库的改动。
