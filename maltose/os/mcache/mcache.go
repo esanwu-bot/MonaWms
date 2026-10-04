@@ -8,121 +8,121 @@ import (
 )
 
 var (
-	// defaultCache is the default cache for package method usage.
+	// defaultCache 是包级方法使用的默认缓存。
 	defaultCache = New()
 )
 
-// Set sets cache with `key`-`value` pair, which is expired after `duration`.
-// It does not expire if `duration` == 0.
+// Set 写入 `key`-`value` 缓存，`duration` 之后过期。
+// `duration` 为 0 时不过期。
 func Set(ctx context.Context, key string, value interface{}, duration time.Duration) error {
 	return defaultCache.adapter.Set(ctx, key, value, duration)
 }
 
-// SetMap batch sets cache with key-value pairs by `data` map, which is expired after `duration`.
-// It does not expire if `duration` == 0.
+// SetMap 按 `data` 批量写入键值缓存，`duration` 之后过期。
+// `duration` 为 0 时不过期。
 func SetMap(ctx context.Context, data map[string]interface{}, duration time.Duration) error {
 	return defaultCache.adapter.SetMap(ctx, data, duration)
 }
 
-// SetIfNotExist sets cache with `key`-`value` pair if `key` does not exist in the cache.
-// It returns true if `key` is set, or returns false if the `key` already exists.
+// SetIfNotExist 在 `key` 不存在时写入 `key`-`value` 缓存。
+// 写入成功返回 true，`key` 已存在则返回 false。
 func SetIfNotExist(ctx context.Context, key string, value interface{}, duration time.Duration) (bool, error) {
 	return defaultCache.adapter.SetIfNotExist(ctx, key, value, duration)
 }
 
-// SetIfNotExistFunc sets `key` with result of function `f` if `key` does not exist in the cache.
-// It returns true if `key` is set, or returns false if the `key` already exists.
-// The function `f` is executed only if `key` does not exist in the cache.
+// SetIfNotExistFunc 在 `key` 不存在时，用函数 `f` 的结果写入缓存。
+// 写入成功返回 true，`key` 已存在则返回 false。
+// 仅当 `key` 不存在时才会执行函数 `f`。
 func SetIfNotExistFunc(ctx context.Context, key string, f Func, duration time.Duration) (bool, error) {
 	return defaultCache.adapter.SetIfNotExistFunc(ctx, key, f, duration)
 }
 
-// SetIfNotExistFuncLock sets `key` with result of function `f` if `key` does not exist in the cache.
-// It returns true if `key` is set, or returns false if the `key` already exists.
-// The function `f` is executed only if `key` does not exist in the cache.
-// It is recommended to use this function instead of `SetIfNotExistFunc` if you think there might be concurrent insertions to the same `key`.
+// SetIfNotExistFuncLock 在 `key` 不存在时，用函数 `f` 的结果写入缓存。
+// 写入成功返回 true，`key` 已存在则返回 false。
+// 仅当 `key` 不存在时才会执行函数 `f`。
+// 若可能存在对同一 `key` 的并发写入，建议使用本方法而不是 `SetIfNotExistFunc`。
 func SetIfNotExistFuncLock(ctx context.Context, key string, f Func, duration time.Duration) (bool, error) {
 	return defaultCache.adapter.SetIfNotExistFuncLock(ctx, key, f, duration)
 }
 
-// Get retrieves and returns the associated value of given `key`.
-// It returns nil if it does not exist or its value is nil.
+// Get 获取并返回给定 `key` 对应的值。
+// 若键不存在或其值为 nil，则返回 nil。
 func Get(ctx context.Context, key string) (*mvar.Var, error) {
 	return defaultCache.adapter.Get(ctx, key)
 }
 
-// GetOrSet retrieves and returns the value of `key`, or sets `key`-`value` pair and
-// returns `value` if `key` does not exist in the cache.
-// The key-value pair expires after `duration`.
-// It does not expire if `duration` == 0.
+// GetOrSet 获取并返回 `key` 的值，若 `key` 不存在则写入 `key`-`value`
+// 并返回 `value`。
+// 该键值对在 `duration` 之后过期。
+// `duration` 为 0 时不过期。
 func GetOrSet(ctx context.Context, key string, value interface{}, duration time.Duration) (*mvar.Var, error) {
 	return defaultCache.adapter.GetOrSet(ctx, key, value, duration)
 }
 
-// GetOrSetFunc retrieves and returns the value of `key`, or sets `key` with result of
-// function `f` and returns its result if `key` does not exist in the cache.
-// The key-value pair expires after `duration`.
-// It does not expire if `duration` == 0.
+// GetOrSetFunc 获取并返回 `key` 的值，若 `key` 不存在则用函数 `f`
+// 的结果写入并返回该结果。
+// 该键值对在 `duration` 之后过期。
+// `duration` 为 0 时不过期。
 func GetOrSetFunc(ctx context.Context, key string, f Func, duration time.Duration) (*mvar.Var, error) {
 	return defaultCache.adapter.GetOrSetFunc(ctx, key, f, duration)
 }
 
-// GetOrSetFuncLock retrieves and returns the value of `key`, or sets `key` with result of
-// function `f` and returns its result if `key` does not exist in the cache.
-// The key-value pair expires after `duration`.
-// It does not expire if `duration` == 0.
-// It is recommended to use this function instead of `GetOrSetFunc` if you think there might be concurrent insertions to the same `key`.
+// GetOrSetFuncLock 获取并返回 `key` 的值，若 `key` 不存在则用函数 `f`
+// 的结果写入并返回该结果。
+// 该键值对在 `duration` 之后过期。
+// `duration` 为 0 时不过期。
+// 若可能存在对同一 `key` 的并发写入，建议使用本方法而不是 `GetOrSetFunc`。
 func GetOrSetFuncLock(ctx context.Context, key string, f Func, duration time.Duration) (*mvar.Var, error) {
 	return defaultCache.adapter.GetOrSetFuncLock(ctx, key, f, duration)
 }
 
-// Contains checks and returns true if `key` exists in the cache, or else returns false.
+// Contains 检查 `key` 是否存在于缓存中，存在返回 true，否则返回 false。
 func Contains(ctx context.Context, key string) (bool, error) {
 	return defaultCache.adapter.Contains(ctx, key)
 }
 
-// Size returns the size of the cache.
+// Size 返回缓存中的条目数量。
 func Size(ctx context.Context) (int, error) {
 	return defaultCache.adapter.Size(ctx)
 }
 
-// Data returns a copy of all key-value pairs in the cache as map type.
+// Data 以 map 形式返回缓存中全部键值对的副本。
 func Data(ctx context.Context) (map[string]interface{}, error) {
 	return defaultCache.adapter.Data(ctx)
 }
 
-// Keys returns all keys in the cache as slice.
+// Keys 以切片形式返回缓存中的所有键。
 func Keys(ctx context.Context) ([]string, error) {
 	return defaultCache.adapter.Keys(ctx)
 }
 
-// Values returns all values in the cache as slice.
+// Values 以切片形式返回缓存中的所有值。
 func Values(ctx context.Context) ([]interface{}, error) {
 	return defaultCache.adapter.Values(ctx)
 }
 
-// Update updates the value of `key` without changing its expiration and returns the old value.
+// Update 更新 `key` 的值但不改变其过期时间，并返回旧值。
 func Update(ctx context.Context, key string, value interface{}) (oldValue *mvar.Var, exist bool, err error) {
 	return defaultCache.adapter.Update(ctx, key, value)
 }
 
-// UpdateExpire updates the expiration of `key` and returns the old expiration duration value.
+// UpdateExpire 更新 `key` 的过期时间，并返回旧的过期时长。
 func UpdateExpire(ctx context.Context, key string, duration time.Duration) (oldDuration time.Duration, err error) {
 	return defaultCache.adapter.UpdateExpire(ctx, key, duration)
 }
 
-// GetExpire retrieves and returns the expiration of `key` in the cache.
+// GetExpire 获取并返回缓存中 `key` 的过期时间。
 func GetExpire(ctx context.Context, key string) (time.Duration, error) {
 	return defaultCache.adapter.GetExpire(ctx, key)
 }
 
-// Remove deletes one or more keys from cache.
+// Remove 从缓存中删除一个或多个键。
 func Remove(ctx context.Context, keys ...string) (lastValue *mvar.Var, err error) {
 	return defaultCache.adapter.Remove(ctx, keys...)
 }
 
-// Clear clears all data of the cache.
-// Note that this function is sensitive and should be carefully used.
+// Clear 清空缓存中的全部数据。
+// 注意：该方法较为敏感，请谨慎使用。
 func Clear(ctx context.Context) error {
 	return defaultCache.adapter.Clear(ctx)
 }

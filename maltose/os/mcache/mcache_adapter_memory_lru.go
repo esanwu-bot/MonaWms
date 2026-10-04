@@ -4,14 +4,14 @@ import (
 	"container/list"
 )
 
-// memoryLru is the LRU manager for memory cache.
-// Note that this structure is not thread-safe.
+// memoryLru 是内存缓存的 LRU 管理器。
+// 注意：该结构不是线程安全的。
 type memoryLru struct {
 	list *list.List
 	cap  int
 }
 
-// newMemoryLru creates and returns a new LRU manager.
+// newMemoryLru 创建并返回一个新的 LRU 管理器。
 func newMemoryLru(capacity int) *memoryLru {
 	return &memoryLru{
 		list: list.New(),
@@ -19,13 +19,13 @@ func newMemoryLru(capacity int) *memoryLru {
 	}
 }
 
-// Push pushes a new element to the front of the LRU list.
-// If the element already exists, it moves it to the front.
+// Push 将元素移到 LRU 链表头部。
+// 若元素已存在，则将其移动到头部。
 func (lru *memoryLru) Push(elem *list.Element) {
 	lru.list.MoveToFront(elem)
 }
 
-// Pop removes and returns the key from the back of the LRU list (least recently used).
+// Pop 移除并返回 LRU 链表尾部（最久未使用）的键。
 func (lru *memoryLru) Pop() (key string, ok bool) {
 	if lru.cap <= 0 {
 		return
@@ -36,17 +36,17 @@ func (lru *memoryLru) Pop() (key string, ok bool) {
 	return
 }
 
-// Remove removes a specific element from the LRU list.
+// Remove 从 LRU 链表中移除指定元素。
 func (lru *memoryLru) Remove(elem *list.Element) {
 	lru.list.Remove(elem)
 }
 
-// Len returns the number of items in the LRU list.
+// Len 返回 LRU 链表中的元素数量。
 func (lru *memoryLru) Len() int {
 	return lru.list.Len()
 }
 
-// IsFull checks if the LRU list is full.
+// IsFull 检查 LRU 链表是否已满。
 func (lru *memoryLru) IsFull() bool {
 	if lru.cap <= 0 {
 		return false
@@ -54,12 +54,12 @@ func (lru *memoryLru) IsFull() bool {
 	return lru.list.Len() >= lru.cap
 }
 
-// NewElement creates a new element for the LRU list.
+// NewElement 为 LRU 链表创建一个新元素。
 func (lru *memoryLru) NewElement(key string) *list.Element {
 	return lru.list.PushFront(key)
 }
 
-// Clear removes all items from the LRU list.
+// Clear 移除 LRU 链表中的全部元素。
 func (lru *memoryLru) Clear() {
 	lru.list.Init()
 }

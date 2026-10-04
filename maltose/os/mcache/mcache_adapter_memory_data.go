@@ -1,29 +1,29 @@
 package mcache
 
-// memoryData is the underlying data structure for the memory cache.
-// Note that this structure is not thread-safe.
+// memoryData 是内存缓存的底层数据结构。
+// 注意：该结构不是线程安全的。
 type memoryData struct {
 	data map[string]*memoryDataItem
 }
 
-// newMemoryData creates and returns a new memoryData.
+// newMemoryData 创建并返回一个新的 memoryData。
 func newMemoryData() *memoryData {
 	return &memoryData{
 		data: make(map[string]*memoryDataItem),
 	}
 }
 
-// Set sets a key-value pair.
+// Set 设置一组键值对。
 func (md *memoryData) Set(key string, item *memoryDataItem) {
 	md.data[key] = item
 }
 
-// Get retrieves an item by key. It returns nil if the key does not exist.
+// Get 按键获取条目，键不存在时返回 nil。
 func (md *memoryData) Get(key string) *memoryDataItem {
 	return md.data[key]
 }
 
-// Remove deletes a key-value pair.
+// Remove 删除一组键值对。
 func (md *memoryData) Remove(key string) (item *memoryDataItem) {
 	if item, ok := md.data[key]; ok {
 		delete(md.data, key)
@@ -32,7 +32,7 @@ func (md *memoryData) Remove(key string) (item *memoryDataItem) {
 	return nil
 }
 
-// Data returns a copy of all key-value pairs.
+// Data 返回全部键值对的副本。
 func (md *memoryData) Data() map[string]*memoryDataItem {
 	m := make(map[string]*memoryDataItem, len(md.data))
 	for k, v := range md.data {
@@ -41,7 +41,7 @@ func (md *memoryData) Data() map[string]*memoryDataItem {
 	return m
 }
 
-// Clear removes all items from the map.
+// Clear 移除 map 中的全部条目。
 func (md *memoryData) Clear() {
 	md.data = make(map[string]*memoryDataItem)
 }

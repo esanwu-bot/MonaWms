@@ -7,81 +7,80 @@ import (
 	"github.com/graingo/maltose/container/mvar"
 )
 
-// Func is the cache function that calculates and returns the value.
+// Func 是用于计算并返回缓存值的函数类型。
 type Func func(ctx context.Context) (value interface{}, err error)
 
-// Adapter is the adapter for cache features.
+// Adapter 是缓存功能的适配器接口。
 type Adapter interface {
-	// Set sets cache with `key`-`value` pair, which is expired after `duration`.
-	// It does not expire if `duration` is 0.
-	// It deletes the key if `duration` < 0 or given `value` is nil.
+	// Set 写入 `key`-`value` 缓存，`duration` 之后过期。
+	// `duration` 为 0 时不过期。
+	// `duration` < 0 或 `value` 为 nil 时删除该键。
 	Set(ctx context.Context, key string, value interface{}, duration time.Duration) error
 
-	// SetMap batch sets cache with key-value pairs by `data` map, which is expired after `duration`.
+	// SetMap 按 `data` 批量写入键值缓存，`duration` 之后过期。
 	SetMap(ctx context.Context, data map[string]interface{}, duration time.Duration) error
 
-	// SetIfNotExist sets cache with `key`-`value` pair which is expired after `duration`
-	// if `key` does not exist in the cache. It returns true if the `key` does not exist in the
-	// cache and it sets `value` successfully to the cache, otherwise it returns false.
+	// SetIfNotExist 在 `key` 不存在时写入 `key`-`value` 缓存，`duration` 之后过期。
+	// 若 `key` 不存在且成功写入 `value`，返回 true，否则返回 false。
 	SetIfNotExist(ctx context.Context, key string, value interface{}, duration time.Duration) (ok bool, err error)
 
-	// SetIfNotExistFunc sets `key` with result of function `f` and returns true if `key` does not exist in the cache,
-	// or else it does nothing and returns false if `key` already exists.
+	// SetIfNotExistFunc 在 `key` 不存在时用函数 `f` 的结果写入并返回 true；
+	// 若 `key` 已存在则不执行任何操作并返回 false。
 	SetIfNotExistFunc(ctx context.Context, key string, f Func, duration time.Duration) (ok bool, err error)
 
-	// SetIfNotExistFuncLock sets `key` with result of function `f` and returns true if `key` does not exist in the cache,
-	// or else it does nothing and returns false if `key` already exists.
-	// It executes function `f` within writing mutex lock for concurrent safety purpose.
+	// SetIfNotExistFuncLock 在 `key` 不存在时用函数 `f` 的结果写入并返回 true；
+	// 若 `key` 已存在则不执行任何操作并返回 false。
+	// 函数 `f` 在写锁保护下执行，以保证并发安全。
 	SetIfNotExistFuncLock(ctx context.Context, key string, f Func, duration time.Duration) (ok bool, err error)
 
-	// Get retrieves and returns the associated value of given `key`.
-	// It returns nil if it does not exist, or its value is nil, or it's expired.
+	// Get 获取并返回给定 `key` 对应的值。
+	// 若键不存在、值为 nil 或已过期，则返回 nil。
 	Get(ctx context.Context, key string) (*mvar.Var, error)
 
-	// GetOrSet retrieves and returns the value of `key`, or sets `key`-`value` pair and
-	// returns `value` if `key` does not exist in the cache. The key-value pair expires after `duration`.
+	// GetOrSet 获取并返回 `key` 的值，若 `key` 不存在则写入 `key`-`value`
+	// 并返回 `value`。该键值对在 `duration` 之后过期。
 	GetOrSet(ctx context.Context, key string, value interface{}, duration time.Duration) (result *mvar.Var, err error)
 
-	// GetOrSetFunc retrieves and returns the value of `key`, or sets `key` with result of
-	// function `f` and returns its result if `key` does not exist in the cache.
+	// GetOrSetFunc 获取并返回 `key` 的值，若 `key` 不存在则用函数 `f`
+	// 的结果写入并返回该结果。
 	GetOrSetFunc(ctx context.Context, key string, f Func, duration time.Duration) (result *mvar.Var, err error)
 
-	// GetOrSetFuncLock retrieves and returns the value of `key`, or sets `key` with result of
-	// function `f` and returns its result if `key` does not exist in the cache.
-	// It executes function `f` within writing mutex lock for concurrent safety purpose.
+	// GetOrSetFuncLock 获取并返回 `key` 的值，若 `key` 不存在则用函数 `f`
+	// 的结果写入并返回该结果。
+	// 函数 `f` 在写锁保护下执行，以保证并发安全。
 	GetOrSetFuncLock(ctx context.Context, key string, f Func, duration time.Duration) (result *mvar.Var, err error)
 
-	// Contains checks and returns true if `key` exists in the cache, or else returns false.
+	// Contains 检查 `key` 是否存在于缓存中，存在返回 true，否则返回 false。
 	Contains(ctx context.Context, key string) (bool, error)
 
-	// Size returns the number of items in the cache.
+	// Size 返回缓存中的条目数量。
 	Size(ctx context.Context) (size int, err error)
 
-	// Data returns a copy of all key-value pairs in the cache as map type.
+	// Data 以 map 形式返回缓存中全部键值对的副本。
 	Data(ctx context.Context) (data map[string]any, err error)
 
-	// Keys returns all keys in the cache as slice.
+	// Keys 以切片形式返回缓存中的所有键。
 	Keys(ctx context.Context) (keys []string, err error)
 
-	// Values returns all values in the cache as slice.
+	// Values 以切片形式返回缓存中的所有值。
 	Values(ctx context.Context) (values []interface{}, err error)
 
-	// Update updates the value of `key` without changing its expiration and returns the old value.
+	// Update 更新 `key` 的值但不改变其过期时间，并返回旧值。
 	Update(ctx context.Context, key string, value interface{}) (oldValue *mvar.Var, exist bool, err error)
 
-	// UpdateExpire updates the expiration of `key` and returns the old expiration duration value.
-	// A zero duration removes expiration, while a negative duration deletes the key.
+	// UpdateExpire 更新 `key` 的过期时间，并返回旧的过期时长。
+	// 时长为 0 表示移除过期时间，为负数表示删除该键。
 	UpdateExpire(ctx context.Context, key string, duration time.Duration) (oldDuration time.Duration, err error)
 
-	// GetExpire retrieves and returns the expiration of `key` in the cache.
+	// GetExpire 获取并返回缓存中 `key` 的过期时间。
 	GetExpire(ctx context.Context, key string) (time.Duration, error)
 
-	// Remove deletes one or more keys from cache.
+	// Remove 从缓存中删除一个或多个键。
 	Remove(ctx context.Context, keys ...string) (lastValue *mvar.Var, err error)
 
-	// Clear clears all data of the cache.
+	// Clear 清空缓存中的全部数据。
 	Clear(ctx context.Context) error
 
-	// Close closes the cache if necessary.
+	// Close 在需要时关闭缓存。
 	Close(ctx context.Context) error
 }

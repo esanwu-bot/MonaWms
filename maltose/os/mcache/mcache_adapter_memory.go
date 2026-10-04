@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	// Default cleanup interval for expired items.
+	// 过期条目的默认清理间隔。
 	cleanupInterval = time.Minute
 )
 
-// AdapterMemory is an adapter for memory cache.
-// It is thread-safe and supports LRU elimination.
+// AdapterMemory 是基于内存的缓存适配器。
+// 它线程安全，并支持 LRU 淘汰。
 type AdapterMemory struct {
 	mu     sync.RWMutex
 	data   *memoryData
@@ -22,7 +22,7 @@ type AdapterMemory struct {
 	closed chan struct{}
 }
 
-// NewAdapterMemory creates and returns a new memory adapter.
+// NewAdapterMemory 创建并返回一个新的内存适配器。
 func NewAdapterMemory(capacity ...int) Adapter {
 	lru := 0
 	if len(capacity) > 0 {
@@ -33,12 +33,12 @@ func NewAdapterMemory(capacity ...int) Adapter {
 		lru:    newMemoryLru(lru),
 		closed: make(chan struct{}),
 	}
-	// Start a background goroutine for cleanup
+	// 启动后台 goroutine 执行清理
 	go c.cleanupLoop()
 	return c
 }
 
-// cleanupLoop periodically deletes expired items from the cache.
+// cleanupLoop 周期性删除缓存中的过期条目。
 func (c *AdapterMemory) cleanupLoop() {
 	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
@@ -52,7 +52,7 @@ func (c *AdapterMemory) cleanupLoop() {
 	}
 }
 
-// clearExpired removes expired items from the cache.
+// clearExpired 移除缓存中的过期条目。
 func (c *AdapterMemory) clearExpired() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -64,8 +64,8 @@ func (c *AdapterMemory) clearExpired() {
 	}
 }
 
-// remove is an internal method that removes an item from the cache.
-// It is not thread-safe and must be called within a lock.
+// remove 是从缓存中移除条目的内部方法。
+// 该方法非线程安全，必须在加锁状态下调用。
 func (c *AdapterMemory) remove(key string, item *memoryDataItem) {
 	c.data.Remove(key)
 	if item.elem != nil {
@@ -73,8 +73,8 @@ func (c *AdapterMemory) remove(key string, item *memoryDataItem) {
 	}
 }
 
-// evict removes the least recently used item if the cache is full.
-// It is not thread-safe and must be called within a lock.
+// evict 在缓存已满时移除最久未使用的条目。
+// 该方法非线程安全，必须在加锁状态下调用。
 func (c *AdapterMemory) evict() {
 	if c.lru.IsFull() {
 		if key, ok := c.lru.Pop(); ok {
@@ -83,20 +83,20 @@ func (c *AdapterMemory) evict() {
 	}
 }
 
-// Close closes the cache and stops the cleanup goroutine.
+// Close 关闭缓存并停止清理 goroutine。
 func (c *AdapterMemory) Close(_ context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	select {
 	case <-c.closed:
-	// already closed
+	// 已关闭
 	default:
 		close(c.closed)
 	}
 	return nil
 }
 
-// Set sets cache with `key`-`value` pair.
+// Set 写入 `key`-`value` 缓存。
 func (c *AdapterMemory) Set(_ context.Context, key string, value interface{}, duration time.Duration) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -104,8 +104,8 @@ func (c *AdapterMemory) Set(_ context.Context, key string, value interface{}, du
 	return nil
 }
 
-// set is the internal implementation of Set.
-// It is not thread-safe and must be called within a lock.
+// set 是 Set 的内部实现。
+// 该方法非线程安全，必须在加锁状态下调用。
 func (c *AdapterMemory) set(key string, value interface{}, duration time.Duration) {
 	var expire time.Time
 	if duration > 0 {
@@ -124,7 +124,7 @@ func (c *AdapterMemory) set(key string, value interface{}, duration time.Duratio
 	}
 }
 
-// SetMap batch sets cache with key-value pairs by `data` map.
+// SetMap 按 `data` 批量写入键值缓存。
 func (c *AdapterMemory) SetMap(_ context.Context, data map[string]interface{}, duration time.Duration) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -134,7 +134,7 @@ func (c *AdapterMemory) SetMap(_ context.Context, data map[string]interface{}, d
 	return nil
 }
 
-// SetIfNotExist sets cache with `key`-`value` pair if `key` does not exist in the cache.
+// SetIfNotExist 在 `key` 不存在时写入 `key`-`value` 缓存。
 func (c *AdapterMemory) SetIfNotExist(_ context.Context, key string, value interface{}, duration time.Duration) (bool, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -148,7 +148,7 @@ func (c *AdapterMemory) SetIfNotExist(_ context.Context, key string, value inter
 	return true, nil
 }
 
-// SetIfNotExistFunc sets `key` with result of function `f`.
+// SetIfNotExistFunc 用函数 `f` 的结果写入 `key`。
 func (c *AdapterMemory) SetIfNotExistFunc(ctx context.Context, key string, f Func, duration time.Duration) (bool, error) {
 	c.mu.Lock()
 	if item := c.data.Get(key); item != nil {
@@ -167,7 +167,7 @@ func (c *AdapterMemory) SetIfNotExistFunc(ctx context.Context, key string, f Fun
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	// Double check
+	// 双重检查
 	if item := c.data.Get(key); item != nil {
 		if item.e.IsZero() || time.Now().Before(item.e) {
 			return false, nil
@@ -185,7 +185,7 @@ func (c *AdapterMemory) SetIfNotExistFunc(ctx context.Context, key string, f Fun
 	return true, nil
 }
 
-// SetIfNotExistFuncLock sets `key` with result of function `f` with lock.
+// SetIfNotExistFuncLock 在加锁状态下用函数 `f` 的结果写入 `key`。
 func (c *AdapterMemory) SetIfNotExistFuncLock(ctx context.Context, key string, f Func, duration time.Duration) (bool, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -211,7 +211,7 @@ func (c *AdapterMemory) SetIfNotExistFuncLock(ctx context.Context, key string, f
 	return true, nil
 }
 
-// Get retrieves and returns the associated value of given `key`.
+// Get 获取并返回给定 `key` 对应的值。
 func (c *AdapterMemory) Get(_ context.Context, key string) (*mvar.Var, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -228,7 +228,7 @@ func (c *AdapterMemory) Get(_ context.Context, key string) (*mvar.Var, error) {
 	return mvar.New(item.v), nil
 }
 
-// GetOrSet retrieves and returns the value of `key`, or sets `key`-`value` pair and returns `value`.
+// GetOrSet 获取并返回 `key` 的值，若不存在则写入 `key`-`value` 并返回 `value`。
 func (c *AdapterMemory) GetOrSet(_ context.Context, key string, value interface{}, duration time.Duration) (*mvar.Var, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -252,14 +252,14 @@ func (c *AdapterMemory) GetOrSet(_ context.Context, key string, value interface{
 	return mvar.New(value), nil
 }
 
-// GetOrSetFunc retrieves and returns the value of `key`, or sets `key` with result of function `f`.
+// GetOrSetFunc 获取并返回 `key` 的值，若不存在则用函数 `f` 的结果写入。
 func (c *AdapterMemory) GetOrSetFunc(ctx context.Context, key string, f Func, duration time.Duration) (*mvar.Var, error) {
-	// Get without lock
+	// 不加锁读取
 	if v, _ := c.Get(ctx, key); v != nil {
 		return v, nil
 	}
 
-	// Lock and double check
+	// 加锁并双重检查
 	c.mu.Lock()
 	if item := c.data.Get(key); item != nil {
 		if item.e.IsZero() || time.Now().Before(item.e) {
@@ -278,7 +278,7 @@ func (c *AdapterMemory) GetOrSetFunc(ctx context.Context, key string, f Func, du
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	// Double check again
+	// 再次双重检查
 	if item := c.data.Get(key); item != nil {
 		if item.e.IsZero() || time.Now().Before(item.e) {
 			c.lru.Push(item.elem)
@@ -297,7 +297,7 @@ func (c *AdapterMemory) GetOrSetFunc(ctx context.Context, key string, f Func, du
 	return mvar.New(value), nil
 }
 
-// GetOrSetFuncLock retrieves and returns the value of `key`, or sets `key` with result of function `f` with lock.
+// GetOrSetFuncLock 在加锁状态下获取 `key` 的值，若不存在则用函数 `f` 的结果写入。
 func (c *AdapterMemory) GetOrSetFuncLock(ctx context.Context, key string, f Func, duration time.Duration) (*mvar.Var, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -326,13 +326,13 @@ func (c *AdapterMemory) GetOrSetFuncLock(ctx context.Context, key string, f Func
 	return mvar.New(value), nil
 }
 
-// Contains checks and returns true if `key` exists in the cache, or else returns false.
+// Contains 检查 `key` 是否存在于缓存中，存在返回 true，否则返回 false。
 func (c *AdapterMemory) Contains(ctx context.Context, key string) (bool, error) {
 	v, err := c.Get(ctx, key)
 	return v != nil, err
 }
 
-// Remove deletes one or more keys from cache.
+// Remove 从缓存中删除一个或多个键。
 func (c *AdapterMemory) Remove(_ context.Context, keys ...string) (*mvar.Var, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -347,7 +347,7 @@ func (c *AdapterMemory) Remove(_ context.Context, keys ...string) (*mvar.Var, er
 	return lastValue, nil
 }
 
-// Data returns a copy of all key-value pairs in the cache as map type.
+// Data 以 map 形式返回缓存中全部键值对的副本。
 func (c *AdapterMemory) Data(_ context.Context) (map[string]any, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -360,7 +360,7 @@ func (c *AdapterMemory) Data(_ context.Context) (map[string]any, error) {
 	return data, nil
 }
 
-// Keys returns all keys in the cache as slice.
+// Keys 以切片形式返回缓存中的所有键。
 func (c *AdapterMemory) Keys(_ context.Context) ([]string, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -371,7 +371,7 @@ func (c *AdapterMemory) Keys(_ context.Context) ([]string, error) {
 	return keys, nil
 }
 
-// Values returns all values in the cache as slice.
+// Values 以切片形式返回缓存中的所有值。
 func (c *AdapterMemory) Values(_ context.Context) ([]any, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -387,14 +387,14 @@ func (c *AdapterMemory) Values(_ context.Context) ([]any, error) {
 	return values, nil
 }
 
-// Size returns the size of the cache.
+// Size 返回缓存中的条目数量。
 func (c *AdapterMemory) Size(_ context.Context) (int, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.lru.Len(), nil
 }
 
-// Update updates the value of `key` without changing its expiration and returns the old value.
+// Update 更新 `key` 的值但不改变其过期时间，并返回旧值。
 func (c *AdapterMemory) Update(_ context.Context, key string, value any) (oldValue *mvar.Var, exist bool, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -412,7 +412,7 @@ func (c *AdapterMemory) Update(_ context.Context, key string, value any) (oldVal
 	return nil, false, nil
 }
 
-// UpdateExpire updates the expiration of `key` and returns the old expiration duration value.
+// UpdateExpire 更新 `key` 的过期时间，并返回旧的过期时长。
 func (c *AdapterMemory) UpdateExpire(_ context.Context, key string, duration time.Duration) (oldDuration time.Duration, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -440,7 +440,7 @@ func (c *AdapterMemory) UpdateExpire(_ context.Context, key string, duration tim
 	return -1, nil
 }
 
-// GetExpire retrieves and returns the expiration of `key` in the cache.
+// GetExpire 获取并返回缓存中 `key` 的过期时间。
 func (c *AdapterMemory) GetExpire(_ context.Context, key string) (time.Duration, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -449,7 +449,7 @@ func (c *AdapterMemory) GetExpire(_ context.Context, key string) (time.Duration,
 			return -1, nil
 		}
 		if item.e.IsZero() {
-			// Never expires. It is represented as 0 in Go.
+			// 永不过期。在 Go 中以 0 表示。
 			return 0, nil
 		}
 		return time.Until(item.e), nil
@@ -457,7 +457,7 @@ func (c *AdapterMemory) GetExpire(_ context.Context, key string) (time.Duration,
 	return -1, nil
 }
 
-// Clear clears all data of the cache.
+// Clear 清空缓存中的全部数据。
 func (c *AdapterMemory) Clear(_ context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
