@@ -7,8 +7,8 @@ import (
 	"github.com/graingo/maltose/errors/mcode"
 )
 
-// NewCode creates a new error with the specified error code.
-// Example: err := merror.NewCode(mcode.ValidationError)
+// NewCode 创建带指定错误码的新错误。
+// 示例：err := merror.NewCode(mcode.ValidationError)
 func NewCode(code mcode.Code, text ...string) error {
 	return &Error{
 		stack: callers(),
@@ -17,8 +17,8 @@ func NewCode(code mcode.Code, text ...string) error {
 	}
 }
 
-// NewCodef creates a new error with the specified error code.
-// Example: err := merror.NewCodef(mcode.ValidationError, "username %s cannot be empty", admin)
+// NewCodef 创建带指定错误码的新错误。
+// 示例：err := merror.NewCodef(mcode.ValidationError, "username %s cannot be empty", admin)
 func NewCodef(code mcode.Code, format string, args ...any) error {
 	return &Error{
 		stack: callers(),
@@ -27,8 +27,8 @@ func NewCodef(code mcode.Code, format string, args ...any) error {
 	}
 }
 
-// WrapCode wraps an error and appends the specified error code.
-// Example: err := merror.WrapCode(err, mcode.ValidationError)
+// WrapCode 包装一个错误并附加指定错误码。
+// 示例：err := merror.WrapCode(err, mcode.ValidationError)
 func WrapCode(err error, code mcode.Code, text ...string) error {
 	if err == nil {
 		return nil
@@ -41,8 +41,8 @@ func WrapCode(err error, code mcode.Code, text ...string) error {
 	}
 }
 
-// WrapCodef wraps an error and appends the specified error code and formatted text.
-// Example: err := merror.WrapCodef(err, mcode.ValidationError, "username %s cannot be empty", admin)
+// WrapCodef 包装一个错误，并附加指定错误码与格式化文本。
+// 示例：err := merror.WrapCodef(err, mcode.ValidationError, "username %s cannot be empty", admin)
 func WrapCodef(err error, code mcode.Code, format string, args ...any) error {
 	if err == nil {
 		return nil
@@ -55,8 +55,8 @@ func WrapCodef(err error, code mcode.Code, format string, args ...any) error {
 	}
 }
 
-// Code gets the error code of the error.
-// If there is no error code, and the error does not implement the ICode interface, it returns CodeNil.
+// Code 获取错误的错误码。
+// 若错误没有错误码，且未实现 ICode 接口，则返回 CodeNil。
 func Code(err error) mcode.Code {
 	if err == nil {
 		return mcode.CodeNil

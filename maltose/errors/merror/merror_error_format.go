@@ -5,12 +5,12 @@ import (
 	"io"
 )
 
-// Format implements the fmt.Formatter interface, it can format the error information.
+// Format 实现 fmt.Formatter 接口，可对错误信息进行格式化。
 //
-// Format specifiers:
+// 格式化占位符：
 //
-//	%s: error information
-//	+v: error information and stack information
+//	%s：错误信息
+//	+v：错误信息与调用栈信息
 func (err *Error) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 's', 'v':

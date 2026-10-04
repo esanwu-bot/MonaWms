@@ -5,15 +5,15 @@ import (
 	"runtime"
 )
 
-// stack represents the stack of program counters.
+// stack 表示程序计数器组成的调用栈。
 type stack []uintptr
 
 const (
-	// maxStackDepth marks the maximum stack depth.
+	// maxStackDepth 表示调用栈的最大深度。
 	maxStackDepth = 64
 )
 
-// Cause returns the root cause of `err`.
+// Cause 返回 `err` 的根因错误。
 func Cause(err error) error {
 	if err == nil {
 		return nil
@@ -27,8 +27,8 @@ func Cause(err error) error {
 	return err
 }
 
-// Stack returns the string of the stack caller information.
-// If `err` does not support stack, it will return the error string directly.
+// Stack 返回调用栈信息的字符串。
+// 若 `err` 不支持调用栈，则直接返回错误字符串。
 func Stack(err error) string {
 	if err == nil {
 		return ""
@@ -39,8 +39,8 @@ func Stack(err error) string {
 	return err.Error()
 }
 
-// Current creates and returns the current level error.
-// If the current level error is nil, it returns nil.
+// Current 创建并返回当前层的错误。
+// 若当前层错误为 nil，则返回 nil。
 func Current(err error) error {
 	if err == nil {
 		return nil
@@ -51,8 +51,8 @@ func Current(err error) error {
 	return err
 }
 
-// Unwrap returns the next level error.
-// If the current level error or the next level error is nil, it returns nil.
+// Unwrap 返回下一层的错误。
+// 若当前层或下一层的错误为 nil，则返回 nil。
 func Unwrap(err error) error {
 	if err == nil {
 		return nil
@@ -63,15 +63,15 @@ func Unwrap(err error) error {
 	return nil
 }
 
-// HasStack checks and reports whether `err` implements the `gerror.IStack` interface.
+// HasStack 检查并报告 `err` 是否实现了 `gerror.IStack` 接口。
 func HasStack(err error) bool {
 	_, ok := err.(IStack)
 	return ok
 }
 
-// Equal reports whether `err` is equal to `target`.
-// Note that in the default comparison logic of `Error`,
-// if the `code` and `text` of the two errors are the same, it is considered that they are the same.
+// Equal 报告 `err` 是否与 `target` 相等。
+// 注意：在 `Error` 的默认比较逻辑中，
+// 若两个错误的 `code` 与 `text` 相同，则认为它们相同。
 func Equal(err, target error) bool {
 	if err == nil || target == nil {
 		return err == nil && target == nil
@@ -85,30 +85,30 @@ func Equal(err, target error) bool {
 	return false
 }
 
-// Is reports whether `err` is in the chain of errors.
-// There is a similar function `HasError`, it is designed and implemented before the `errors.Is` function of the go standard library.
-// Now it is an alias of the `errors.Is` function of the go standard library, to ensure the same performance as the go standard library.
+// Is 报告 `err` 是否存在于错误链中。
+// 另有类似函数 `HasError`，它设计实现于 Go 标准库提供 `errors.Is` 之前。
+// 现在它是标准库 `errors.Is` 的别名，以保证与标准库一致的性能。
 func Is(err, target error) bool {
 	return errors.Is(err, target)
 }
 
-// As searches for the first error in the chain of errors that matches `target`.
-// If found, it sets `target` to the error value and returns true.
+// As 在错误链中查找第一个匹配 `target` 的错误。
+// 若找到，则将 `target` 设为该错误值并返回 true。
 //
-// The error chain consists of `err` itself, followed by the error sequence obtained by repeatedly calling `Unwrap`.
+// 错误链由 `err` 自身，以及反复调用 `Unwrap` 得到的错误序列组成。
 //
-// If the specific value of the error can be assigned to the value pointed to by `target`, or the error has a method `As(interface{}) bool`
-// so that `As(target)` returns true, then the error matches target. In the latter case,
-// the As method is responsible for setting target.
+// 若错误的具体值可赋值给 `target` 所指向的值，或该错误拥有 `As(interface{}) bool`
+// 方法且 `As(target)` 返回 true，则认为该错误匹配 target；后一种情况下
+// 由 As 方法负责设置 target。
 //
-// If target is not a pointer to a type that implements the error interface or any interface type, As will panic.
-// If err is nil, As returns false.
+// 若 target 不是实现了 error 接口的类型指针或接口类型，As 会 panic。
+// 若 err 为 nil，As 返回 false。
 func As(err error, target any) bool {
 	return errors.As(err, target)
 }
 
-// callers returns the stack caller.
-// Note that this only retrieves the caller memory address array, not the caller information.
+// callers 返回调用栈信息。
+// 注意：这里只获取调用方的内存地址数组，而非调用方信息。
 func callers(skip ...int) stack {
 	var (
 		pcs [maxStackDepth]uintptr

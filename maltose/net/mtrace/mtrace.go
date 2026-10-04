@@ -13,9 +13,9 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Semantic conventions for trace attributes.
-// These keys are based on the OpenTelemetry specification for semantic conventions.
-// See: https://opentelemetry.io/docs/specs/semconv/
+// 链路属性的语义约定。
+// 这些键名基于 OpenTelemetry 语义约定规范。
+// 参见：https://opentelemetry.io/docs/specs/semconv/
 const (
 	AttributeHTTPMethod       = "http.method"
 	AttributeHTTPUrl          = "http.url"
@@ -43,22 +43,22 @@ func init() {
 	CheckSetDefaultTextMapPropagator()
 }
 
-// GetProvider returns the global tracer provider.
+// GetProvider 返回全局 tracer provider。
 func GetProvider() trace.TracerProvider {
 	return otel.GetTracerProvider()
 }
 
-// SetProvider sets the global tracer provider.
+// SetProvider 设置全局 tracer provider。
 func SetProvider(p trace.TracerProvider) {
 	otel.SetTracerProvider(p)
 }
 
-// NewProvider is a wrapper around sdkTrace.NewTracerProvider.
+// NewProvider 是对 sdkTrace.NewTracerProvider 的封装。
 func NewProvider(opts ...sdkTrace.TracerProviderOption) trace.TracerProvider {
 	return sdkTrace.NewTracerProvider(opts...)
 }
 
-// CheckSetDefaultTextMapPropagator checks if the default TextMapPropagator is set.
+// CheckSetDefaultTextMapPropagator 检查默认的 TextMapPropagator 是否已设置。
 func CheckSetDefaultTextMapPropagator() {
 	p := otel.GetTextMapPropagator()
 	if len(p.Fields()) == 0 {
@@ -66,12 +66,12 @@ func CheckSetDefaultTextMapPropagator() {
 	}
 }
 
-// GetDefaultTextMapPropagator returns the default TextMapPropagator for context propagation.
+// GetDefaultTextMapPropagator 返回用于上下文传播的默认 TextMapPropagator。
 func GetDefaultTextMapPropagator() propagation.TextMapPropagator {
 	return defaultTextMapPropagator
 }
 
-// GetTraceID gets the trace id from the context.
+// GetTraceID 从上下文中获取 trace id。
 func GetTraceID(ctx context.Context) string {
 	if ctx == nil {
 		return ""
@@ -83,7 +83,7 @@ func GetTraceID(ctx context.Context) string {
 	return ""
 }
 
-// GetSpanID gets the span id from the context.
+// GetSpanID 从上下文中获取 span id。
 func GetSpanID(ctx context.Context) string {
 	if ctx == nil {
 		return ""
@@ -95,32 +95,32 @@ func GetSpanID(ctx context.Context) string {
 	return ""
 }
 
-// SetBaggageValue is a convenient function for adding a key-value pair to baggage.
+// SetBaggageValue 是向 baggage 中添加单个键值对的便捷方法。
 func SetBaggageValue(ctx context.Context, key string, value any) context.Context {
 	return NewBaggage(ctx).SetValue(key, value)
 }
 
-// SetBaggageMap is a convenient function for adding multiple key-value pairs to baggage.
+// SetBaggageMap 是向 baggage 中批量添加键值对的便捷方法。
 func SetBaggageMap(ctx context.Context, data map[string]any) context.Context {
 	return NewBaggage(ctx).SetMap(data)
 }
 
-// GetBaggageMap gets and returns the map of baggage values.
+// GetBaggageMap 获取并返回 baggage 中的键值对 map。
 func GetBaggageMap(ctx context.Context) map[string]any {
 	return NewBaggage(ctx).GetMap()
 }
 
-// GetBaggageVar gets and returns the value of the specified key from baggage.
+// GetBaggageVar 获取并返回 baggage 中指定键的值。
 func GetBaggageVar(ctx context.Context, key string) *mvar.Var {
 	return NewBaggage(ctx).GetVar(key)
 }
 
-// WithUUID injects a custom UUID as trace id into the context.
+// WithUUID 将自定义 UUID 作为 trace id 注入上下文。
 func WithUUID(ctx context.Context, uuid string) (context.Context, error) {
 	return WithTraceID(ctx, strings.Replace(uuid, "-", "", -1))
 }
 
-// WithTraceID injects a custom trace id into the context.
+// WithTraceID 将自定义 trace id 注入上下文。
 func WithTraceID(ctx context.Context, traceID string) (context.Context, error) {
 	generatedTraceID, err := trace.TraceIDFromHex(traceID)
 	if err != nil {
@@ -129,8 +129,8 @@ func WithTraceID(ctx context.Context, traceID string) (context.Context, error) {
 
 	sc := trace.SpanContextFromContext(ctx)
 	if !sc.IsValid() {
-		// If there is no SpanContext in the current context,
-		// we create a new one with the given traceID and a new random spanID.
+		// 若当前上下文中没有 SpanContext，
+		// 则用给定的 traceID 和一个随机生成的 spanID 创建新的 SpanContext。
 		var spanID trace.SpanID
 		if _, err := rand.Read(spanID[:]); err != nil {
 			return ctx, merror.Wrap(err, "generate span ID failed")
@@ -138,10 +138,10 @@ func WithTraceID(ctx context.Context, traceID string) (context.Context, error) {
 		sc = trace.NewSpanContext(trace.SpanContextConfig{
 			TraceID: generatedTraceID,
 			SpanID:  spanID,
-			Remote:  true, // As it is from a custom ID, we mark it as remote.
+			Remote:  true, // 由于来自自定义 ID，这里标记为 remote。
 		})
 	} else {
-		// If there is a SpanContext, we only replace the traceID.
+		// 若已存在 SpanContext，则只替换其中的 traceID。
 		sc = sc.WithTraceID(generatedTraceID)
 	}
 

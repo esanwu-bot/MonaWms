@@ -7,7 +7,7 @@ import (
 	"github.com/graingo/maltose/errors/mcode"
 )
 
-// Error is the error structure.
+// Error 是错误的内部结构。
 type Error struct {
 	error error
 	text  string
@@ -15,7 +15,7 @@ type Error struct {
 	stack stack
 }
 
-// Error implements the Error interface, it returns all error information.
+// Error 实现 error 接口，返回完整的错误信息。
 func (err *Error) Error() string {
 	if err == nil {
 		return ""
@@ -33,7 +33,7 @@ func (err *Error) Error() string {
 	return errStr
 }
 
-// Cause returns the root error.
+// Cause 返回根因错误。
 func (err *Error) Cause() error {
 	if err == nil {
 		return nil
@@ -42,26 +42,26 @@ func (err *Error) Cause() error {
 	for loop != nil {
 		if loop.error != nil {
 			if e, ok := loop.error.(*Error); ok {
-				// Internal Error struct.
+				// 内部 Error 结构。
 				loop = e
 			} else if e, ok := loop.error.(ICause); ok {
-				// Other Error that implements ApiCause interface.
+				// 其他实现了 ApiCause 接口的 Error。
 				return e.Cause()
 			} else {
 				return loop.error
 			}
 		} else {
-			// return loop
-			//
-			// To be compatible with Case of https://github.com/pkg/errors.
+			// 返回 loop
+							//
+							// 为兼容 https://github.com/pkg/errors 中的 Case 行为。
 			return errors.New(loop.text)
 		}
 	}
 	return nil
 }
 
-// Current creates and returns the current error.
-// If the current error is nil, it returns nil.
+// Current 创建并返回当前层的错误。
+// 若当前错误为 nil，则返回 nil。
 func (err *Error) Current() error {
 	if err == nil {
 		return nil
@@ -74,8 +74,8 @@ func (err *Error) Current() error {
 	}
 }
 
-// Unwrap is an alias function for `Next`.
-// It is only for implementing the stdlib errors.Unwrap interface after Go version 1.17.
+// Unwrap 是 `Next` 的别名函数。
+// 仅为在 Go 1.17 之后实现标准库 errors.Unwrap 接口而存在。
 func (err *Error) Unwrap() error {
 	if err == nil {
 		return nil
@@ -83,18 +83,18 @@ func (err *Error) Unwrap() error {
 	return err.error
 }
 
-// Equal compares two errors for equality.
-// Note that in the default error comparison, only when their `code` and `text` are the same, the error is considered the same.
+// Equal 比较两个错误是否相等。
+// 注意：默认的比较逻辑中，只有两个错误的 `code` 与 `text` 都相同时才认为相等。
 func (err *Error) Equal(target error) bool {
 	if err == nil || target == nil {
 		return err == nil && target == nil
 	}
-	// Code should be the same.
-	// Note that if both errors have `nil` code, they are also considered equal.
+	// 错误码必须相同。
+	// 注意：若两个错误的错误码都为 nil，同样视为相等。
 	if !equalCode(err.code, Code(target)) {
 		return false
 	}
-	// Text should be the same.
+	// 错误信息必须相同。
 	if err.text != fmt.Sprintf(`%-s`, target) {
 		return false
 	}
