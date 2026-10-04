@@ -1,0 +1,5 @@
+{
+  "stack": "custom-webapp",
+  "dev": { "command": ["npm", "run", "dev"], "port": 37210 },
+  "build": { "output": "out" }
+}
