@@ -3,18 +3,18 @@ package msync
 import "errors"
 
 var (
-	// ErrLimitReturn is returned when Return is called without a corresponding Borrow.
+	// ErrLimitReturn 在没有对应 Borrow 的情况下调用 Return 时返回。
 	ErrLimitReturn = errors.New("msync: limit return without borrow")
 )
 
-// Limit is a semaphore implementation using channels to limit concurrent execution.
-// It allows controlling the maximum number of concurrent operations.
+// Limit 是基于 channel 实现的信号量，用于限制并发执行数量。
+// 可通过它控制最大并发操作数。
 type Limit struct {
 	pool chan struct{}
 }
 
-// NewLimit creates and returns a new Limit instance with the specified capacity.
-// The capacity determines the maximum number of concurrent operations allowed.
+// NewLimit 按指定容量创建并返回一个 Limit 实例。
+// 容量决定了允许的最大并发操作数。
 func NewLimit(n int) *Limit {
 	if n <= 0 {
 		panic("msync: limit capacity must be positive")
@@ -24,14 +24,14 @@ func NewLimit(n int) *Limit {
 	}
 }
 
-// Borrow acquires a slot from the limit pool, blocking if the pool is full.
-// It must be paired with a Return call to release the slot.
+// Borrow 从并发额度池中获取一个名额，池满时阻塞等待。
+// 必须配对调用 Return 释放名额。
 func (l *Limit) Borrow() {
 	l.pool <- struct{}{}
 }
 
-// TryBorrow attempts to acquire a slot from the limit pool without blocking.
-// It returns true if successful, false if the pool is full.
+// TryBorrow 尝试非阻塞地获取一个名额。
+// 获取成功返回 true，池满则返回 false。
 func (l *Limit) TryBorrow() bool {
 	select {
 	case l.pool <- struct{}{}:
@@ -41,8 +41,8 @@ func (l *Limit) TryBorrow() bool {
 	}
 }
 
-// Return releases a slot back to the limit pool.
-// It returns an error if Return is called more times than Borrow.
+// Return 将名额归还到并发额度池。
+// 若 Return 的调用次数多于 Borrow，则返回错误。
 func (l *Limit) Return() error {
 	select {
 	case <-l.pool:

@@ -7,7 +7,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-// otelProvider is a wrapper for a metric.MeterProvider that implements the Provider interface.
+// otelProvider 是对 metric.MeterProvider 的封装，实现了 Provider 接口。
 type otelProvider struct {
 	provider metric.MeterProvider
 }
@@ -27,9 +27,9 @@ func (p *otelProvider) Meter(option MeterOption) Meter {
 	}
 }
 
-// Shutdown implements the Provider interface.
-// Note that the default OpenTelemetry provider does not have a Shutdown method.
-// If the underlying provider does not support Shutdown, this method returns nil.
+// Shutdown 实现 Provider 接口。
+// 注意：OpenTelemetry 的默认 provider 没有 Shutdown 方法。
+// 若底层 provider 不支持 Shutdown，则该方法直接返回 nil。
 func (p *otelProvider) Shutdown(ctx context.Context) error {
 	if prov, ok := p.provider.(interface {
 		Shutdown(context.Context) error
@@ -39,13 +39,13 @@ func (p *otelProvider) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// meterWrapper is a wrapper for an OpenTelemetry Meter that implements the Meter interface.
+// meterWrapper 是对 OpenTelemetry Meter 的封装，实现了 Meter 接口。
 type meterWrapper struct {
 	meter      metric.Meter
 	attributes Attributes
 }
 
-// Counter creates a new Counter metric instrument.
+// Counter 创建新的 Counter 指标工具。
 func (m *meterWrapper) Counter(name string, option MetricOption) (Counter, error) {
 	counter, err := m.meter.Float64Counter(
 		name,
@@ -61,7 +61,7 @@ func (m *meterWrapper) Counter(name string, option MetricOption) (Counter, error
 	}, nil
 }
 
-// MustCounter creates a new Counter, panicking on error.
+// MustCounter 创建新的 Counter，出错时 panic。
 func (m *meterWrapper) MustCounter(name string, option MetricOption) Counter {
 	counter, err := m.Counter(name, option)
 	if err != nil {
@@ -70,7 +70,7 @@ func (m *meterWrapper) MustCounter(name string, option MetricOption) Counter {
 	return counter
 }
 
-// UpDownCounter creates a new UpDownCounter metric instrument.
+// UpDownCounter 创建新的 UpDownCounter 指标工具。
 func (m *meterWrapper) UpDownCounter(name string, option MetricOption) (UpDownCounter, error) {
 	counter, err := m.meter.Float64UpDownCounter(
 		name,
@@ -86,7 +86,7 @@ func (m *meterWrapper) UpDownCounter(name string, option MetricOption) (UpDownCo
 	}, nil
 }
 
-// MustUpDownCounter creates a new UpDownCounter, panicking on error.
+// MustUpDownCounter 创建新的 UpDownCounter，出错时 panic。
 func (m *meterWrapper) MustUpDownCounter(name string, option MetricOption) UpDownCounter {
 	counter, err := m.UpDownCounter(name, option)
 	if err != nil {
@@ -95,7 +95,7 @@ func (m *meterWrapper) MustUpDownCounter(name string, option MetricOption) UpDow
 	return counter
 }
 
-// Histogram creates a new Histogram metric instrument.
+// Histogram 创建新的 Histogram 指标工具。
 func (m *meterWrapper) Histogram(name string, option MetricOption) (Histogram, error) {
 	histogram, err := m.meter.Float64Histogram(
 		name,
@@ -112,7 +112,7 @@ func (m *meterWrapper) Histogram(name string, option MetricOption) (Histogram, e
 	}, nil
 }
 
-// MustHistogram creates a new Histogram, panicking on error.
+// MustHistogram 创建新的 Histogram，出错时 panic。
 func (m *meterWrapper) MustHistogram(name string, option MetricOption) Histogram {
 	histogram, err := m.Histogram(name, option)
 	if err != nil {
@@ -121,60 +121,60 @@ func (m *meterWrapper) MustHistogram(name string, option MetricOption) Histogram
 	return histogram
 }
 
-// counterWrapper is a wrapper for an OpenTelemetry Counter.
+// counterWrapper 是对 OpenTelemetry Counter 的封装。
 type counterWrapper struct {
 	counter    metric.Float64Counter
 	attributes Attributes
 }
 
-// Add adds a value to the counter.
+// Add 给计数器累加一个值。
 func (c *counterWrapper) Add(ctx context.Context, value float64, opts ...Option) {
 	c.counter.Add(ctx, value, metric.WithAttributes(
 		combineAttributes(c.attributes, optionsToAttributes(opts))...,
 	))
 }
 
-// Inc increments the counter by 1.
+// Inc 将计数器加 1。
 func (c *counterWrapper) Inc(ctx context.Context, opts ...Option) {
 	c.counter.Add(ctx, 1, metric.WithAttributes(
 		combineAttributes(c.attributes, optionsToAttributes(opts))...,
 	))
 }
 
-// upDownCounterWrapper is a wrapper for an OpenTelemetry UpDownCounter.
+// upDownCounterWrapper 是对 OpenTelemetry UpDownCounter 的封装。
 type upDownCounterWrapper struct {
 	counter    metric.Float64UpDownCounter
 	attributes Attributes
 }
 
-// Add adds a value to the counter.
+// Add 给计数器累加一个值。
 func (c *upDownCounterWrapper) Add(ctx context.Context, value float64, opts ...Option) {
 	c.counter.Add(ctx, value, metric.WithAttributes(
 		combineAttributes(c.attributes, optionsToAttributes(opts))...,
 	))
 }
 
-// Inc increments the counter by 1.
+// Inc 将计数器加 1。
 func (c *upDownCounterWrapper) Inc(ctx context.Context, opts ...Option) {
 	c.counter.Add(ctx, 1, metric.WithAttributes(
 		combineAttributes(c.attributes, optionsToAttributes(opts))...,
 	))
 }
 
-// Dec decrements the counter by 1.
+// Dec 将计数器减 1。
 func (c *upDownCounterWrapper) Dec(ctx context.Context, opts ...Option) {
 	c.counter.Add(ctx, -1, metric.WithAttributes(
 		combineAttributes(c.attributes, optionsToAttributes(opts))...,
 	))
 }
 
-// histogramWrapper is a wrapper for an OpenTelemetry Histogram.
+// histogramWrapper 是对 OpenTelemetry Histogram 的封装。
 type histogramWrapper struct {
 	histogram  metric.Float64Histogram
 	attributes Attributes
 }
 
-// Record records a value in the histogram.
+// Record 向直方图记录一个值。
 func (h *histogramWrapper) Record(value float64, opts ...Option) {
 	h.RecordContext(context.Background(), value, opts...)
 }
@@ -192,7 +192,7 @@ func combineAttributes(base, extra Attributes) Attributes {
 	return attributes
 }
 
-// optionsToAttributes converts a slice of Option into a slice of attribute.KeyValue.
+// optionsToAttributes 将 Option 切片转换为 attribute.KeyValue 切片。
 func optionsToAttributes(opts []Option) []attribute.KeyValue {
 	if len(opts) == 0 {
 		return nil

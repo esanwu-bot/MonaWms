@@ -1,41 +1,37 @@
-// Package msync provides concurrency control utilities for managing
-// concurrent operations in Go applications.
+// Package msync 提供并发控制工具，用于管理 Go 应用中的并发操作。
 //
-// The package includes the following components:
+// 本包包含以下组件：
 //
-//   - SingleFlight: Prevents duplicate function calls for the same key,
-//     useful for preventing cache stampede.
+//   - SingleFlight：避免同一 key 的重复函数调用，可用于防止缓存击穿。
 //
-//   - LockedCalls: Ensures sequential execution of operations with the same key,
-//     useful for write operations that must be serialized.
+//   - LockedCalls：保证同一 key 的操作串行执行，适用于必须串行化的写操作。
 //
-//   - Limit: Controls the maximum number of concurrent operations,
-//     useful for rate limiting and resource management.
+//   - Limit：控制最大并发数，可用于限流与资源管理。
 //
-//   - Pool: Manages a pool of reusable objects with capacity limits and expiration,
-//     useful for connection pools and buffer pools.
+//   - Pool：管理带容量上限与过期时间的可复用对象池，
+//     适用于连接池、缓冲区池等场景。
 //
-// Basic usage examples:
+// 基本用法示例：
 //
-//	// SingleFlight - prevent cache stampede
+//	// SingleFlight —— 防止缓存击穿
 //	sf := msync.NewSingleFlight()
 //	result, err := sf.Do("cache-key", func() (any, error) {
 //	    return queryDatabase()
 //	})
 //
-//	// LockedCalls - serialize operations
+//	// LockedCalls —— 串行化操作
 //	lc := msync.NewLockedCalls()
 //	_, err := lc.Do("user-123", func() (any, error) {
 //	    return updateUserBalance(amount)
 //	})
 //
-//	// Limit - control concurrency
-//	limit := msync.NewLimit(10) // max 10 concurrent
+//	// Limit —— 控制并发
+//	limit := msync.NewLimit(10) // 最大并发 10
 //	limit.Borrow()
 //	defer limit.Return()
-//	// perform operation
+//	// 执行操作
 //
-//	// Pool - object pool
+//	// Pool —— 对象池
 //	pool := msync.NewPool(50,
 //	    func() any { return createConnection() },
 //	    func(x any) { x.(*Connection).Close() },
@@ -43,5 +39,5 @@
 //	)
 //	conn := pool.Get()
 //	defer pool.Put(conn)
-//	// use connection
+//	// 使用连接
 package msync

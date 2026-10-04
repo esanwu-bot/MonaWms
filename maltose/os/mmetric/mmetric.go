@@ -10,37 +10,37 @@ import (
 )
 
 const (
-	// defaultInstrument an instrument name for the default meter.
+	// defaultInstrument 是默认 meter 使用的埋点库名称。
 	defaultInstrument = "github.com/graingo/maltose/os/mmetric"
 )
 
-// Semantic conventions for metric attributes.
-// These keys are based on the OpenTelemetry specification for semantic conventions.
-// See: https://opentelemetry.io/docs/specs/semconv/
+// 指标属性的语义约定。
+// 这些键名基于 OpenTelemetry 语义约定规范。
+// 参见：https://opentelemetry.io/docs/specs/semconv/
 const (
-	// HTTP attributes.
+	// HTTP 相关属性。
 	AttrHTTPRoute              = "http.route"
 	AttrHTTPRequestMethod      = "http.request.method"
 	AttrHTTPResponseStatusCode = "http.response.status_code"
 
-	// Network attributes.
+	// 网络相关属性。
 	AttrNetworkProtocolVersion = "network.protocol.version"
 	AttrServerAddress          = "server.address"
 	AttrServerPort             = "server.port"
 	AttrClientAddress          = "client.address"
 
-	// URL attributes.
+	// URL 相关属性。
 	AttrURLScheme = "url.scheme"
 	AttrURLPath   = "url.path"
 	AttrURLHost   = "url.host"
 
-	// Error attributes.
+	// 错误相关属性。
 	AttrErrorCode = "error.code"
 )
 
-// Attributes is a slice of attribute.KeyValue. It is used to add metadata to metrics.
-// Using attribute.KeyValue allows for strongly-typed attributes, which is recommended
-// by OpenTelemetry for better performance and correctness.
+// Attributes 是 attribute.KeyValue 切片，用于为指标附加元数据。
+// 使用 attribute.KeyValue 可以获得强类型属性，
+// 这也是 OpenTelemetry 推荐的方式，性能更好且更不易出错。
 //
 // Example:
 //
@@ -50,86 +50,82 @@ const (
 //	}
 type Attributes []attribute.KeyValue
 
-// MeterOption is the option for creating a new meter. A meter is responsible for creating
-// instruments (e.g., counters, histograms).
+// MeterOption 是创建 meter 的选项，meter 负责创建各类埋点工具（如计数器、直方图）。
 type MeterOption struct {
-	// Instrument is the name of the instrumentation library.
+	// Instrument 是埋点库的名称。
 	Instrument string
-	// InstrumentVersion is the version of the instrumentation library.
+	// InstrumentVersion 是埋点库的版本。
 	InstrumentVersion string
-	// Attributes is a list of attributes that will be attached to all metrics created by this meter.
+	// Attributes 是附加到该 meter 创建的全部指标上的属性列表。
 	Attributes Attributes
 }
 
-// MetricOption is the option for creating a new metric instrument (e.g., Counter, Histogram).
+// MetricOption 是创建指标工具（如 Counter、Histogram）的选项。
 type MetricOption struct {
-	// Help provides a brief description of the metric. It is used by some backends
-	// to display help text in GUIs.
+	// Help 是指标的简要说明，部分后端会在界面上展示该帮助文本。
 	Help string
-	// Unit specifies the unit of the metric. It should follow the UCUM standard.
-	// See: https://unitsofmeasure.org/ucum.html
+	// Unit 指定指标的单位，应符合 UCUM 标准。
+	// 参见：https://unitsofmeasure.org/ucum.html
 	Unit string
-	// Attributes is a list of attributes that will be attached to the metric.
+	// Attributes 是附加到该指标上的属性列表。
 	Attributes Attributes
-	// Buckets defines the bucket boundaries for a Histogram. If not set, a default
-	// set of buckets will be used by the provider.
-	// This is only applicable to Histogram metrics.
+	// Buckets 定义直方图的桶边界，未设置时由 provider 使用默认桶。
+	// 该字段仅对 Histogram 指标生效。
 	Buckets []float64
 }
 
-// Option is the option for a single metric operation, like Add or Inc.
+// Option 是单次指标操作（如 Add、Inc）的选项。
 type Option struct {
-	// Attributes is a list of attributes that will be attached to this specific metric observation.
-	// These attributes are combined with the attributes from the Meter and the Instrument.
+	// Attributes 是附加到本次指标观测上的属性列表。
+	// 这些属性会与 Meter 和 Instrument 上的属性合并。
 	Attributes Attributes
 }
 
-// Provider is the interface for a metric provider. It is responsible for creating meters.
-// This is an abstraction over OpenTelemetry's MeterProvider.
+// Provider 是指标 provider 接口，负责创建 meter。
+// 它是对 OpenTelemetry MeterProvider 的抽象。
 type Provider interface {
-	// Meter creates a new meter with the given options.
+	// Meter 按给定选项创建一个新的 meter。
 	Meter(option MeterOption) Meter
-	// Shutdown gracefully shuts down the provider, ensuring all buffered metrics are exported.
+	// Shutdown 优雅关闭 provider，确保缓存中的指标都被导出。
 	Shutdown(ctx context.Context) error
 }
 
-// Meter is the interface for a metric meter. It is responsible for creating instruments.
-// This is an abstraction over OpenTelemetry's Meter.
+// Meter 是指标 meter 接口，负责创建各类埋点工具。
+// 它是对 OpenTelemetry Meter 的抽象。
 type Meter interface {
-	// Counter creates a new counter metric. A counter is a metric that only goes up.
+	// Counter 创建新的计数器指标，计数只会递增。
 	Counter(name string, option MetricOption) (Counter, error)
-	// MustCounter is like Counter but panics on error.
+	// MustCounter 与 Counter 相同，但出错时 panic。
 	MustCounter(name string, option MetricOption) Counter
-	// UpDownCounter creates a new up-down counter. This metric can go up and down.
+	// UpDownCounter 创建新的可增可减计数器。
 	UpDownCounter(name string, option MetricOption) (UpDownCounter, error)
-	// MustUpDownCounter is like UpDownCounter but panics on error.
+	// MustUpDownCounter 与 UpDownCounter 相同，但出错时 panic。
 	MustUpDownCounter(name string, option MetricOption) UpDownCounter
-	// Histogram creates a new histogram metric. Histograms are used to measure the
-	// distribution of a set of values.
+	// Histogram 创建新的直方图指标，用于衡量一组数值的分布情况。
 	Histogram(name string, option MetricOption) (Histogram, error)
-	// MustHistogram is like Histogram but panics on error.
+	// MustHistogram 与 Histogram 相同，但出错时 panic。
 	MustHistogram(name string, option MetricOption) Histogram
 }
 
-// Counter is an interface for a counter metric.
+// Counter 是计数器指标的接口。
 type Counter interface {
-	// Add adds a value to the counter. The value must be non-negative.
+	// Add 给计数器累加一个值，该值必须非负。
 	Add(ctx context.Context, value float64, opts ...Option)
-	// Inc increments the counter by 1.
+	// Inc 将计数器加 1。
 	Inc(ctx context.Context, opts ...Option)
 }
 
-// UpDownCounter is an interface for an up-down counter metric.
+// UpDownCounter 是可增可减计数器指标的接口。
 type UpDownCounter interface {
-	// Add adds a value to the counter. The value can be positive or negative.
+	// Add 给计数器累加一个值，该值可以为正也可以为负。
 	Add(ctx context.Context, value float64, opts ...Option)
-	// Inc increments the counter by 1.
+	// Inc 将计数器加 1。
 	Inc(ctx context.Context, opts ...Option)
-	// Dec decrements the counter by 1.
+	// Dec 将计数器减 1。
 	Dec(ctx context.Context, opts ...Option)
 }
 
-// Histogram is an interface for a histogram metric.
+// Histogram 是直方图指标的接口。
 type Histogram interface {
 	// Record records a value in the histogram.
 	Record(value float64, opts ...Option)
@@ -139,8 +135,8 @@ type contextHistogram interface {
 	RecordContext(ctx context.Context, value float64, opts ...Option)
 }
 
-// RecordHistogram records a histogram value with the caller's context when the
-// implementation supports it, while remaining compatible with custom Histogram implementations.
+// RecordHistogram 在实现支持时携带调用方的 context 记录直方图数值，
+// 同时保持对自定义 Histogram 实现的兼容。
 func RecordHistogram(ctx context.Context, histogram Histogram, value float64, opts ...Option) {
 	if recorder, ok := histogram.(contextHistogram); ok {
 		recorder.RecordContext(ctx, value, opts...)
@@ -149,24 +145,23 @@ func RecordHistogram(ctx context.Context, histogram Histogram, value float64, op
 	histogram.Record(value, opts...)
 }
 
-// GetProvider returns the global metric provider, which is a wrapper around
-// the default OpenTelemetry MeterProvider.
+// GetProvider 返回全局指标 provider，它是对 OpenTelemetry 默认 MeterProvider 的封装。
 func GetProvider() Provider {
 	return &otelProvider{
 		provider: otel.GetMeterProvider(),
 	}
 }
 
-// NewProvider is a wrapper around sdkmetric.NewMeterProvider.
-// It is a convenience function for creating a new OTel MeterProvider.
+// NewProvider 是对 sdkmetric.NewMeterProvider 的封装，
+// 便于快速创建 OTel MeterProvider。
 func NewProvider(opts ...sdkmetric.Option) *sdkmetric.MeterProvider {
 	return sdkmetric.NewMeterProvider(opts...)
 }
 
-// SetProvider sets the global metric provider.
-// It is a convenience function that wraps otel.SetMeterProvider.
-// The parameter `p` should be a concrete provider that implements the metric.MeterProvider interface,
-// often created by a specific SDK (e.g., `*sdkmetric.MeterProvider`).
+// SetProvider 设置全局指标 provider。
+// 它是对 otel.SetMeterProvider 的便捷封装。
+// 参数 `p` 应为实现了 metric.MeterProvider 接口的具体 provider，
+// 通常由具体的 SDK 创建（例如 `*sdkmetric.MeterProvider`）。
 func SetProvider(p metric.MeterProvider) {
 	otel.SetMeterProvider(p)
 }

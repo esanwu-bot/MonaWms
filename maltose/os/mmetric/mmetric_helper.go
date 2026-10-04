@@ -6,111 +6,111 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-// NewMeterOption creates a new meter option
+// NewMeterOption 创建新的 meter 选项
 func NewMeterOption() MeterOption {
 	return MeterOption{}
 }
 
-// WithInstrument sets the instrument name
+// WithInstrument 设置埋点库名称
 func (o MeterOption) WithInstrument(instrument string) MeterOption {
 	o.Instrument = instrument
 	return o
 }
 
-// WithInstrumentVersion sets the instrument version
+// WithInstrumentVersion 设置埋点库版本
 func (o MeterOption) WithInstrumentVersion(version string) MeterOption {
 	o.InstrumentVersion = version
 	return o
 }
 
-// WithMeterAttributes sets the attributes
+// WithMeterAttributes 设置属性
 func (o MeterOption) WithMeterAttributes(attrs Attributes) MeterOption {
 	o.Attributes = attrs
 	return o
 }
 
-// NewMetricOption creates a new metric option
+// NewMetricOption 创建新的指标选项
 func NewMetricOption() MetricOption {
 	return MetricOption{}
 }
 
-// WithHelp sets the help information
+// WithHelp 设置帮助说明信息
 func (o MetricOption) WithHelp(help string) MetricOption {
 	o.Help = help
 	return o
 }
 
-// WithUnit sets the unit
+// WithUnit 设置单位
 func (o MetricOption) WithUnit(unit string) MetricOption {
 	o.Unit = unit
 	return o
 }
 
-// WithMetricAttributes sets the attributes
+// WithMetricAttributes 设置属性
 func (o MetricOption) WithMetricAttributes(attrs Attributes) MetricOption {
 	o.Attributes = attrs
 	return o
 }
 
-// WithBuckets sets the histogram buckets
+// WithBuckets 设置直方图的桶边界
 func (o MetricOption) WithBuckets(buckets []float64) MetricOption {
 	o.Buckets = buckets
 	return o
 }
 
-// WithAttributes creates an Option with the given attributes.
-// This is a convenience function for creating attributes for a single metric observation.
+// WithAttributes 用给定属性创建 Option。
+// 这是为单次指标观测创建属性的便捷方法。
 func WithAttributes(attrs ...attribute.KeyValue) Option {
 	return Option{
 		Attributes: attrs,
 	}
 }
 
-// GetMeter creates a Meter with the specified instrument name.
-// It uses the global default provider.
+// GetMeter 按指定埋点库名称创建 Meter。
+// 它使用全局默认 provider。
 func GetMeter(name string) Meter {
 	p := GetProvider()
 	return p.Meter(MeterOption{Instrument: name})
 }
 
-// NewCounter creates a new Counter metric.
-// It uses the global default provider.
+// NewCounter 创建新的 Counter 指标。
+// 它使用全局默认 provider。
 func NewCounter(name string, option MetricOption) (Counter, error) {
 	meter := GetMeter(name)
 	return meter.Counter(name, option)
 }
 
-// NewMustCounter creates a new Counter metric and panics if an error occurs.
+// NewMustCounter 创建新的 Counter 指标，出错时 panic。
 func NewMustCounter(name string, option MetricOption) Counter {
 	meter := GetMeter(name)
 	return meter.MustCounter(name, option)
 }
 
-// NewUpDownCounter creates a new UpDownCounter metric.
+// NewUpDownCounter 创建新的 UpDownCounter 指标。
 func NewUpDownCounter(name string, option MetricOption) (UpDownCounter, error) {
 	meter := GetMeter(name)
 	return meter.UpDownCounter(name, option)
 }
 
-// NewMustUpDownCounter creates a new UpDownCounter metric and panics if an error occurs.
+// NewMustUpDownCounter 创建新的 UpDownCounter 指标，出错时 panic。
 func NewMustUpDownCounter(name string, option MetricOption) UpDownCounter {
 	meter := GetMeter(name)
 	return meter.MustUpDownCounter(name, option)
 }
 
-// NewHistogram creates a new Histogram metric.
+// NewHistogram 创建新的 Histogram 指标。
 func NewHistogram(name string, option MetricOption) (Histogram, error) {
 	meter := GetMeter(name)
 	return meter.Histogram(name, option)
 }
 
-// NewMustHistogram creates a new Histogram metric and panics if an error occurs.
+// NewMustHistogram 创建新的 Histogram 指标，出错时 panic。
 func NewMustHistogram(name string, option MetricOption) Histogram {
 	meter := GetMeter(name)
 	return meter.MustHistogram(name, option)
 }
 
-// Shutdown gracefully shuts down the global metric provider.
+// Shutdown 优雅关闭全局指标 provider。
 func Shutdown(ctx context.Context) error {
 	p := GetProvider()
 	return p.Shutdown(ctx)

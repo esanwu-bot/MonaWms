@@ -5,48 +5,48 @@ import (
 	"time"
 )
 
-// Pool is an object pool with capacity limit and expiration support.
-// Unlike sync.Pool, it:
-// - Supports capacity limits
-// - Supports object expiration based on idle time
-// - Supports custom create and destroy callbacks
-// - Will not be cleared by GC
+// Pool 是支持容量上限与过期淘汰的对象池。
+// 与 sync.Pool 相比，它：
+// - 支持容量上限
+// - 支持按空闲时间淘汰对象
+// - 支持自定义创建与销毁回调
+// - 不会被 GC 清空
 type Pool struct {
-	limit   int           // Maximum number of objects
-	created int           // Number of created objects
-	maxAge  time.Duration // Maximum idle time before object expires
-	lock    sync.Mutex    // Protects the pool
-	cond    *sync.Cond    // Condition variable for blocking when pool is full
-	head    *node         // Head of the linked list of idle objects
-	create  func() any    // Function to create new objects
-	destroy func(any)     // Function to destroy objects
+	limit   int           // 对象数量上限
+	created int           // 已创建的对象数量
+	maxAge  time.Duration // 对象过期前的最大空闲时间
+	lock    sync.Mutex    // 保护对象池
+	cond    *sync.Cond    // 池满时用于阻塞的条件变量
+	head    *node         // 空闲对象链表的头节点
+	create  func() any    // 创建新对象的函数
+	destroy func(any)     // 销毁对象的函数
 }
 
-// node represents a node in the idle object linked list.
+// node 表示空闲对象链表中的一个节点。
 type node struct {
 	item     any
 	next     *node
 	lastUsed time.Time
 }
 
-// PoolOption is a function type for configuring Pool.
+// PoolOption 是用于配置 Pool 的函数类型。
 type PoolOption func(*Pool)
 
-// WithMaxAge sets the maximum idle time for objects in the pool.
-// Objects idle longer than this duration will be destroyed when retrieved.
+// WithMaxAge 设置池中对象的最大空闲时间。
+// 空闲时间超过该时长的对象在取出时会被销毁。
 func WithMaxAge(d time.Duration) PoolOption {
 	return func(p *Pool) {
 		p.maxAge = d
 	}
 }
 
-// NewPool creates and returns a new Pool instance.
+// NewPool 创建并返回一个新的 Pool 实例。
 //
-// Parameters:
-//   - limit: Maximum number of objects that can exist
-//   - create: Function to create new objects
-//   - destroy: Function to destroy objects (can be nil)
-//   - opts: Optional configuration options
+// 参数：
+//   - limit：允许同时存在的对象数量上限
+//   - create：创建新对象的函数
+//   - destroy：销毁对象的函数（可为 nil）
+//   - opts：可选的配置项
 func NewPool(limit int, create func() any, destroy func(any), opts ...PoolOption) *Pool {
 	if limit <= 0 {
 		panic("msync: pool capacity must be positive")
@@ -55,7 +55,7 @@ func NewPool(limit int, create func() any, destroy func(any), opts ...PoolOption
 		panic("msync: pool create function cannot be nil")
 	}
 	if destroy == nil {
-		destroy = func(any) {} // No-op destroy function
+		destroy = func(any) {} // 空实现的销毁函数
 	}
 
 	p := &Pool{
@@ -65,7 +65,7 @@ func NewPool(limit int, create func() any, destroy func(any), opts ...PoolOption
 	}
 	p.cond = sync.NewCond(&p.lock)
 
-	// Apply options
+	// 应用配置项
 	for _, opt := range opts {
 		opt(p)
 	}
@@ -73,46 +73,46 @@ func NewPool(limit int, create func() any, destroy func(any), opts ...PoolOption
 	return p
 }
 
-// Get retrieves an object from the pool.
-// If the pool is empty and the limit hasn't been reached, a new object is created.
-// If the pool is empty and the limit has been reached, Get blocks until an object is available.
+// Get 从池中获取一个对象。
+// 池为空且未达上限时创建新对象。
+// 池为空且已达上限时，Get 会阻塞直到有可用对象。
 func (p *Pool) Get() any {
 	for {
 		p.lock.Lock()
 
-		// Case 1: Try to get an idle object
+		// 情况 1：尝试获取空闲对象
 		if p.head != nil {
 			head := p.head
 			p.head = head.next
 
-			// Check if the object has expired
+			// 检查对象是否已过期
 			if p.maxAge > 0 && time.Since(head.lastUsed) > p.maxAge {
 				p.created--
 				p.cond.Signal()
 				p.lock.Unlock()
 				p.destroy(head.item)
-				continue // Try to get next object
+				continue // 尝试获取下一个对象
 			}
 
 			p.lock.Unlock()
 			return head.item
 		}
 
-		// Case 2: Create a new object if under limit
+		// 情况 2：未达上限时创建新对象
 		if p.created < p.limit {
 			p.created++
 			p.lock.Unlock()
 			return p.createObject()
 		}
 
-		// Case 3: Pool is full, wait for an object to be returned
+		// 情况 3：池已满，等待对象归还
 		p.cond.Wait()
 		p.lock.Unlock()
 	}
 }
 
-// createObject creates an object outside the pool lock. If creation panics,
-// the reserved capacity is released before the panic reaches the caller.
+// createObject 在不持有池锁的情况下创建对象。若创建过程发生 panic，
+// 会在 panic 传递给调用方之前释放已占用的容量。
 func (p *Pool) createObject() (item any) {
 	defer func() {
 		if panicValue := recover(); panicValue != nil {
@@ -131,11 +131,10 @@ func (p *Pool) createObject() (item any) {
 	return item
 }
 
-// Put returns an object to the pool.
-// Return each object obtained from Get exactly once. Passing external objects
-// or returning the same object more than once violates the pool's capacity
-// accounting contract.
-// If x is nil, it is ignored.
+// Put 将对象归还到池中。
+// 从 Get 获取的每个对象都应恰好归还一次；归还外部对象，
+// 或重复归还同一对象，都会破坏池的容量记账约定。
+// 若 x 为 nil，则直接忽略。
 func (p *Pool) Put(x any) {
 	if x == nil {
 		return
@@ -144,25 +143,25 @@ func (p *Pool) Put(x any) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	// Add the object to the head of the linked list
+	// 将对象插入链表头部
 	p.head = &node{
 		item:     x,
 		next:     p.head,
 		lastUsed: time.Now(),
 	}
 
-	// Wake up one waiting goroutine
+	// 唤醒一个等待中的 goroutine
 	p.cond.Signal()
 }
 
-// Size returns the current number of objects in the pool (both idle and in use).
+// Size 返回池中当前的对象数量（含空闲与在用）。
 func (p *Pool) Size() int {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	return p.created
 }
 
-// Available returns the number of idle objects currently in the pool.
+// Available 返回池中当前空闲对象的数量。
 func (p *Pool) Available() int {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -174,7 +173,7 @@ func (p *Pool) Available() int {
 	return count
 }
 
-// Clear removes all idle objects from the pool and destroys them.
+// Clear 移除并销毁池中所有的空闲对象。
 func (p *Pool) Clear() {
 	p.lock.Lock()
 	head := p.head
@@ -186,13 +185,12 @@ func (p *Pool) Clear() {
 	p.cond.Broadcast()
 	p.lock.Unlock()
 
-	// User callbacks run outside the lock so they may safely re-enter the pool.
+	// 用户回调在锁外执行，因此可以安全地重入对象池。
 	p.destroyObjects(head)
 }
 
-// destroyObjects attempts to destroy every object and then propagates the
-// first panic. This prevents one faulty callback from leaking the rest of a
-// detached idle list.
+// destroyObjects 尝试销毁每一个对象，然后向上抛出第一个 panic。
+// 这样可避免某个异常回调导致已摘除的空闲链表其余对象泄漏。
 func (p *Pool) destroyObjects(head *node) {
 	var panicValue any
 

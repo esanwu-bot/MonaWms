@@ -2,50 +2,49 @@ package msync
 
 import "sync"
 
-// LockedCalls ensures that calls with the same key are executed sequentially.
-// Unlike SingleFlight, each call executes the function independently and gets its own result.
-// This is useful for write operations where each operation must be executed,
-// but operations with the same key must be serialized.
+// LockedCalls 保证同一 key 的调用串行执行。
+// 与 SingleFlight 不同，每次调用都会独立执行函数并得到自己的结果。
+// 适用于每个操作都必须执行、但同一 key 的操作必须串行化的写场景。
 type LockedCalls struct {
 	mu sync.Mutex
 	m  map[string]*sync.WaitGroup
 }
 
-// NewLockedCalls creates and returns a new LockedCalls instance.
+// NewLockedCalls 创建并返回一个新的 LockedCalls 实例。
 func NewLockedCalls() *LockedCalls {
 	return &LockedCalls{
 		m: make(map[string]*sync.WaitGroup),
 	}
 }
 
-// Do executes the given function for the specified key.
-// If another goroutine is already executing a function for the same key,
-// this call will wait for it to complete before executing.
-// Each call executes the function independently and receives its own result.
+// Do 针对指定 key 执行给定函数。
+// 若已有其他 goroutine 正在执行同一 key 的函数，
+// 本次调用会等待其完成后再执行。
+// 每次调用都独立执行函数并得到自己的结果。
 func (lc *LockedCalls) Do(key string, fn func() (any, error)) (any, error) {
 begin:
 	lc.mu.Lock()
 
-	// Check if another goroutine is processing this key
+	// 检查是否有其他 goroutine 正在处理该 key
 	if wg, ok := lc.m[key]; ok {
 		lc.mu.Unlock()
-		wg.Wait()  // Wait for it to complete
-		goto begin // Try again to acquire the lock
+		wg.Wait()  // 等待其完成
+		goto begin // 再次尝试获取锁
 	}
 
-	// This goroutine gets to process the key
+	// 由当前 goroutine 处理该 key
 	return lc.makeCall(key, fn)
 }
 
-// makeCall executes the function and manages the lock lifecycle.
+// makeCall 执行函数并管理锁的生命周期。
 func (lc *LockedCalls) makeCall(key string, fn func() (any, error)) (any, error) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	lc.m[key] = wg
 	lc.mu.Unlock()
 
-	// Always remove the key before waking waiters, including when fn panics.
-	// The panic is then propagated naturally to the caller.
+	// 唤醒等待者之前始终先移除 key，fn 发生 panic 时也一样。
+	// panic 会自然地向上传播给调用方。
 	defer func() {
 		lc.mu.Lock()
 		delete(lc.m, key)
