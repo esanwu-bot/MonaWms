@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// preBindItem is the pre-binding item.
+// preBindItem 是预绑定项。
 type preBindItem struct {
 	Group            *RouterGroup
 	Method           string
@@ -17,23 +17,23 @@ type preBindItem struct {
 	RouteMiddlewares []MiddlewareFunc
 }
 
-// bindRoutes binds all pre-bound routes.
+// bindRoutes 绑定所有预绑定路由。
 func (s *Server) bindRoutes(_ context.Context) {
 	for _, item := range s.preBindItems {
 		var allHandlers []gin.HandlerFunc
 		var collectedMiddlewares []MiddlewareFunc
 
-		// Traverse up from the current group to the root.
+		// 从当前路由组向上遍历至根。
 		var groups []*RouterGroup
 		for g := item.Group; g != nil; g = g.parent {
 			groups = append(groups, g)
 		}
-		// Apply parent middleware before child middleware.
+		// 先应用父级中间件，再应用子级中间件。
 		for i := len(groups) - 1; i >= 0; i-- {
 			collectedMiddlewares = append(collectedMiddlewares, groups[i].middlewares...)
 		}
 
-		// Add collected middlewares in correct order to ensure parent middlewares run first.
+		// 按正确顺序添加收集到的中间件，确保父级中间件先执行。
 		for i := 0; i < len(collectedMiddlewares); i++ {
 			m := collectedMiddlewares[i]
 			allHandlers = append(allHandlers, func(c *gin.Context) {
@@ -41,7 +41,7 @@ func (s *Server) bindRoutes(_ context.Context) {
 			})
 		}
 
-		// Add route-level middlewares
+		// 添加路由级中间件
 		for _, middleware := range item.RouteMiddlewares {
 			m := middleware
 			allHandlers = append(allHandlers, func(c *gin.Context) {
@@ -49,16 +49,16 @@ func (s *Server) bindRoutes(_ context.Context) {
 			})
 		}
 
-		// add final handler function
+		// 添加最终的处理函数
 		finalHandler := func(c *gin.Context) {
 			item.HandlerFunc(newRequest(c, s))
 		}
 		allHandlers = append(allHandlers, finalHandler)
 
-		// register to Gin
+		// 注册到 Gin
 		item.Group.ginGroup.Handle(item.Method, item.Path, allHandlers...)
 	}
 
-	// clean pre-bind list
+	// 清空预绑定列表
 	s.preBindItems = nil
 }

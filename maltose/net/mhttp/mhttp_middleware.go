@@ -1,14 +1,14 @@
 package mhttp
 
-// MiddlewareFunc defines the middleware function type.
+// MiddlewareFunc 定义中间件函数类型。
 type MiddlewareFunc func(*Request)
 
-// Use adds global middleware.
+// Use 添加全局中间件。
 func (s *Server) Use(middlewares ...MiddlewareFunc) {
 	s.RouterGroup.Middleware(middlewares...)
 }
 
-// Middleware alias Use.
+// Middleware 是 Use 的别名。
 func (s *Server) Middleware(middlewares ...MiddlewareFunc) {
 	s.Use(middlewares...)
 }

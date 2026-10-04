@@ -7,11 +7,11 @@ import (
 	"github.com/graingo/maltose/errors/merror"
 )
 
-// DefaultResponse standard response structure
+// DefaultResponse 标准响应结构
 type DefaultResponse struct {
-	Code    int    `json:"code"`    // business code
-	Message string `json:"message"` // prompt information
-	Data    any    `json:"data"`    // business data
+	Code    int    `json:"code"`    // 业务状态码
+	Message string `json:"message"` // 提示信息
+	Data    any    `json:"data"`    // 业务数据
 }
 
 func codeToHTTPStatus(code mcode.Code) int {
@@ -31,12 +31,12 @@ func codeToHTTPStatus(code mcode.Code) int {
 	}
 }
 
-// MiddlewareResponse standard response middleware
+// MiddlewareResponse 标准响应中间件
 func MiddlewareResponse() MiddlewareFunc {
 	return func(r *Request) {
 		r.Next()
 
-		// if response has been written, skip
+		// 若响应已写入，则跳过
 		if r.Writer.Written() {
 			return
 		}
@@ -47,10 +47,10 @@ func MiddlewareResponse() MiddlewareFunc {
 			data            = r.GetHandlerResponse()
 		)
 
-		// handle error case
+		// 处理错误场景
 		if len(r.Errors) > 0 {
 			err := r.Errors.Last().Err
-			// get error code
+			// 获取错误码
 			code = merror.Code(err)
 			if code == mcode.CodeNil {
 				code = mcode.CodeInternalError
@@ -61,7 +61,7 @@ func MiddlewareResponse() MiddlewareFunc {
 			msg = code.Message()
 		}
 
-		// return standard response
+		// 返回标准响应
 		httpStatus := codeToHTTPStatus(code)
 		r.JSON(httpStatus, DefaultResponse{
 			Code:    code.Code(),

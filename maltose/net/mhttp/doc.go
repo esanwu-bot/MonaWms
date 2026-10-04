@@ -1,2 +1,2 @@
-// Package mhttp provides a Gin-based HTTP server with routing, middleware, and OpenAPI support.
+// Package mhttp 提供基于 Gin 的 HTTP 服务端，支持路由、中间件与 OpenAPI。
 package mhttp

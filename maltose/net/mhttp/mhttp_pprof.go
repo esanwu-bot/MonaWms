@@ -9,10 +9,10 @@ const (
 	defaultPProfPattern = "/debug/pprof"
 )
 
-// utilPProf is the PProf interface implementation
+// utilPProf 是 PProf 接口的实现
 type utilPProf struct{}
 
-// EnablePProf enables PProf functionality for the server
+// EnablePProf 为服务端开启 PProf 功能
 func (s *Server) EnablePProf(pattern ...string) {
 	p := defaultPProfPattern
 	if len(pattern) > 0 && pattern[0] != "" {
@@ -32,7 +32,7 @@ func (s *Server) EnablePProf(pattern ...string) {
 	})
 }
 
-// Index displays the PProf index page
+// Index 展示 PProf 首页
 func (p *utilPProf) Index(r *Request) {
 	action := r.Param("action")
 	if action == "" {
@@ -43,22 +43,22 @@ func (p *utilPProf) Index(r *Request) {
 	pprof.Handler(action).ServeHTTP(r.Writer, r.Request)
 }
 
-// Cmdline responds to the command line of the running program
+// Cmdline 返回运行中程序的命令行信息
 func (p *utilPProf) Cmdline(r *Request) {
 	pprof.Cmdline(r.Writer, r.Request)
 }
 
-// Profile responds to the CPU profile in pprof format
+// Profile 以 pprof 格式返回 CPU profile
 func (p *utilPProf) Profile(r *Request) {
 	pprof.Profile(r.Writer, r.Request)
 }
 
-// Symbol finds the program counter in the request
+// Symbol 根据请求查找对应的程序计数器
 func (p *utilPProf) Symbol(r *Request) {
 	pprof.Symbol(r.Writer, r.Request)
 }
 
-// Trace responds to the execution trace in binary format
+// Trace 以二进制格式返回执行 trace 数据
 func (p *utilPProf) Trace(r *Request) {
 	pprof.Trace(r.Writer, r.Request)
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/graingo/maltose/util/mmeta"
 )
 
-// schemaBuilder is a helper for building OpenAPI schemas at runtime.
+// schemaBuilder 是运行时构建 OpenAPI schema 的辅助类型。
 type schemaBuilder struct {
 	spec *openapi3.T
 }
@@ -47,16 +47,16 @@ func (s *Server) initOpenAPI(_ context.Context) {
 	builder := &schemaBuilder{spec: spec}
 
 	for _, route := range s.Routes() {
-		// Only handle controller routes
+		// 仅处理 controller 路由
 		if route.Type != routeTypeController {
 			continue
 		}
 
-		// Use the saved type information directly
+		// 直接使用已保存的类型信息
 		reqType := route.ReqType
 		respType := route.RespType
 
-		// Create instance from reflect.Type to get metadata
+		// 由 reflect.Type 创建实例以获取元数据
 		reqInstance := reflect.New(reqType.Elem()).Interface()
 		metaData := mmeta.Data(reqInstance)
 		if len(metaData) == 0 {
@@ -73,7 +73,7 @@ func (s *Server) initOpenAPI(_ context.Context) {
 			Description: description,
 			Responses:   openapi3.NewResponses(),
 		}
-		// Create response with schema reference
+		// 创建带 schema 引用的响应
 		responseContent := openapi3.NewContent()
 		responseContent["application/json"] = &openapi3.MediaType{
 			Schema: builder.typeToSchema(respType),
@@ -87,7 +87,7 @@ func (s *Server) initOpenAPI(_ context.Context) {
 		if route.Method == "GET" || route.Method == "DELETE" {
 			operation.Parameters = builder.createParameters(reqType)
 		} else {
-			// Create request body with schema reference
+			// 创建带 schema 引用的请求体
 			requestContent := openapi3.NewContent()
 			requestContent["application/json"] = &openapi3.MediaType{
 				Schema: builder.typeToSchema(reqType),
@@ -131,7 +131,7 @@ func (b *schemaBuilder) createParameters(reqType reflect.Type) openapi3.Paramete
 	}
 	for i := 0; i < reqType.NumField(); i++ {
 		field := reqType.Field(i)
-		if field.Anonymous { // Skip embedded structs like m.Meta
+		if field.Anonymous { // 跳过 m.Meta 之类的嵌入结构体
 			continue
 		}
 
@@ -162,7 +162,7 @@ func (b *schemaBuilder) typeToSchema(p reflect.Type) *openapi3.SchemaRef {
 	if p == nil {
 		return &openapi3.SchemaRef{Value: openapi3.NewObjectSchema()}
 	}
-	// Handle pointers
+	// 处理指针
 	if p.Kind() == reflect.Pointer {
 		ref := b.typeToSchema(p.Elem())
 		if ref.Value != nil {
@@ -171,14 +171,14 @@ func (b *schemaBuilder) typeToSchema(p reflect.Type) *openapi3.SchemaRef {
 		return ref
 	}
 
-	// Handle slices/arrays
+	// 处理切片/数组
 	if p.Kind() == reflect.Slice || p.Kind() == reflect.Array {
 		itemsRef := b.typeToSchema(p.Elem())
 		schema := openapi3.NewArraySchema()
 		schema.Items = itemsRef
 		return &openapi3.SchemaRef{Value: schema}
 	}
-	// Handle primitive types
+	// 处理基础类型
 	switch p.Kind() {
 	case reflect.String:
 		return &openapi3.SchemaRef{Value: openapi3.NewStringSchema()}
@@ -193,14 +193,14 @@ func (b *schemaBuilder) typeToSchema(p reflect.Type) *openapi3.SchemaRef {
 		return &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{openapi3.TypeObject}, AdditionalProperties: openapi3.AdditionalProperties{Has: openapi3.BoolPtr(true)}}}
 	}
 	if p.Kind() == reflect.Struct {
-		// Handle custom struct types by creating a component schema
+		// 处理自定义结构体类型：为其创建组件 schema
 		cleanTypeName := p.Name()
 		if cleanTypeName == "" {
-			// For anonymous structs, create inline schema
+			// 匿名结构体则创建内联 schema
 			schema := openapi3.NewObjectSchema()
 			for i := 0; i < p.NumField(); i++ {
 				field := p.Field(i)
-				if field.Anonymous { // Skip embedded structs like m.Meta
+				if field.Anonymous { // 跳过 m.Meta 之类的嵌入结构体
 					continue
 				}
 
@@ -219,15 +219,15 @@ func (b *schemaBuilder) typeToSchema(p reflect.Type) *openapi3.SchemaRef {
 			return &openapi3.SchemaRef{Value: schema}
 		}
 
-		// If the schema is not already in components, create it.
+		// 若组件中尚不存在该 schema，则创建它。
 		if _, ok := b.spec.Components.Schemas[cleanTypeName]; !ok {
-			// Add a placeholder to components to prevent infinite recursion for self-referencing structs.
+			// 先在组件中放入占位 schema，避免自引用结构体导致无限递归。
 			b.spec.Components.Schemas[cleanTypeName] = &openapi3.SchemaRef{Value: openapi3.NewObjectSchema()}
-			// Build the full schema for the struct.
+			// 构建结构体的完整 schema。
 			schema := openapi3.NewObjectSchema()
 			for i := 0; i < p.NumField(); i++ {
 				field := p.Field(i)
-				if field.Anonymous { // Skip embedded structs like m.Meta
+				if field.Anonymous { // 跳过 m.Meta 之类的嵌入结构体
 					continue
 				}
 
@@ -244,17 +244,17 @@ func (b *schemaBuilder) typeToSchema(p reflect.Type) *openapi3.SchemaRef {
 				schema.Properties[jsonName] = fieldSchemaRef
 			}
 
-			// Replace the placeholder with the fully constructed schema.
+			// 用构建完成的 schema 替换占位。
 			b.spec.Components.Schemas[cleanTypeName] = &openapi3.SchemaRef{Value: schema}
 		}
-		// Return a reference to the component schema.
+		// 返回指向该组件 schema 的引用。
 		return &openapi3.SchemaRef{Ref: "#/components/schemas/" + cleanTypeName}
 	}
 
 	return &openapi3.SchemaRef{Value: openapi3.NewObjectSchema()}
 }
 
-// openapiHandler handles OpenAPI requests.
+// openapiHandler 处理 OpenAPI 请求。
 func (s *Server) openapiHandler(r *Request) {
 	if s.openapi == nil {
 		r.String(500, "OpenAPI specification is not properly initialized")
@@ -263,7 +263,7 @@ func (s *Server) openapiHandler(r *Request) {
 	r.JSON(200, s.openapi)
 }
 
-// swaggerHandler handles Swagger requests.
+// swaggerHandler 处理 Swagger 请求。
 func (s *Server) swaggerHandler(r *Request) {
 	template := defaultSwaggerTemplate
 	if s.config.SwaggerTemplate != "" {

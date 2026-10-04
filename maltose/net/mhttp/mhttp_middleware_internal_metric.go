@@ -11,7 +11,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-// localMetricManager is the local metric manager.
+// localMetricManager 是本地指标管理器。
 type localMetricManager struct {
 	HTTPServerRequestActive        mmetric.UpDownCounter
 	HTTPServerRequestTotal         mmetric.Counter
@@ -21,10 +21,10 @@ type localMetricManager struct {
 	HTTPServerResponseBodySize     mmetric.Counter
 }
 
-// global metric manager
+// 全局指标管理器
 var metricManager = newMetricManager()
 
-// create new metric manager
+// 创建新的指标管理器
 func newMetricManager() *localMetricManager {
 	meter := mmetric.GetProvider().Meter(mmetric.MeterOption{
 		Instrument:        instrumentName,
@@ -77,7 +77,7 @@ func newMetricManager() *localMetricManager {
 	return mm
 }
 
-// parse host and port
+// 解析 host 与 port
 func parseHostPort(hostPort string) (host, port string) {
 	parts := strings.Split(hostPort, ":")
 	if len(parts) > 1 {
@@ -86,7 +86,7 @@ func parseHostPort(hostPort string) (host, port string) {
 	return parts[0], "80"
 }
 
-// get request schema
+// 获取请求的协议类型
 func getSchema(r *Request) string {
 	if r.Request.TLS != nil {
 		return "https"
@@ -94,7 +94,7 @@ func getSchema(r *Request) string {
 	return "http"
 }
 
-// handle metrics before request
+// 请求处理前采集指标
 func (s *Server) handleMetricsBeforeRequest(r *Request) {
 	var (
 		ctx                       = r.Request.Context()
@@ -124,10 +124,10 @@ func (s *Server) handleMetricsBeforeRequest(r *Request) {
 	}
 	options := mmetric.WithAttributes(requestAttributes...)
 
-	// increase active request count
+	// 增加活跃请求数
 	metricManager.HTTPServerRequestActive.Inc(ctx, options)
 
-	// record request body size
+	// 记录请求体大小
 	metricManager.HTTPServerRequestBodySize.Add(
 		ctx,
 		float64(r.Request.ContentLength),
@@ -135,7 +135,7 @@ func (s *Server) handleMetricsBeforeRequest(r *Request) {
 	)
 }
 
-// handle metrics after request done
+// 请求完成后采集指标
 func (s *Server) handleMetricsAfterRequestDone(r *Request, startTime time.Time) {
 	var (
 		ctx                       = r.Request.Context()
@@ -178,27 +178,27 @@ func (s *Server) handleMetricsAfterRequestDone(r *Request, startTime time.Time) 
 	}
 	responseOptions := mmetric.WithAttributes(responseAttributes...)
 
-	// increase request total
+	// 累加请求总数
 	metricManager.HTTPServerRequestTotal.Inc(ctx, responseOptions)
 
-	// decrease active request count
+	// 减少活跃请求数
 	metricManager.HTTPServerRequestActive.Dec(ctx, requestOptions)
 
-	// record response body size
+	// 记录响应体大小
 	metricManager.HTTPServerResponseBodySize.Add(
 		ctx,
 		float64(r.Writer.Size()),
 		responseOptions,
 	)
 
-	// record request duration total
+	// 记录请求耗时总和
 	metricManager.HTTPServerRequestDurationTotal.Add(
 		ctx,
 		durationMilli,
 		responseOptions,
 	)
 
-	// record request duration distribution
+	// 记录请求耗时分布
 	mmetric.RecordHistogram(
 		ctx,
 		metricManager.HTTPServerRequestDuration,

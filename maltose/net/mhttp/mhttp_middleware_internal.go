@@ -24,18 +24,18 @@ const (
 	version        = maltose.VERSION
 )
 
-// internalMiddlewareDefaultResponse internal default response processing middleware
+// internalMiddlewareDefaultResponse 内部默认响应处理中间件
 func internalMiddlewareDefaultResponse() MiddlewareFunc {
 	return func(r *Request) {
 		r.Next()
 
-		// if response has been written by other middleware, skip
+		// 若响应已被其他中间件写入，则跳过
 		if r.Writer.Written() {
 			return
 		}
 
-		// handle error case - only handle unstructured errors as fallback
-		// Let user middleware handle structured errors with error codes
+		// 处理错误场景 —— 仅兜底处理非结构化错误
+		// 带错误码的结构化错误交由用户中间件处理
 		if len(r.Errors) > 0 {
 			err := r.Errors.Last().Err
 			code := merror.Code(err)
@@ -47,7 +47,7 @@ func internalMiddlewareDefaultResponse() MiddlewareFunc {
 			return
 		}
 
-		// handle response from handler or other middleware
+		// 处理来自 handler 或其他中间件的响应
 		if res := r.GetHandlerResponse(); res != nil {
 			switch v := res.(type) {
 			case string:
@@ -60,18 +60,18 @@ func internalMiddlewareDefaultResponse() MiddlewareFunc {
 			return
 		}
 
-		// if no response, return empty string
+		// 若没有响应内容，则返回空字符串
 		r.String(200, "")
 	}
 }
 
-// internalMiddlewareRecovery internal error recovery middleware
+// internalMiddlewareRecovery 内部错误恢复中间件
 func internalMiddlewareRecovery() MiddlewareFunc {
 	return func(r *Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				// Check for a broken connection, as it is not really a
-				// condition that warrants a panic stack trace.
+				// 检查连接是否已断开，因为这类情况
+				// 并不真正需要打印 panic 堆栈。
 				var brokenPipe bool
 				if ne, ok := err.(*net.OpError); ok {
 					var se *os.SyscallError
@@ -87,15 +87,15 @@ func internalMiddlewareRecovery() MiddlewareFunc {
 				merr := merror.NewCodef(mcode.CodeInternalPanic, "Panic recovered: %s", err)
 
 				if brokenPipe {
-					// If the connection is dead, we can't write a status to it.
-					// Just log the error and abort
+					// 连接已断开，无法再写入状态码。
+					// 只记录错误日志并中止请求
 					r.Logger().Warnf(r.Request.Context(), "Connection broken: %s", err)
 					r.Error(merr)
 					r.Abort()
 				} else {
-					// record error log for normal panic
+					// 普通 panic 记录错误日志
 					r.Logger().Errorf(r.Request.Context(), merr, "Panic recovered")
-					// call panic handler
+					// 调用 panic 处理器
 					if r.server.panicHandler != nil {
 						r.server.panicHandler(r, merr)
 					}
@@ -106,27 +106,27 @@ func internalMiddlewareRecovery() MiddlewareFunc {
 	}
 }
 
-// internalMiddlewareMetric internal metric collection middleware
+// internalMiddlewareMetric 内部指标采集中间件
 func internalMiddlewareMetric() MiddlewareFunc {
 	return func(r *Request) {
-		// record start time
+		// 记录起始时间
 		startTime := time.Now()
 
-		// collect metrics before request
+		// 请求处理前采集指标
 		r.server.handleMetricsBeforeRequest(r)
 
-		// execute next middleware
+		// 执行下一个中间件
 		r.Next()
 
-		// collect metrics after request done
+		// 请求完成后采集指标
 		r.server.handleMetricsAfterRequestDone(r, startTime)
 	}
 }
 
-// internalMiddlewareTrace returns a middleware for OpenTelemetry tracing
+// internalMiddlewareTrace 返回用于 OpenTelemetry 链路追踪的中间件
 func internalMiddlewareTrace() MiddlewareFunc {
 	return func(r *Request) {
-		// Skip health check
+		// 跳过健康检查
 		if r.Request.URL.Path == r.server.config.HealthCheck {
 			r.Next()
 			return
@@ -138,19 +138,19 @@ func internalMiddlewareTrace() MiddlewareFunc {
 			trace.WithInstrumentationVersion(version),
 		)
 
-		// extract context and baggage
+		// 提取上下文与 baggage
 		ctx = otel.GetTextMapPropagator().Extract(
 			ctx,
 			propagation.HeaderCarrier(r.Request.Header),
 		)
 
-		// set span name
+		// 设置 span 名称
 		spanName := r.Request.URL.Path
 		if spanName == "" {
 			spanName = "HTTP " + r.Request.Method
 		}
 
-		// start a new span
+		// 开启新的 span
 		ctx, span := tr.Start(
 			ctx,
 			spanName,
@@ -158,13 +158,13 @@ func internalMiddlewareTrace() MiddlewareFunc {
 		)
 		defer span.End()
 
-		// Inject the updated context into both Request objects
+		// 将更新后的上下文注入 Request 对象
 		r.Request = r.Request.WithContext(ctx)
 
-		// process request
+		// 处理请求
 		r.Next()
 
-		// set span attributes
+		// 设置 span 属性
 		span.SetAttributes(
 			attribute.String(mtrace.AttributeHTTPMethod, r.Request.Method),
 			attribute.String(mtrace.AttributeHTTPUrl, r.Request.URL.String()),
@@ -176,7 +176,7 @@ func internalMiddlewareTrace() MiddlewareFunc {
 			attribute.Int(mtrace.AttributeHTTPStatusCode, r.Writer.Status()),
 		)
 
-		// set span status
+		// 设置 span 状态
 		if err := r.Errors.Last(); err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
@@ -187,8 +187,8 @@ func internalMiddlewareTrace() MiddlewareFunc {
 	}
 }
 
-// httpStatusCodeToSpanStatus converts an HTTP status code to a span status code.
-// It returns the span status code and a description.
+// httpStatusCodeToSpanStatus 将 HTTP 状态码转换为 span 状态码。
+// 返回 span 状态码及其描述。
 func httpStatusCodeToSpanStatus(code int) (codes.Code, string) {
 	if code < 100 || code >= 600 {
 		return codes.Error, fmt.Sprintf("Invalid HTTP status code %d", code)

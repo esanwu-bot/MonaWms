@@ -8,22 +8,22 @@ import (
 	"github.com/graingo/maltose/os/mlog"
 )
 
-// contextKey defines the context key type.
+// contextKey 定义上下文键的类型。
 type contextKey string
 
 const (
-	// requestKey is the key for storing Request objects in the context.
+	// requestKey 是在上下文中存放 Request 对象所用的键。
 	requestKey  contextKey = "MaltoseRequest"
 	ResponseKey contextKey = "MaltoseResponse"
 )
 
-// Request is the request wrapper.
+// Request 是请求的包装类型。
 type Request struct {
 	*gin.Context
-	server *Server // server instance
+	server *Server // 服务端实例
 }
 
-// RequestFromCtx gets the Request object from the context.
+// RequestFromCtx 从上下文中获取 Request 对象。
 func RequestFromCtx(ctx context.Context) *Request {
 	if ctx == nil {
 		return nil
@@ -37,44 +37,44 @@ func RequestFromCtx(ctx context.Context) *Request {
 }
 
 func newRequest(c *gin.Context, s *Server) *Request {
-	// try to get from context first
+	// 优先尝试从上下文中获取
 	if r := RequestFromCtx(c.Request.Context()); r != nil {
 		return r
 	}
-	// create new Request object
+	// 创建新的 Request 对象
 	r := &Request{Context: c, server: s}
-	// directly modify the original context, not create a new request
+	// 直接修改原始上下文，不创建新的 request
 	r.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), requestKey, r))
 	return r
 }
 
-// GetServerName gets the server name.
+// GetServerName 获取服务端名称。
 func (r *Request) GetServerName() string {
 	return r.server.config.ServerName
 }
 
-// Logger gets the logger instance.
+// Logger 获取 logger 实例。
 func (r *Request) Logger() *mlog.Logger {
 	return r.server.logger()
 }
 
-// Conf gets the server config.
+// Conf 获取服务端配置。
 func (r *Request) Conf() *Config {
 	return r.server.config
 }
 
-// GetHandlerResponse gets the handler response.
+// GetHandlerResponse 获取处理函数的响应。
 func (r *Request) GetHandlerResponse() any {
 	res, _ := r.Get(string(ResponseKey))
 	return res
 }
 
-// SetHandlerResponse sets the handler response.
+// SetHandlerResponse 设置处理函数的响应。
 func (r *Request) SetHandlerResponse(res any) {
 	r.Set(string(ResponseKey), res)
 }
 
-// Error adds an error message.
+// Error 追加一条错误信息。
 func (r *Request) Error(err error) *Request {
 	r.Errors = append(r.Errors, &gin.Error{
 		Err:  err,
@@ -83,7 +83,7 @@ func (r *Request) Error(err error) *Request {
 	return r
 }
 
-// GetTranslator gets the translator.
+// GetTranslator 获取翻译器。
 func (r *Request) GetTranslator() ut.Translator {
 	return r.server.translator
 }

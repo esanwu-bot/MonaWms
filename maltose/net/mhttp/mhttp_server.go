@@ -14,25 +14,25 @@ import (
 	"github.com/graingo/maltose/errors/merror"
 )
 
-// SetStaticPath serves files from directory under the supplied URL prefix.
+// SetStaticPath 在指定 URL 前缀下提供目录中的静态文件。
 func (s *Server) SetStaticPath(prefix string, directory string) {
 	s.engine.StaticFS(prefix, http.Dir(directory))
 }
 
-// Handler returns the prepared HTTP handler.
-// Route registration must be complete before the first call to Handler, ServeHTTP, Start, or Run.
+// Handler 返回已就绪的 HTTP handler。
+// 首次调用 Handler、ServeHTTP、Start 或 Run 之前必须完成路由注册。
 func (s *Server) Handler() http.Handler {
 	s.prepare(context.Background())
 	return s
 }
 
-// ServeHTTP implements http.Handler and allows Server to be used with httptest.
+// ServeHTTP 实现 http.Handler 接口，使 Server 可用于 httptest。
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	s.prepare(request.Context())
 	s.engine.ServeHTTP(writer, request)
 }
 
-// Run starts the HTTP server and waits for either shutdown or a process signal.
+// Run 启动 HTTP 服务端，并等待关闭或进程信号。
 func (s *Server) Run() {
 	ctx := context.Background()
 	errChan := make(chan error, 1)
@@ -57,7 +57,7 @@ func (s *Server) Run() {
 	}
 }
 
-// Start starts the server on its configured address and blocks until it stops.
+// Start 在配置的地址上启动服务端，并阻塞直到其停止。
 func (s *Server) Start(ctx context.Context) error {
 	s.prepare(ctx)
 	server := &http.Server{
@@ -70,8 +70,8 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 	s.setHTTPServer(server)
 	defer s.clearHTTPServer(server)
-	// Register the server before checking cancellation so a concurrent Stop
-	// either closes this server or the canceled context prevents it from listening.
+	// 先注册服务端再检查取消信号，这样并发调用 Stop 时
+	// 要么关闭该服务端，要么被已取消的上下文阻止监听。
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -88,8 +88,8 @@ func (s *Server) Start(ctx context.Context) error {
 	return s.handleServeError(ctx, err)
 }
 
-// StartListener serves HTTP on listener and blocks until the server stops.
-// It is useful when callers need control over port allocation, including in tests.
+// StartListener 在给定 listener 上提供 HTTP 服务，并阻塞直到服务端停止。
+// 当调用方需要自行控制端口分配（例如在测试中）时非常有用。
 func (s *Server) StartListener(ctx context.Context, listener net.Listener) error {
 	if listener == nil {
 		return merror.New("HTTP listener is required")
@@ -120,7 +120,7 @@ func (s *Server) StartListener(ctx context.Context, listener net.Listener) error
 	return s.handleServeError(ctx, err)
 }
 
-// Stop gracefully stops the active HTTP server.
+// Stop 优雅地停止运行中的 HTTP 服务端。
 func (s *Server) Stop(ctx context.Context) error {
 	s.logger().Infof(ctx, "HTTP server %s is stopping", s.config.ServerName)
 	server := s.currentHTTPServer()
@@ -134,9 +134,9 @@ func (s *Server) Stop(ctx context.Context) error {
 	shutdownCtx, cancel := gracefulShutdownContext(ctx, s.config.GracefulTimeout)
 	defer cancel()
 	if waitErr := waitForGracefulShutdown(shutdownCtx, s.config.GracefulWaitTime); waitErr != nil {
-		// Shutdown marks the server as stopping even if the context has already
-		// expired. Close then forcefully releases active connections so Start
-		// cannot remain blocked after the application shutdown deadline.
+		// 即使上下文已过期，Shutdown 也会将服务端标记为正在停止。
+		// 随后 Close 强制释放活跃连接，避免 Start 在应用关闭
+		// 截止时间之后仍然阻塞。
 		shutdownErr := server.Shutdown(shutdownCtx)
 		closeErr := server.Close()
 		return errors.Join(waitErr, shutdownErr, closeErr)
@@ -205,8 +205,8 @@ func waitForGracefulShutdown(ctx context.Context, wait time.Duration) error {
 	}
 }
 
-// normalizeAddress checks and formats the server address.
-// If the address only contains a port, it prepends a colon to make it a valid listening address.
+// normalizeAddress 检查并格式化服务端地址。
+// 若地址中只包含端口，则在其前补充冒号以构成合法的监听地址。
 func (s *Server) normalizeAddress() string {
 	address := s.config.Address
 	if address != "" && !strings.Contains(address, ":") {

@@ -10,11 +10,11 @@ import (
 	"github.com/graingo/maltose/os/mlog"
 )
 
-// LogMaxBodySize controls request/response body logging. Zero disables body logging.
+// LogMaxBodySize 控制请求/响应体的日志记录，为 0 时关闭请求体日志。
 var LogMaxBodySize = 0
 
-// responseWriter is a custom http.ResponseWriter that captures the response body and status.
-// It embeds gin.ResponseWriter to ensure full compatibility.
+// responseWriter 是自定义的 http.ResponseWriter，用于捕获响应体与状态码。
+// 它内嵌 gin.ResponseWriter 以保证完全兼容。
 type responseWriter struct {
 	gin.ResponseWriter
 	body  *bytes.Buffer
@@ -39,8 +39,8 @@ func (w *responseWriter) capture(data []byte) {
 	_, _ = w.body.Write(data)
 }
 
-// Write writes the data to the connection as part of an HTTP reply.
-// It writes to both the original writer and our buffer to capture the body.
+// Write 将数据作为 HTTP 响应的一部分写入连接。
+// 同时写入原始 writer 与缓冲区，以捕获响应体。
 func (w *responseWriter) Write(b []byte) (int, error) {
 	n, err := w.ResponseWriter.Write(b)
 	if err == nil {
@@ -49,8 +49,8 @@ func (w *responseWriter) Write(b []byte) (int, error) {
 	return n, err
 }
 
-// WriteString writes the string to the connection as part of an HTTP reply.
-// It writes to both the original writer and our buffer to capture the body.
+// WriteString 将字符串作为 HTTP 响应的一部分写入连接。
+// 同时写入原始 writer 与缓冲区，以捕获响应体。
 func (w *responseWriter) WriteString(s string) (int, error) {
 	n, err := w.ResponseWriter.WriteString(s)
 	if err == nil {
@@ -59,30 +59,30 @@ func (w *responseWriter) WriteString(s string) (int, error) {
 	return n, err
 }
 
-// MiddlewareLog is a middleware for logging HTTP requests in two steps:
-// 1. Before the handler is executed ("started").
-// 2. After the handler is completed ("finished").
-// This allows for better observability, especially for hanging or panicking requests.
+// MiddlewareLog 是分两步记录 HTTP 请求日志的中间件：
+// 1. 处理函数执行前（"started"）。
+// 2. 处理函数完成后（"finished"）。
+// 这样可以获得更好的可观测性，尤其便于排查挂起或 panic 的请求。
 func MiddlewareLog() MiddlewareFunc {
 	bodyLimit := LogMaxBodySize
 	return func(r *Request) {
-		// Skip health check
+		// 跳过健康检查
 		if r.Request.URL.Path == r.server.config.HealthCheck {
 			r.Next()
 			return
 		}
 
-		// --- Step 1: Log request start ---
+		// --- 第 1 步：记录请求开始 ---
 
 		start := time.Now()
 
-		// Safely read and capture the request body for logging, then restore it.
+		// 安全地读取并捕获请求体用于记录日志，随后将其还原。
 		var reqBodyBytes []byte
 		if bodyLimit != 0 && r.Request.Body != nil {
 			reqBodyBytes, r.Request.Body = readBodyForLog(r.Request.Body, bodyLimit)
 		}
 
-		// Create a custom response writer to capture the response body and status.
+		// 创建自定义响应 writer 以捕获响应体与状态码。
 		writer := &responseWriter{
 			ResponseWriter: r.Writer,
 			body:           &bytes.Buffer{},
@@ -109,7 +109,7 @@ func MiddlewareLog() MiddlewareFunc {
 
 		r.Logger().Infow(r.Request.Context(), "http server request started", requestFields...)
 
-		// --- Step 2: Execute handler and log completion ---
+		// --- 第 2 步：执行处理函数并记录完成 ---
 
 		r.Next()
 
@@ -119,8 +119,8 @@ func MiddlewareLog() MiddlewareFunc {
 
 		msg := "http server request finished"
 
-		// The final log should contain all information for context.
-		// Start with the initial request fields and add response details.
+		// 最终日志需要包含完整的上下文信息。
+		// 以请求字段为基础，再补充响应相关信息。
 		finalFields := append(requestFields,
 			mlog.Int("status", status),
 			mlog.Float64("latency_ms", float64(duration.Nanoseconds())/1e6),
@@ -129,10 +129,10 @@ func MiddlewareLog() MiddlewareFunc {
 			finalFields = append(finalFields, mlog.String("response_body", getBodyString(resBodyBytes, bodyLimit)))
 		}
 
-		// Decide log level based on errors or status code
+		// 根据错误或状态码决定日志级别
 		if len(r.Errors) > 0 {
 			msg += " with errors"
-			// Log with the actual error from the context
+			// 使用上下文中的真实错误记录日志
 			r.Logger().Errorw(r.Request.Context(), r.Errors.Last().Err, msg, finalFields...)
 		} else if status >= 400 {
 			msg += " with warning status"
@@ -167,12 +167,12 @@ func readBodyForLog(body io.ReadCloser, limit int) ([]byte, io.ReadCloser) {
 	}
 }
 
-// getBodyString safely converts a byte slice to a string for logging, with a size limit.
+// getBodyString 安全地将字节切片转换为用于日志的字符串，并按上限截断。
 func getBodyString(body []byte, limit int) string {
 	if len(body) == 0 {
 		return ""
 	}
-	if limit < 0 { // no limit
+	if limit < 0 { // 不限制长度
 		return string(body)
 	}
 	if len(body) > limit {

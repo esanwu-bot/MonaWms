@@ -21,7 +21,7 @@ const (
 	defaultPort       = "8080"
 )
 
-// Server HTTP server structure.
+// Server 是 HTTP 服务端结构体。
 type Server struct {
 	RouterGroup
 	engine       *gin.Engine
@@ -37,7 +37,7 @@ type Server struct {
 	panicHandler func(r *Request, err error)
 }
 
-// New creates a new HTTP server.
+// New 创建新的 HTTP 服务端。
 func New(config ...*Config) *Server {
 	conf := defaultConfig()
 	if len(config) > 0 && config[0] != nil {
@@ -66,7 +66,7 @@ func New(config ...*Config) *Server {
 		},
 	}
 
-	// Initialize the root router group.
+	// 初始化根路由组。
 	s.RouterGroup = RouterGroup{
 		server:      s,
 		path:        "/",
@@ -74,7 +74,7 @@ func New(config ...*Config) *Server {
 		middlewares: make([]MiddlewareFunc, 0),
 		parent:      nil,
 	}
-	// Register framework middleware before user routes are bound.
+	// 在用户路由绑定之前注册框架中间件。
 	s.Use(
 		internalMiddlewareTrace(),
 		internalMiddlewareRecovery(),
@@ -89,7 +89,7 @@ func New(config ...*Config) *Server {
 	return s
 }
 
-// WithPanicHandler sets the handler used to convert recovered panics into responses.
+// WithPanicHandler 设置用于将已恢复的 panic 转换为响应的处理器。
 func (s *Server) WithPanicHandler(handler func(r *Request, err error)) *Server {
 	s.panicHandler = handler
 	return s

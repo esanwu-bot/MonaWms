@@ -9,15 +9,15 @@ import (
 	"github.com/graingo/maltose/internal/intlog"
 )
 
-// RateLimitConfig defines the configuration for rate limiting
+// RateLimitConfig 定义限流配置
 type RateLimitConfig struct {
-	// Rate defines the number of requests allowed per second
+	// Rate 表示每秒允许的请求数
 	Rate float64
-	// Burst defines the maximum number of requests that can be processed at once
+	// Burst 表示可同时处理的最大请求数
 	Burst int
-	// SkipFunc is an optional function to determine if rate limiting should be skipped
+	// SkipFunc 是可选函数，用于判断是否跳过限流
 	SkipFunc func(*Request) bool
-	// ErrorHandler is an optional function to handle rate limit errors
+	// ErrorHandler 是可选函数，用于处理限流错误
 	ErrorHandler func(*Request)
 }
 
@@ -31,21 +31,21 @@ func normalizeRateLimitConfig(config RateLimitConfig) RateLimitConfig {
 	return config
 }
 
-// DefaultRateLimitConfig returns a default rate limit configuration
+// DefaultRateLimitConfig 返回默认的限流配置
 func DefaultRateLimitConfig() RateLimitConfig {
 	return RateLimitConfig{
-		Rate:  100, // 100 requests per second
-		Burst: 10,  // Allow burst of 10 requests
+		Rate:  100, // 每秒 100 个请求
+		Burst: 10,  // 允许 10 个请求的突发
 	}
 }
 
-// MiddlewareRateLimit creates a middleware that implements rate limiting using a token bucket algorithm
+// MiddlewareRateLimit 创建基于令牌桶算法实现的限流中间件
 func MiddlewareRateLimit(config RateLimitConfig) MiddlewareFunc {
 	config = normalizeRateLimitConfig(config)
 	limiter := &rateLimiter{tokens: float64(config.Burst), lastRefill: time.Now(), lastSeen: time.Now()}
 
 	return func(r *Request) {
-		// Skip rate limiting if SkipFunc returns true
+		// 若 SkipFunc 返回 true 则跳过限流
 		if config.SkipFunc != nil && config.SkipFunc(r) {
 			return
 		}
@@ -62,31 +62,31 @@ func MiddlewareRateLimit(config RateLimitConfig) MiddlewareFunc {
 			return
 		}
 
-		// Log rate limit info if debug is enabled
+		// 开启调试时记录限流信息
 		if r.Request.Context() != nil {
 			intlog.Printf(r.Request.Context(), "Rate limiter allowed request")
 		}
 	}
 }
 
-// MiddlewareRateLimitByIP creates a middleware that implements rate limiting per IP address
+// MiddlewareRateLimitByIP 创建按 IP 地址分别限流的中间件
 func MiddlewareRateLimitByIP(config RateLimitConfig) MiddlewareFunc {
 	config = normalizeRateLimitConfig(config)
-	// Create a map to store rate limiters for each IP
+	// 创建 map 保存每个 IP 对应的限流器
 	limiters := make(map[string]*rateLimiter)
 	var mu sync.RWMutex
 	lastCleanup := time.Now()
 
 	return func(r *Request) {
-		// Skip rate limiting if SkipFunc returns true
+		// 若 SkipFunc 返回 true 则跳过限流
 		if config.SkipFunc != nil && config.SkipFunc(r) {
 			return
 		}
 
-		// Get client IP
+		// 获取客户端 IP
 		ip := r.ClientIP()
 
-		// Get or create rate limiter for this IP
+		// 获取或创建该 IP 对应的限流器
 		mu.RLock()
 		limiter, exists := limiters[ip]
 		mu.RUnlock()
@@ -118,7 +118,7 @@ func MiddlewareRateLimitByIP(config RateLimitConfig) MiddlewareFunc {
 		}
 		mu.Unlock()
 
-		// Check rate limit
+		// 检查限流
 		if !limiter.allow(config.Rate, config.Burst) {
 			if config.ErrorHandler != nil {
 				config.ErrorHandler(r)
@@ -133,7 +133,7 @@ func MiddlewareRateLimitByIP(config RateLimitConfig) MiddlewareFunc {
 	}
 }
 
-// rateLimiter implements a simple token bucket rate limiter
+// rateLimiter 实现一个简单的令牌桶限流器
 type rateLimiter struct {
 	tokens     float64
 	lastRefill time.Time
