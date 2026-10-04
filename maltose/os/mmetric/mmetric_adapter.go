@@ -12,7 +12,7 @@ type otelProvider struct {
 	provider metric.MeterProvider
 }
 
-// Meter implements the Provider interface.
+// Meter 实现 Provider 接口。
 func (p *otelProvider) Meter(option MeterOption) Meter {
 	if option.Instrument == "" {
 		option.Instrument = defaultInstrument

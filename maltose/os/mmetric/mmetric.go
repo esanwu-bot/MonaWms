@@ -42,7 +42,7 @@ const (
 // 使用 attribute.KeyValue 可以获得强类型属性，
 // 这也是 OpenTelemetry 推荐的方式，性能更好且更不易出错。
 //
-// Example:
+// 示例：
 //
 //	attrs := mmetric.Attributes{
 //		attribute.String("request.method", "GET"),
@@ -127,7 +127,7 @@ type UpDownCounter interface {
 
 // Histogram 是直方图指标的接口。
 type Histogram interface {
-	// Record records a value in the histogram.
+	// Record 向直方图记录一个值。
 	Record(value float64, opts ...Option)
 }
 

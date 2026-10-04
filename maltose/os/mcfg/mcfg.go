@@ -239,7 +239,7 @@ func (c *Config) MustGetString(ctx context.Context, pattern string, def ...any) 
 	return value
 }
 
-// GetString gets a string value and panics if the adapter returns an error.
+// GetString 获取 string 值，适配器返回错误时 panic。
 // Deprecated: 需要显式处理错误请用 String，启动阶段可用 MustGetString。
 func (c *Config) GetString(ctx context.Context, pattern string, def ...any) string {
 	return c.MustGetString(ctx, pattern, def...)
@@ -266,7 +266,7 @@ func (c *Config) MustGetInt(ctx context.Context, pattern string, def ...any) int
 	return value
 }
 
-// GetInt gets an int value and panics if the adapter returns an error.
+// GetInt 获取 int 值，适配器返回错误时 panic。
 // Deprecated: 需要显式处理错误请用 Int，启动阶段可用 MustGetInt。
 func (c *Config) GetInt(ctx context.Context, pattern string, def ...any) int {
 	return c.MustGetInt(ctx, pattern, def...)
@@ -293,7 +293,7 @@ func (c *Config) MustGetBool(ctx context.Context, pattern string, def ...any) bo
 	return value
 }
 
-// GetBool gets a bool value and panics if the adapter returns an error.
+// GetBool 获取 bool 值，适配器返回错误时 panic。
 // Deprecated: 需要显式处理错误请用 Bool，启动阶段可用 MustGetBool。
 func (c *Config) GetBool(ctx context.Context, pattern string, def ...any) bool {
 	return c.MustGetBool(ctx, pattern, def...)
@@ -320,7 +320,7 @@ func (c *Config) MustGetMap(ctx context.Context, pattern string, def ...any) map
 	return value
 }
 
-// GetMap gets a map value and panics if the adapter returns an error.
+// GetMap 获取 map 值，适配器返回错误时 panic。
 // Deprecated: 需要显式处理错误请用 Map，启动阶段可用 MustGetMap。
 func (c *Config) GetMap(ctx context.Context, pattern string, def ...any) map[string]any {
 	return c.MustGetMap(ctx, pattern, def...)
@@ -347,7 +347,7 @@ func (c *Config) MustGetSlice(ctx context.Context, pattern string, def ...any) [
 	return value
 }
 
-// GetSlice gets a slice value and panics if the adapter returns an error.
+// GetSlice 获取切片值，适配器返回错误时 panic。
 // Deprecated: 需要显式处理错误请用 Slice，启动阶段可用 MustGetSlice。
 func (c *Config) GetSlice(ctx context.Context, pattern string, def ...any) []any {
 	return c.MustGetSlice(ctx, pattern, def...)

@@ -55,7 +55,6 @@ func (h *loggerHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
 		}
 
 		if err != nil && err != redis.Nil {
-			// The logger's Errorw method will automatically handle adding the error as a field.
 			// 日志器的 Errorw 方法会自动把 error 作为字段写入。
 			h.logger.Errorw(ctx, err, "redis command error", fields...)
 		} else {
@@ -87,7 +86,6 @@ func (h *loggerHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.P
 		}
 
 		if err != nil && err != redis.Nil {
-			// The logger's Errorw method will automatically handle adding the error as a field.
 			// 日志器的 Errorw 方法会自动把 error 作为字段写入。
 			h.logger.Errorw(ctx, err, "redis pipeline error", fields...)
 		} else {
