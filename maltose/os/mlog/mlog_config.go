@@ -8,42 +8,41 @@ import (
 )
 
 type Config struct {
-	// Writer is the custom writer for the logger.
+	// Writer 是 logger 的自定义 writer。
 	Writer io.Writer `mconv:"-"`
-	// ServiceName is the service name.
+	// ServiceName 是服务名称。
 	ServiceName string `mconv:"service_name"`
-	// Level is the log level.
+	// Level 是日志级别。
 	Level Level `mconv:"level"`
-	// TimeFormat is the log time format.
+	// TimeFormat 是日志时间格式。
 	TimeFormat string `mconv:"time_format"`
-	// Format is the log format. Only support "json" and "text".
+	// Format 是日志格式，仅支持 "json" 与 "text"。
 	Format string `mconv:"format"`
-	// Caller controls whether the caller’s file and line number are included in logs.
-	// If true, the caller’s file and line number will be added to the log entries.
+	// Caller 控制日志中是否包含调用方文件名与行号。
+	// 为 true 时，调用方的文件名与行号会被写入日志条目。
 	Caller bool `mconv:"caller"`
-	// Development is the development mode.
-	// If true, the logger will be in development mode.
-	// It will print the error stack trace.
+	// Development 表示是否为开发模式。
+	// 为 true 时 logger 处于开发模式，会打印错误堆栈。
 	Development bool `mconv:"development"`
-	// Filepath is the log file path.
-	// e.g., /var/log/app.log or /var/log/app.{YYYYmmdd}.log
+	// Filepath 是日志文件路径。
+	// 例如：/var/log/app.log 或 /var/log/app.{YYYYmmdd}.log
 	Filepath string `mconv:"filepath"`
-	// MaxSize is the maximum size in megabytes of the log file before it gets rotated.
-	// It is only applicable for 'size' rotation type.
-	MaxSize int `mconv:"max_size"` // (MB)
-	// MaxBackups is the maximum number of old log files to retain.
-	// It is only applicable for 'size' rotation type.
-	MaxBackups int `mconv:"max_backups"` // (files)
-	// MaxAge is the maximum number of days to retain old log files.
-	// It is applicable for both 'size' and 'date' rotation types.
-	MaxAge int `mconv:"max_age"` // (days)
-	// Stdout is the stdout print.
+	// MaxSize 是日志文件轮转前的最大体积（MB）。
+	// 仅对 'size' 轮转类型生效。
+	MaxSize int `mconv:"max_size"` // （MB）
+	// MaxBackups 是保留的旧日志文件最大数量。
+	// 仅对 'size' 轮转类型生效。
+	MaxBackups int `mconv:"max_backups"` // （文件数）
+	// MaxAge 是旧日志文件的最大保留天数。
+	// 对 'size' 与 'date' 两种轮转类型都生效。
+	MaxAge int `mconv:"max_age"` // （天）
+	// Stdout 表示是否输出到标准输出。
 	Stdout bool `mconv:"stdout"`
-	// CtxKeys is the context keys to extract.
+	// CtxKeys 是需要从上下文中提取的键。
 	CtxKeys []string `mconv:"ctx_keys"`
 }
 
-// defaultConfig returns the default configuration.
+// defaultConfig 返回默认配置。
 func defaultConfig() *Config {
 	return &Config{
 		ServiceName: "maltose",
@@ -70,12 +69,12 @@ func cloneConfig(config *Config) *Config {
 	return &cloned
 }
 
-// SetConfigWithMap sets the logger configuration using a map.
+// SetConfigWithMap 通过 map 设置 logger 配置。
 func (c *Config) SetConfigWithMap(configMap map[string]any) error {
 	return mconv.ToStructE(configMap, c, stringToLevelHookFunc)
 }
 
-// stringToLevelHookFunc is a hook function that converts a string to a Level.
+// stringToLevelHookFunc 是将字符串转换为 Level 的钩子函数。
 func stringToLevelHookFunc(from reflect.Type, to reflect.Type, data any) (any, error) {
 	if from.Kind() != reflect.String {
 		return data, nil

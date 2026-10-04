@@ -20,14 +20,14 @@ func (l *Logger) refreshHooks() {
 func buildZapLogger(config *Config) (*zap.Logger, zap.AtomicLevel, io.Closer, error) {
 	encoderCfg := zap.NewProductionEncoderConfig()
 
-	// TimeFormat
+	// 时间格式
 	if config.TimeFormat != "" {
 		encoderCfg.EncodeTime = zapcore.TimeEncoderOfLayout(config.TimeFormat)
 	} else {
 		encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
 	}
 
-	// Encoder
+	// 编码器
 	var encoder zapcore.Encoder
 	if config.Format == "json" {
 		encoder = zapcore.NewJSONEncoder(encoderCfg)
@@ -35,7 +35,7 @@ func buildZapLogger(config *Config) (*zap.Logger, zap.AtomicLevel, io.Closer, er
 		encoder = zapcore.NewConsoleEncoder(encoderCfg)
 	}
 
-	// Writer
+	// 输出目标
 	var fileWriter io.WriteCloser
 	var err error
 	var maxWriters = 5
@@ -64,24 +64,24 @@ func buildZapLogger(config *Config) (*zap.Logger, zap.AtomicLevel, io.Closer, er
 	}
 	writeSyncer := zapcore.NewMultiWriteSyncer(writers...)
 
-	// Level
+	// 级别
 	level := zap.NewAtomicLevelAt(zapcore.Level(config.Level))
 	// Core
 	core := zapcore.NewCore(encoder, writeSyncer, level)
-	// Logger
+	// Logger 实例
 	zapLogger := zap.New(core)
 
-	// Options
+	// 选项
 	var opts []zap.Option
-	// ServiceName
+	// 服务名称
 	if config.ServiceName != "" {
 		opts = append(opts, zap.Fields(zap.String("service.name", config.ServiceName)))
 	}
-	// Caller
+	// 调用方信息
 	if config.Caller {
 		opts = append(opts, zap.AddCaller(), zap.AddCallerSkip(defaultCallerSkip))
 	}
-	// Development
+	// 开发模式
 	if config.Development {
 		opts = append(opts, zap.Development())
 	}
@@ -103,7 +103,7 @@ func toZapFields(fields []Field) []zap.Field {
 	return zapFields
 }
 
-// log logs the message with the given level and attributes.
+// log 按给定级别与属性记录日志。
 func (l *Logger) log(ctx context.Context, level Level, msg string, fields ...Field) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -111,19 +111,19 @@ func (l *Logger) log(ctx context.Context, level Level, msg string, fields ...Fie
 		return
 	}
 
-	// Get entry from the pool.
+	// 从对象池获取日志条目。
 	entry := entryPool.Get().(*Entry)
 	entry.ctx = ctx
 	entry.msg = msg
 	entry.fields = append(entry.fields[:0], fields...)
 
-	// Reset entry and put it back to the pool.
+	// 重置日志条目并放回对象池。
 	defer func() {
 		entry.reset()
 		entryPool.Put(entry)
 	}()
 
-	// Fire hooks.
+	// 触发 hook。
 	l.hookMu.RLock()
 	hooks := append([]Hook(nil), l.hooks...)
 	l.hookMu.RUnlock()

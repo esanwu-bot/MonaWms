@@ -5,15 +5,15 @@ import (
 )
 
 type Hook interface {
-	// Name returns the name of the hook.
+	// Name 返回 hook 的名称。
 	Name() string
-	// Level returns the level of the hook.
+	// Levels 返回 hook 生效的级别。
 	Levels() []Level
-	// Fire is called when the log is written.
+	// Fire 在写入日志时被调用。
 	Fire(entry *Entry)
 }
 
-// AddHook adds a hook to the logger.
+// AddHook 为 logger 添加一个 hook。
 func (l *Logger) AddHook(hook Hook) error {
 	if hook == nil {
 		return merror.New("hook cannot be nil")
@@ -29,7 +29,7 @@ func (l *Logger) AddHook(hook Hook) error {
 	return nil
 }
 
-// RemoveHook removes a hook from the logger.
+// RemoveHook 从 logger 中移除指定名称的 hook。
 func (l *Logger) RemoveHook(hookName string) {
 	l.hookMu.Lock()
 	defer l.hookMu.Unlock()

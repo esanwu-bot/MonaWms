@@ -4,13 +4,13 @@ import (
 	"github.com/graingo/maltose/net/mtrace"
 )
 
-// internal hooks
+// 内部 hook 名称
 const (
 	traceHookName = "trace_hook"
 	ctxHookName   = "ctx_hook"
 )
 
-// traceHook is a hook that automatically adds TraceID.
+// traceHook 是自动附加 TraceID 的 hook。
 type traceHook struct{}
 
 func (h *traceHook) Name() string { return traceHookName }
@@ -26,10 +26,10 @@ func (h *traceHook) Fire(entry *Entry) {
 	}
 }
 
-// CtxKey is a type for context keys.
+// CtxKey 是上下文键的类型。
 type CtxKey string
 
-// ctxHook is a hook that extracts values from context.
+// ctxHook 是从上下文中提取值的 hook。
 type ctxHook struct {
 	keys []string
 }

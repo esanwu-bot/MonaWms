@@ -13,35 +13,35 @@ import (
 	"github.com/graingo/maltose/errors/merror"
 )
 
-// RotationConfig holds all the configuration for log file rotation.
+// rotationConfig 保存日志文件轮转的全部配置。
 type rotationConfig struct {
-	// MaxSize is the maximum size in megabytes of the log file before it gets rotated.
-	// It is only applicable for 'size' rotation type.
+	// MaxSize 是日志文件轮转前的最大体积（MB）。
+	// 仅对 'size' 轮转类型生效。
 	MaxSize int `mconv:"max_size"` // (MB)
-	// MaxBackups is the maximum number of old log files to retain.
-	// It is only applicable for 'size' rotation type.
+	// MaxBackups 是保留的旧日志文件最大数量。
+	// 仅对 'size' 轮转类型生效。
 	MaxBackups int `mconv:"max_backups"` // (files)
-	// MaxAge is the maximum number of days to retain old log files.
-	// It is applicable for both 'size' and 'date' rotation types.
+	// MaxAge 是旧日志文件的最大保留天数。
+	// 对 'size' 与 'date' 两种轮转类型都生效。
 	MaxAge int `mconv:"max_age"` // (days)
 }
 
-// fileWriter is a writer that writes to files based on date patterns or fixed file names.
+// fileWriter 是按日期模式或固定文件名写入文件的 writer。
 type fileWriter struct {
-	pathPattern  string     // Full path pattern for the log file
-	isDateMode   bool       // Whether using date pattern mode
-	mu           sync.Mutex // Mutex for concurrency safety
-	file         *os.File   // Current open file
-	currentPath  string     // Current file path
-	lastCheck    time.Time  // Last file check time
-	lastCleanup  time.Time  // Last cleanup check time
-	writeCount   int64      // Write counter for lazy cleanup
+	pathPattern  string     // 日志文件的完整路径模式
+	isDateMode   bool       // 是否使用日期模式
+	mu           sync.Mutex // 保证并发安全的互斥锁
+	file         *os.File   // 当前打开的文件
+	currentPath  string     // 当前文件路径
+	lastCheck    time.Time  // 上次检查文件的时间
+	lastCleanup  time.Time  // 上次清理检查的时间
+	writeCount   int64      // 写入计数，用于惰性清理
 	cfg          *rotationConfig
 	cleanupRegex *regexp.Regexp
 }
 
 var (
-	// layoutReplacer is used to convert user-friendly date patterns to Go's time.Format layout.
+	// layoutReplacer 用于将易读的日期模式转换为 Go 的 time.Format 布局。
 	layoutReplacer = strings.NewReplacer(
 		"YYYY", "2006",
 		"YY", "06",
@@ -51,7 +51,7 @@ var (
 		"mm", "04",
 		"ss", "05",
 	)
-	// regexReplacer is used to convert user-friendly date patterns to a regex string for file cleanup.
+	// regexReplacer 用于将易读的日期模式转换为文件清理用的正则字符串。
 	regexReplacer = strings.NewReplacer(
 		"YYYY", `\d{4}`,
 		"YY", `\d{2}`,
@@ -61,18 +61,18 @@ var (
 		"mm", `\d{2}`,
 		"ss", `\d{2}`,
 	)
-	// patternRegex is used to find all placeholders like {YYYYMMDD}.
+	// patternRegex 用于查找所有形如 {YYYYMMDD} 的占位符。
 	patternRegex = regexp.MustCompile(`\{([^}]+)\}`)
 )
 
-// newFileWriter creates a new fileWriter based on the provided rotation config.
+// newFileWriter 根据给定的轮转配置创建新的 fileWriter。
 func newFileWriter(path string, cfg *rotationConfig) (*fileWriter, error) {
 	if path == "" {
 		return nil, merror.New("filepath for log rotation cannot be empty")
 	}
 
-	// It's a good practice to use absolute path for logging,
-	// to avoid CWD problems.
+	// 日志路径使用绝对路径是更好的做法，
+	// 可避免当前工作目录带来的问题。
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, merror.Wrapf(err, `failed to get absolute path for "%s"`, path)
@@ -80,7 +80,7 @@ func newFileWriter(path string, cfg *rotationConfig) (*fileWriter, error) {
 
 	isDateMode := isDatePattern(absPath)
 
-	// Ensure directory exists.
+	// 确保目录存在。
 	dir := filepath.Dir(absPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, merror.Wrapf(err, "failed to create log directory: %s", dir)
@@ -94,7 +94,7 @@ func newFileWriter(path string, cfg *rotationConfig) (*fileWriter, error) {
 		isDateMode:  isDateMode,
 	}
 
-	// Prepare cleanup regex if needed
+	// 按需准备清理用的正则表达式
 	if cfg.MaxAge > 0 || (!isDateMode && cfg.MaxBackups > 0) {
 		if w.isDateMode {
 			regexPattern := convertDatePatternToRegex(w.pathPattern)
@@ -109,20 +109,20 @@ func newFileWriter(path string, cfg *rotationConfig) (*fileWriter, error) {
 	return w, nil
 }
 
-// Write implements the io.Writer interface.
+// Write 实现 io.Writer 接口。
 func (w *fileWriter) Write(p []byte) (n int, err error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	// Lazy initialization or periodic rotation
+	// 惰性初始化或周期性轮转
 	if err = w.checkAndRotate(); err != nil {
 		return 0, err
 	}
 
-	// Rotate by size if not in date mode
+	// 非日期模式下按体积轮转
 	if !w.isDateMode && w.cfg.MaxSize > 0 {
 		if stat, err := w.file.Stat(); err == nil {
-			// Rotate if size exceeds max size
+			// 体积超过上限时轮转
 			if stat.Size() >= int64(w.cfg.MaxSize)*1024*1024 {
 				if err := w.rotate(); err != nil {
 					return 0, err
@@ -131,7 +131,7 @@ func (w *fileWriter) Write(p []byte) (n int, err error) {
 		}
 	}
 
-	// Lazy cleanup: check every 1000 writes or once per hour
+	// 惰性清理：每写入 1000 次或每过一小时检查一次
 	w.writeCount++
 	if w.writeCount%1000 == 0 || time.Since(w.lastCleanup) > time.Hour {
 		w.cleanup()
@@ -140,26 +140,26 @@ func (w *fileWriter) Write(p []byte) (n int, err error) {
 	return w.file.Write(p)
 }
 
-// rotate performs a size-based rotation.
+// rotate 执行基于体积的轮转。
 func (w *fileWriter) rotate() error {
-	// Close existing file
+	// 关闭已打开的文件
 	if err := w.file.Close(); err != nil {
 		return err
 	}
 	w.file = nil
 
-	// Rename current log file to a backup name
+	// 将当前日志文件重命名为备份文件名
 	backupPath := w.backupFilePath()
 	if err := os.Rename(w.currentPath, backupPath); err != nil {
 		return merror.Wrapf(err, "failed to rename log file for rotation: %s", w.currentPath)
 	}
 
-	// Re-open the original file, which will be new and empty
+	// 重新打开原始文件，此时它是一个新的空文件
 	return w.checkAndRotate()
 }
 
-// backupFilePath generates a backup file path with a timestamp.
-// e.g., /path/to/app.2023-10-27T10-00-00.000.log
+// backupFilePath 生成带时间戳的备份文件路径。
+// 例如：/path/to/app.2023-10-27T10-00-00.000.log
 func (w *fileWriter) backupFilePath() string {
 	dir := filepath.Dir(w.currentPath)
 	filename := filepath.Base(w.currentPath)
@@ -170,12 +170,12 @@ func (w *fileWriter) backupFilePath() string {
 	return filepath.Join(dir, fmt.Sprintf("%s.%s%s", prefix, timestamp, ext))
 }
 
-// Close closes the current file.
+// Close 关闭当前文件。
 func (w *fileWriter) Close() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	// Close file
+	// 关闭文件
 	if w.file != nil {
 		err := w.file.Close()
 		w.file = nil
@@ -184,9 +184,9 @@ func (w *fileWriter) Close() error {
 	return nil
 }
 
-// checkAndRotate checks if the file needs to be rotated based on the current date.
+// checkAndRotate 根据当前日期检查文件是否需要轮转。
 func (w *fileWriter) checkAndRotate() error {
-	// Generate file path based on current date or fixed pattern
+	// 根据当前日期或固定模式生成文件路径
 	var filePath string
 	if w.isDateMode {
 		filePath = w.formatFilePath(time.Now())
@@ -194,12 +194,12 @@ func (w *fileWriter) checkAndRotate() error {
 		filePath = w.pathPattern
 	}
 
-	// If the path is the same, no need to rotate
+	// 路径未变化则无需轮转
 	if filePath == w.currentPath && w.file != nil {
 		return nil
 	}
 
-	// Close current file if open
+	// 若文件已打开则先关闭
 	if w.file != nil {
 		if err := w.file.Close(); err != nil {
 			return err
@@ -207,40 +207,40 @@ func (w *fileWriter) checkAndRotate() error {
 		w.file = nil
 	}
 
-	// Ensure directory exists
+	// 确保目录存在
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return merror.Wrapf(err, "failed to create log directory: %s", dir)
 	}
 
-	// Open new file
+	// 打开新文件
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return merror.Wrapf(err, "failed to open log file: %s", filePath)
 	}
 
-	// Update state
+	// 更新状态
 	w.file = file
 	w.currentPath = filePath
 
 	return nil
 }
 
-// formatFilePath formats the file path based on the current date.
+// formatFilePath 根据当前日期格式化文件路径。
 func (w *fileWriter) formatFilePath(t time.Time) string {
 	layout := w.pathPattern
-	// E.g., "app-{YYYYMMDD}.log" => "app-20060102.log"
+	// 例如："app-{YYYYMMDD}.log" => "app-20060102.log"
 	layout = patternRegex.ReplaceAllStringFunc(layout, func(s string) string {
-		// s is "{YYYYMMDD}", strip braces to get "YYYYMMDD"
+		// s 为 "{YYYYMMDD}"，去掉花括号后得到 "YYYYMMDD"
 		return layoutReplacer.Replace(s[1 : len(s)-1])
 	})
 	return t.Format(layout)
 }
 
-// cleanup removes old log files based on autoClean setting.
+// cleanup 根据清理配置移除旧日志文件。
 func (w *fileWriter) cleanup() {
-	// For size mode, cleanup is based on MaxAge or MaxBackups.
-	// For date mode, cleanup is based on cfg.MaxAge.
+	// 体积模式下依据 MaxAge 或 MaxBackups 清理。
+	// 日期模式下依据 cfg.MaxAge 清理。
 	if w.isDateMode {
 		if w.cfg.MaxAge <= 0 {
 			return
@@ -254,7 +254,7 @@ func (w *fileWriter) cleanup() {
 	dir := filepath.Dir(w.pathPattern)
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		// Silently ignore cleanup errors to avoid affecting normal logging
+		// 静默忽略清理错误，避免影响正常日志记录
 		return
 	}
 
@@ -312,7 +312,7 @@ func (w *fileWriter) cleanupSizeMode(files []os.DirEntry, dir string) {
 		if file.IsDir() || !strings.HasPrefix(file.Name(), prefix) || !strings.HasSuffix(file.Name(), ext) {
 			continue
 		}
-		// Skip the main log file
+		// 跳过主日志文件
 		if file.Name() == filePattern {
 			continue
 		}
@@ -327,12 +327,12 @@ func (w *fileWriter) cleanupSizeMode(files []os.DirEntry, dir string) {
 		})
 	}
 
-	// Sort by mod time, oldest first
+	// 按修改时间排序，最旧的在前
 	sort.Slice(backupFiles, func(i, j int) bool {
 		return backupFiles[i].modTime.Before(backupFiles[j].modTime)
 	})
 
-	// Cleanup by max age
+	// 按最大保留时间清理
 	if w.cfg.MaxAge > 0 {
 		maxAgeDuration := time.Duration(w.cfg.MaxAge) * 24 * time.Hour
 		now := time.Now()
@@ -347,7 +347,7 @@ func (w *fileWriter) cleanupSizeMode(files []os.DirEntry, dir string) {
 		backupFiles = filesToKeep
 	}
 
-	// Cleanup by max backups
+	// 按最大备份数量清理
 	if w.cfg.MaxBackups > 0 && len(backupFiles) > w.cfg.MaxBackups {
 		filesToRemove := backupFiles[:len(backupFiles)-w.cfg.MaxBackups]
 		for _, f := range filesToRemove {
@@ -356,18 +356,18 @@ func (w *fileWriter) cleanupSizeMode(files []os.DirEntry, dir string) {
 	}
 }
 
-// convertDatePatternToRegex converts a date pattern to a regex pattern.
+// convertDatePatternToRegex 将日期模式转换为正则模式。
 func convertDatePatternToRegex(pattern string) string {
 	regexPattern := regexp.QuoteMeta(pattern)
-	// E.g., "app-\{YYYYMMDD\}\.log" => "app-\d{4}\d{2}\d{2}\.log"
+	// 例如："app-\{YYYYMMDD\}\.log" => "app-\d{4}\d{2}\d{2}\.log"
 	regexPattern = patternRegex.ReplaceAllStringFunc(regexPattern, func(s string) string {
-		// s is "\{YYYYMMDD\}", strip braces to get "YYYYMMDD"
+		// s 为 "\{YYYYMMDD\}"，去掉花括号后得到 "YYYYMMDD"
 		return regexReplacer.Replace(s[2 : len(s)-2])
 	})
 	return "^" + regexPattern + "$"
 }
 
-// isDatePattern checks if a file pattern contains date placeholders.
+// isDatePattern 检查文件模式中是否包含日期占位符。
 func isDatePattern(pattern string) bool {
 	return strings.Contains(pattern, "{") && strings.Contains(pattern, "}")
 }

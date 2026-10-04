@@ -5,20 +5,20 @@ import (
 	"sync/atomic"
 )
 
-// ILogger is the interface for the logger.
+// ILogger 是 logger 的接口。
 type ILogger interface {
-	Debugf(ctx context.Context, format string, v ...any)                // Debugf logs a message at level Debug.
-	Debugw(ctx context.Context, msg string, fields ...Field)            // Debugw logs a message at level Debug.
-	Infof(ctx context.Context, format string, v ...any)                 // Infof logs a message at level Info.
-	Infow(ctx context.Context, msg string, fields ...Field)             // Infow logs a message at level Info.
-	Warnf(ctx context.Context, format string, v ...any)                 // Warnf logs a message at level Warn.
-	Warnw(ctx context.Context, msg string, fields ...Field)             // Warnw logs a message at level Warn.
-	Errorf(ctx context.Context, err error, format string, v ...any)     // Errorf logs a message at level Error.
-	Errorw(ctx context.Context, err error, msg string, fields ...Field) // Errorw logs a message at level Error.
-	Fatalf(ctx context.Context, err error, format string, v ...any)     // Fatalf logs a message at level Fatal.
-	Fatalw(ctx context.Context, err error, msg string, fields ...Field) // Fatalw logs a message at level Fatal.
-	Panicf(ctx context.Context, err error, format string, v ...any)     // Panicf logs a message at level Panic.
-	Panicw(ctx context.Context, err error, msg string, fields ...Field) // Panicw logs a message at level Panic.
+	Debugf(ctx context.Context, format string, v ...any)                // Debugf 以 Debug 级别记录日志。
+	Debugw(ctx context.Context, msg string, fields ...Field)            // Debugw 以 Debug 级别记录日志。
+	Infof(ctx context.Context, format string, v ...any)                 // Infof 以 Info 级别记录日志。
+	Infow(ctx context.Context, msg string, fields ...Field)             // Infow 以 Info 级别记录日志。
+	Warnf(ctx context.Context, format string, v ...any)                 // Warnf 以 Warn 级别记录日志。
+	Warnw(ctx context.Context, msg string, fields ...Field)             // Warnw 以 Warn 级别记录日志。
+	Errorf(ctx context.Context, err error, format string, v ...any)     // Errorf 以 Error 级别记录日志。
+	Errorw(ctx context.Context, err error, msg string, fields ...Field) // Errorw 以 Error 级别记录日志。
+	Fatalf(ctx context.Context, err error, format string, v ...any)     // Fatalf 以 Fatal 级别记录日志。
+	Fatalw(ctx context.Context, err error, msg string, fields ...Field) // Fatalw 以 Fatal 级别记录日志。
+	Panicf(ctx context.Context, err error, format string, v ...any)     // Panicf 以 Panic 级别记录日志。
+	Panicw(ctx context.Context, err error, msg string, fields ...Field) // Panicw 以 Panic 级别记录日志。
 }
 
 const (
@@ -29,7 +29,7 @@ const (
 )
 
 var (
-	// Ensure Logger implements ILogger interface
+	// 确保 Logger 实现了 ILogger 接口
 	_ ILogger = &Logger{}
 
 	defaultLogger atomic.Pointer[Logger]
@@ -39,14 +39,13 @@ func init() {
 	defaultLogger.Store(New())
 }
 
-// DefaultLogger returns the default logger.
+// DefaultLogger 返回默认 logger。
 func DefaultLogger() *Logger {
 	return defaultLogger.Load()
 }
 
-// SetDefaultLogger sets the default logger for package glog.
-// Note that there might be concurrent safety issue if calls this function
-// in different goroutines.
+// SetDefaultLogger 设置 glog 包的默认 logger。
+// 注意：在不同 goroutine 中调用该函数可能存在并发安全问题。
 func SetDefaultLogger(l *Logger) {
 	if l == nil {
 		l = New()

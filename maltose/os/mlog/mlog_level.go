@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// Level is the log level.
+// Level 是日志级别。
 type Level int8
 
 const (
@@ -30,21 +30,21 @@ func AllLevels() []Level {
 	}
 }
 
-// SetLevel sets the logging level.
+// SetLevel 设置日志级别。
 func (l *Logger) SetLevel(level Level) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	l.level.SetLevel(zapcore.Level(level))
 }
 
-// GetLevel returns the logging level value.
+// GetLevel 返回当前日志级别。
 func (l *Logger) GetLevel() Level {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	return Level(l.level.Level())
 }
 
-// ParseLevel parses a string level and returns the Level value.
+// ParseLevel 解析字符串形式的级别并返回对应的 Level 值。
 func ParseLevel(level string) (Level, error) {
 	switch strings.ToLower(level) {
 	case "debug":
@@ -64,7 +64,7 @@ func ParseLevel(level string) (Level, error) {
 	}
 }
 
-// String returns the string representation of the level.
+// String 返回级别的字符串表示。
 func (l Level) String() string {
 	switch l {
 	case DebugLevel:

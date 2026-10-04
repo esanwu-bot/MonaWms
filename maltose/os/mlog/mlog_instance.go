@@ -12,7 +12,7 @@ var (
 	instances = minstance.New()
 )
 
-// Instance returns the logger instance with the specified name.
+// Instance 返回指定名称的 logger 实例。
 func Instance(name ...string) *Logger {
 	key := DefaultName
 	if len(name) > 0 && name[0] != "" {
@@ -24,7 +24,7 @@ func Instance(name ...string) *Logger {
 	}).(*Logger)
 }
 
-// ConfigFromMap parses and returns config from given map.
+// ConfigFromMap 从给定 map 解析并返回配置。
 func ConfigFromMap(m map[string]any) (*Config, error) {
 	config := defaultConfig()
 	if err := config.SetConfigWithMap(m); err != nil {

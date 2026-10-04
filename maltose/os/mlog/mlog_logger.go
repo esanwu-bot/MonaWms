@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Logger is the struct for logging management.
+// Logger 是日志管理的结构体。
 type Logger struct {
 	parent     *zap.Logger
 	hooks      []Hook
@@ -22,7 +22,7 @@ type Logger struct {
 	hookMu     sync.RWMutex
 }
 
-// New creates a new Logger instance.
+// New 创建一个新的 Logger 实例。
 func New(cfg ...*Config) *Logger {
 	config := defaultConfig()
 	if len(cfg) > 0 && cfg[0] != nil {
@@ -35,13 +35,13 @@ func New(cfg ...*Config) *Logger {
 		hooks:      make([]Hook, 0),
 		withFields: make([]Field, 0),
 	}
-	// build zap logger
+	// 构建 zap logger
 	var err error
 	l.parent, l.level, l.closer, err = buildZapLogger(l.config)
 	if err != nil {
 		panic(err)
 	}
-	// add hooks
+	// 添加 hook
 	l.AddHook(&traceHook{})
 	if len(l.config.CtxKeys) > 0 {
 		l.AddHook(&ctxHook{keys: l.config.CtxKeys})
@@ -50,26 +50,25 @@ func New(cfg ...*Config) *Logger {
 	return l
 }
 
-// NewWithZap creates a new Logger instance using an existing zap.Logger.
+// NewWithZap 使用已有的 zap.Logger 创建新的 Logger 实例。
 //
-// This constructor is intended for advanced users or those who need customizations
-// that are not supported by the standard New() constructor. When using this function:
+// 该构造函数面向高级用户，或需要标准 New() 不支持的自定义场景。使用时请注意：
 //
-// 1. You are responsible for configuring the zap.Logger (output, format, rotation, etc.)
-// 2. You must manage the lifecycle of any resources associated with your zap.Logger
-// 3. File rotation and cleanup are handled by your zap.Logger configuration, not by mlog
-// 4. The provided config is used only for mlog-specific features (hooks, context keys, etc.)
+// 1. zap.Logger 的配置（输出、格式、轮转等）由调用方自行负责
+// 2. 与 zap.Logger 关联的资源生命周期也需调用方自行管理
+// 3. 文件轮转与清理由 zap.Logger 的配置决定，mlog 不再参与
+// 4. 传入的 config 仅用于 mlog 自身特性（hook、上下文键等）
 //
-// For most use cases, the standard New() constructor is recommended as it provides
-// integrated file management, rotation, and cleanup functionality.
+// 大多数场景建议使用标准 New() 构造函数，它提供了完整的
+// 文件管理、轮转与清理能力。
 //
-// Example:
+// 示例：
 //
-//	zapLogger := zap.New(core) // Your custom zap logger
+//	zapLogger := zap.New(core) // 自定义 zap logger
 //	logger := mlog.NewWithZap(zapLogger, &mlog.Config{
 //	    CtxKeys: []string{"trace_id", "user_id"},
 //	})
-//	defer logger.Close() // This only calls zapLogger.Sync()
+//	defer logger.Close() // 这里只会调用 zapLogger.Sync()
 func NewWithZap(zapLogger *zap.Logger, cfg ...*Config) *Logger {
 	config := defaultConfig()
 	if len(cfg) > 0 && cfg[0] != nil {
@@ -83,12 +82,12 @@ func NewWithZap(zapLogger *zap.Logger, cfg ...*Config) *Logger {
 	l := &Logger{
 		parent:     zapLogger,
 		config:     config,
-		level:      zap.NewAtomicLevelAt(zap.InfoLevel), // Default level, user can adjust via config
+		level:      zap.NewAtomicLevelAt(zap.InfoLevel), // 默认级别，可通过配置调整
 		hooks:      make([]Hook, 0),
 		withFields: make([]Field, 0),
 	}
 
-	// Add hooks
+	// 添加 hook
 	l.AddHook(&traceHook{})
 	if len(l.config.CtxKeys) > 0 {
 		l.AddHook(&ctxHook{keys: l.config.CtxKeys})
@@ -97,7 +96,7 @@ func NewWithZap(zapLogger *zap.Logger, cfg ...*Config) *Logger {
 	return l
 }
 
-// Close closes the logger and its underlying resources.
+// Close 关闭 logger 及其底层资源。
 func (l *Logger) Close() error {
 	l.mu.Lock()
 	parent := l.parent
@@ -116,7 +115,7 @@ func (l *Logger) Close() error {
 	return errors.Join(syncErr, closeErr)
 }
 
-// SetConfigWithMap sets the logger configuration using a map.
+// SetConfigWithMap 通过 map 设置 logger 配置。
 func (l *Logger) SetConfigWithMap(configMap map[string]any) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -128,7 +127,7 @@ func (l *Logger) SetConfigWithMap(configMap map[string]any) error {
 	return l.setConfigLocked(config)
 }
 
-// SetConfig sets the logger configuration.
+// SetConfig 设置 logger 配置。
 func (l *Logger) SetConfig(config *Config) error {
 	if config == nil {
 		return errors.New("logger config cannot be nil")
@@ -162,7 +161,7 @@ func (l *Logger) setConfigLocked(config *Config) error {
 	return closeErr
 }
 
-// With adds a field to the logger.
+// With 为 logger 附加字段。
 func (l *Logger) With(fields ...Field) *Logger {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -186,7 +185,7 @@ func (l *Logger) With(fields ...Field) *Logger {
 	}
 }
 
-// GetConfig returns the current configuration of the logger.
+// GetConfig 返回 logger 当前的配置。
 func (l *Logger) GetConfig() *Config {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
