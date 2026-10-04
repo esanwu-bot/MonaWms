@@ -7,51 +7,51 @@ import (
 )
 
 // -----------------------------------------------------------------------------
-// Retry Configuration Methods
+// 重试配置相关方法
 // -----------------------------------------------------------------------------
 
-// RetryConfig is the configuration for request retry.
+// RetryConfig 是请求重试的配置。
 type RetryConfig struct {
-	// Count is the maximum number of retries.
-	// For example, if Count is 3, the request will be tried up to 4 times (initial attempt + 3 retries).
+	// Count 是最大重试次数。
+	// 例如 Count 为 3 时，请求最多会被执行 4 次（首次尝试 + 3 次重试）。
 	Count int
 
-	// BaseInterval is the base interval between retries.
-	// This is the starting point for calculating the delay between retries.
-	// For example, if BaseInterval is 1 second, the first retry will wait at least 1 second.
+	// BaseInterval 是重试的基础间隔。
+	// 它是计算重试间隔的起点。
+	// 例如 BaseInterval 为 1 秒时，第一次重试至少等待 1 秒。
 	BaseInterval time.Duration
 
-	// MaxInterval is the maximum interval between retries.
-	// This prevents the delay from growing too large due to exponential backoff.
-	// For example, if MaxInterval is 30 seconds, even if the calculated delay is 60 seconds,
-	// the actual delay will be capped at 30 seconds.
+	// MaxInterval 是重试的最大间隔。
+	// 用于避免指数退避导致间隔无限制增长。
+	// 例如 MaxInterval 为 30 秒时，即使计算出的间隔为 60 秒，
+	// 实际间隔也会被限制在 30 秒。
 	MaxInterval time.Duration
 
-	// BackoffFactor is the factor for exponential backoff.
-	// Each retry's delay is calculated by multiplying the previous delay by this factor.
-	// For example, if BaseInterval is 1 second and BackoffFactor is 2.0:
-	// - First retry: 1 second
-	// - Second retry: 2 seconds
-	// - Third retry: 4 seconds
-	// - And so on...
+	// BackoffFactor 是指数退避的因子。
+	// 每次重试的间隔由上一次间隔乘以该因子得到。
+	// 例如 BaseInterval 为 1 秒、BackoffFactor 为 2.0 时：
+	// - 第一次重试：1 秒
+	// - 第二次重试：2 秒
+	// - 第三次重试：4 秒
+	// - 依此类推...
 	BackoffFactor float64
 
-	// JitterFactor is the factor for random jitter.
-	// This adds randomness to the delay to prevent multiple clients from retrying simultaneously.
-	// The actual jitter is calculated as: delay * JitterFactor * (random number between -1 and 1)
-	// For example, if the calculated delay is 1 second and JitterFactor is 0.1:
-	// - The actual delay will be between 0.9 and 1.1 seconds
-	// A value of 0 means no jitter will be added.
+	// JitterFactor 是随机抖动的因子。
+	// 它给间隔引入随机性，避免多个客户端同时重试。
+	// 实际抖动计算方式为：delay * JitterFactor *（-1 到 1 之间的随机数）
+	// 例如计算出的间隔为 1 秒、JitterFactor 为 0.1 时：
+	// - 实际间隔会落在 0.9 到 1.1 秒之间
+	// 取值为 0 表示不添加抖动。
 	JitterFactor float64
 }
 
-// DefaultRetryConfig returns the default retry configuration.
-// The default values are:
-// - Count: 3 retries
-// - BaseInterval: 1 second
-// - MaxInterval: 30 seconds
-// - BackoffFactor: 2.0 (doubles the delay each time)
-// - JitterFactor: 0.1 (adds ±10% random jitter)
+// DefaultRetryConfig 返回默认的重试配置。
+// 默认值为：
+// - Count：3 次重试
+// - BaseInterval：1 秒
+// - MaxInterval：30 秒
+// - BackoffFactor：2.0（每次间隔翻倍）
+// - JitterFactor：0.1（增加 ±10% 的随机抖动）
 func DefaultRetryConfig() RetryConfig {
 	return RetryConfig{
 		Count:         3,
@@ -62,7 +62,7 @@ func DefaultRetryConfig() RetryConfig {
 	}
 }
 
-// SetRetry sets retry configuration.
+// SetRetry 设置重试配置。
 func (r *Request) SetRetry(config RetryConfig) *Request {
 	if config.Count < 0 {
 		config.Count = 0
@@ -85,7 +85,7 @@ func (r *Request) SetRetry(config RetryConfig) *Request {
 	return r
 }
 
-// SetRetrySimple sets retry count and base interval with default backoff and jitter.
+// SetRetrySimple 设置重试次数与基础间隔，退避与抖动使用默认值。
 func (r *Request) SetRetrySimple(count int, baseInterval time.Duration) *Request {
 	config := DefaultRetryConfig()
 	config.Count = count
@@ -93,43 +93,43 @@ func (r *Request) SetRetrySimple(count int, baseInterval time.Duration) *Request
 	return r.SetRetry(config)
 }
 
-// SetRetryCondition sets a custom retry condition function.
-// The function takes the HTTP response and error as input and returns
-// true if the request should be retried.
+// SetRetryCondition 设置自定义的重试条件函数。
+// 该函数接收 HTTP 响应与错误作为入参，
+// 返回 true 表示需要重试。
 func (r *Request) SetRetryCondition(condition func(*http.Response, error) bool) *Request {
 	r.retryCondition = condition
 	return r
 }
 
-// shouldRetry determines if a request should be retried based on the response and error.
+// shouldRetry 根据响应与错误判断请求是否需要重试。
 func (r *Request) shouldRetry(resp *http.Response, err error) bool {
-	// Use custom condition if provided
+	// 若提供了自定义条件则使用它
 	if r.retryCondition != nil {
 		return r.retryCondition(resp, err)
 	}
 
-	// Default retry condition
+	// 默认重试条件
 	if err != nil {
-		// Retry on network/connection errors
+		// 网络/连接错误时重试
 		return true
 	}
 
 	if resp != nil {
-		// Retry on 5xx (server errors) and 429 (too many requests)
+		// 5xx（服务端错误）与 429（请求过多）时重试
 		return resp.StatusCode >= 500 || resp.StatusCode == 429
 	}
 
 	return false
 }
 
-// calculateRetryDelay calculates the delay for the next retry attempt.
+// calculateRetryDelay 计算下一次重试的延迟时间。
 func (r *Request) calculateRetryDelay(attempt int) time.Duration {
-	// If no retry config, use simple interval
+	// 若未配置重试，则使用简单间隔
 	if r.retryConfig == (RetryConfig{}) {
 		return r.retryInterval
 	}
 
-	// Calculate exponential backoff
+	// 计算指数退避间隔
 	delay := r.retryConfig.BaseInterval
 	for i := 1; i < attempt; i++ {
 		delay = time.Duration(float64(delay) * r.retryConfig.BackoffFactor)
@@ -139,7 +139,7 @@ func (r *Request) calculateRetryDelay(attempt int) time.Duration {
 		}
 	}
 
-	// Add jitter
+	// 加入抖动
 	if r.retryConfig.JitterFactor > 0 {
 		jitter := time.Duration(float64(delay) * r.retryConfig.JitterFactor * (rand.Float64()*2 - 1))
 		delay += jitter

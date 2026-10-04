@@ -8,7 +8,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-// localMetricManager is the local metric manager.
+// localMetricManager 是本地指标管理器。
 type localMetricManager struct {
 	HTTPClientRequestTotal         mmetric.Counter
 	HTTPClientRequestDuration      mmetric.Histogram
@@ -18,10 +18,10 @@ type localMetricManager struct {
 	HTTPpClientErrorTotal          mmetric.Counter
 }
 
-// global metric manager
+// 全局指标管理器
 var metricManager = newMetricManager()
 
-// create new metric manager
+// 创建新的指标管理器
 func newMetricManager() *localMetricManager {
 	meter := mmetric.GetProvider().Meter(mmetric.MeterOption{
 		Instrument:        instrumentName,
@@ -73,7 +73,7 @@ func newMetricManager() *localMetricManager {
 	}
 }
 
-// handle metrics before request
+// 请求发出前采集指标
 func handleMetricsBeforeRequest(req *http.Request) {
 	var (
 		ctx        = req.Context()
@@ -93,7 +93,7 @@ func handleMetricsBeforeRequest(req *http.Request) {
 	)
 }
 
-// handle metrics after request done
+// 请求完成后采集指标
 func handleMetricsAfterRequestDone(req *http.Request, resp *http.Response, err error, startTime time.Time) {
 	var (
 		ctx           = req.Context()

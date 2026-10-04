@@ -14,22 +14,22 @@ import (
 	"github.com/graingo/maltose/internal/intlog"
 )
 
-// Response is the struct for client request response.
+// Response 是客户端请求响应的结构体。
 type Response struct {
-	*http.Response                   // Response is the underlying http.Response object of certain request.
-	cookies        map[string]string // Response cookies, which are only parsed once.
-	result         any               // Result object for successful response.
-	errorResult    any               // Error result object for error response.
+	*http.Response                   // 内嵌的 http.Response，即该请求底层的响应对象。
+	cookies        map[string]string // 响应 cookie，只解析一次。
+	result         any               // 成功响应时的结果对象。
+	errorResult    any               // 错误响应时的结果对象。
 }
 
-// initCookie initializes the cookie map attribute of Response.
+// initCookie 初始化 Response 的 cookie map 字段。
 func (r *Response) initCookie() {
 	if r == nil {
 		return
 	}
 	if r.cookies == nil {
 		r.cookies = make(map[string]string)
-		// Response might be nil.
+		// Response 可能为 nil。
 		if r.Response != nil {
 			for _, v := range r.Cookies() {
 				r.cookies[v.Name] = v.Value
@@ -38,7 +38,7 @@ func (r *Response) initCookie() {
 	}
 }
 
-// GetCookie retrieves and returns the cookie value of specified `key`.
+// GetCookie 获取并返回指定 `key` 的 cookie 值。
 func (r *Response) GetCookie(key string) string {
 	if r == nil {
 		return ""
@@ -47,7 +47,7 @@ func (r *Response) GetCookie(key string) string {
 	return r.cookies[key]
 }
 
-// GetCookies retrieves and returns all cookie values.
+// GetCookies 获取并返回全部 cookie 值。
 func (r *Response) GetCookies() map[string]string {
 	if r == nil {
 		return nil
@@ -56,7 +56,7 @@ func (r *Response) GetCookies() map[string]string {
 	return r.cookies
 }
 
-// GetCookieMap retrieves and returns a copy of current cookie values map.
+// GetCookieMap 获取并返回当前 cookie 值 map 的副本。
 func (r *Response) GetCookieMap() map[string]string {
 	if r == nil {
 		return nil
@@ -69,9 +69,9 @@ func (r *Response) GetCookieMap() map[string]string {
 	return m
 }
 
-// ReadAll retrieves and returns the response content as []byte.
+// ReadAll 以 []byte 形式获取并返回响应内容。
 func (r *Response) ReadAll() []byte {
-	// Response might be nil.
+	// Response 可能为 nil。
 	if r == nil || r.Response == nil || r.Response.Body == nil {
 		return []byte{}
 	}
@@ -84,39 +84,39 @@ func (r *Response) ReadAll() []byte {
 		intlog.Error(ctx, "ReadAll error:", err)
 		return []byte{}
 	}
-	// Reset Body for multiple reads
+	// 重置 Body 以支持重复读取
 	r.SetBodyContent(body)
 	return body
 }
 
-// ReadAllString retrieves and returns the response content as string.
+// ReadAllString 以 string 形式获取并返回响应内容。
 func (r *Response) ReadAllString() string {
 	return string(r.ReadAll())
 }
 
-// Parse parses the response body into the given result.
+// Parse 将响应体解析到给定的 result 中。
 func (r *Response) Parse(result interface{}) error {
 	if r == nil || r.Response == nil || r.Response.Body == nil {
 		return errors.New("response or response body is nil")
 	}
 
-	// Read the response body
+	// 读取响应体
 	body, err := io.ReadAll(r.Response.Body)
 	if err != nil {
 		return err
 	}
-	// The original body is consumed, we need to close it.
+	// 原始 body 已被消费，需要关闭。
 	r.Response.Body.Close()
 
-	// Reset Body for multiple reads
+	// 重置 Body 以支持重复读取
 	r.SetBodyContent(body)
 
-	// Attempt to parse the response body
+	// 尝试解析响应体
 	mediaType := r.Header.Get("Content-Type")
 	if idx := strings.Index(mediaType, ";"); idx != -1 {
 		mediaType = mediaType[:idx]
 	}
-	mediaType = strings.TrimSpace(strings.ToLower(mediaType)) // Normalize to lower case and trim spaces
+	mediaType = strings.TrimSpace(strings.ToLower(mediaType)) // 统一转为小写并去除空格
 	switch mediaType {
 	case "application/json":
 		return json.Unmarshal(body, result)
@@ -133,8 +133,8 @@ func (r *Response) Parse(result interface{}) error {
 	return nil
 }
 
-// IsSuccess returns whether the response status code is in the 2xx range,
-// indicating that the request was successfully received, understood, and accepted.
+// IsSuccess 判断响应状态码是否处于 2xx 区间，
+// 即请求已被服务端成功接收、理解并接受。
 func (r *Response) IsSuccess() bool {
 	if r == nil || r.Response == nil {
 		return false
@@ -142,7 +142,7 @@ func (r *Response) IsSuccess() bool {
 	return r.StatusCode >= 200 && r.StatusCode < 300
 }
 
-// SetBodyContent overwrites response content with custom one.
+// SetBodyContent 用自定义内容覆盖响应内容。
 func (r *Response) SetBodyContent(content []byte) {
 	if r == nil || r.Response == nil {
 		return
@@ -152,7 +152,7 @@ func (r *Response) SetBodyContent(content []byte) {
 	r.ContentLength = int64(buffer.Len())
 }
 
-// Close closes the response when it will never be used.
+// Close 在响应不再使用时将其关闭。
 func (r *Response) Close() error {
 	if r == nil || r.Response == nil || r.Response.Body == nil {
 		return nil
@@ -160,7 +160,7 @@ func (r *Response) Close() error {
 	return r.Response.Body.Close()
 }
 
-// SetResult sets the result object for successful response.
+// SetResult 设置成功响应时的结果对象。
 func (r *Response) SetResult(result interface{}) {
 	if r == nil {
 		return
@@ -168,7 +168,7 @@ func (r *Response) SetResult(result interface{}) {
 	r.result = result
 }
 
-// SetError sets the error result object for error response.
+// SetError 设置错误响应时的结果对象。
 func (r *Response) SetError(err interface{}) {
 	if r == nil {
 		return
@@ -176,19 +176,19 @@ func (r *Response) SetError(err interface{}) {
 	r.errorResult = err
 }
 
-// parseResponse parses the response based on status code.
+// parseResponse 根据状态码解析响应。
 func (r *Response) parseResponse() error {
 	if r == nil || r.Response == nil {
 		return errors.New("response is nil")
 	}
 
 	if r.StatusCode >= 200 && r.StatusCode < 300 {
-		// Success response - parse into result if provided
+		// 成功响应 —— 若提供了 result 则解析到其中
 		if r.result != nil {
 			return r.Parse(r.result)
 		}
 	} else {
-		// Error response - parse into errorResult if provided
+		// 错误响应 —— 若提供了 errorResult 则解析到其中
 		if r.errorResult != nil {
 			return r.Parse(r.errorResult)
 		}
@@ -197,7 +197,7 @@ func (r *Response) parseResponse() error {
 	return nil
 }
 
-// GetResult returns the result object.
+// GetResult 返回结果对象。
 func (r *Response) GetResult() any {
 	if r == nil {
 		return nil
@@ -205,7 +205,7 @@ func (r *Response) GetResult() any {
 	return r.result
 }
 
-// GetError returns the error result object.
+// GetError 返回错误结果对象。
 func (r *Response) GetError() any {
 	if r == nil {
 		return nil

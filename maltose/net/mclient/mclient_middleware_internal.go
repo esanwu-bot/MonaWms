@@ -21,7 +21,7 @@ const (
 	version        = maltose.VERSION
 )
 
-// internalMiddlewareRecovery internal error recovery middleware
+// internalMiddlewareRecovery 内部错误恢复中间件
 func internalMiddlewareRecovery() MiddlewareFunc {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(req *Request) (*Response, error) {
@@ -30,7 +30,7 @@ func internalMiddlewareRecovery() MiddlewareFunc {
 
 			defer func() {
 				if r := recover(); r != nil {
-					// Handle panic
+					// 处理 panic
 					err = merror.Newf("client panic: %v", r)
 				}
 			}()
@@ -41,20 +41,20 @@ func internalMiddlewareRecovery() MiddlewareFunc {
 	}
 }
 
-// internalMiddlewareMetric internal metric collection middleware
+// internalMiddlewareMetric 内部指标采集中间件
 func internalMiddlewareMetric() MiddlewareFunc {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(req *Request) (*Response, error) {
-			// Record start time
+			// 记录起始时间
 			startTime := time.Now()
 
-			// Collect metrics before request
+			// 请求发出前采集指标
 			handleMetricsBeforeRequest(req.Request)
 
-			// Execute next middleware
+			// 执行下一个中间件
 			resp, err := next(req)
 
-			// Collect metrics after request done
+			// 请求完成后采集指标
 			if resp != nil {
 				handleMetricsAfterRequestDone(req.Request, resp.Response, err, startTime)
 			} else {
@@ -66,22 +66,22 @@ func internalMiddlewareMetric() MiddlewareFunc {
 	}
 }
 
-// internalMiddlewareTrace client tracing middleware
+// internalMiddlewareTrace 客户端链路追踪中间件
 func internalMiddlewareTrace() MiddlewareFunc {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(req *Request) (*Response, error) {
 			ctx := req.Request.Context()
 
-			// create tracer
+			// 创建 tracer
 			tr := otel.GetTracerProvider().Tracer(
 				instrumentName,
 				trace.WithInstrumentationVersion(version),
 			)
 
-			// build span name
+			// 构造 span 名称
 			spanName := "HTTP " + req.Request.Method
 
-			// Create span
+			// 创建 span
 			ctx, span := tr.Start(
 				ctx,
 				spanName,
@@ -89,7 +89,7 @@ func internalMiddlewareTrace() MiddlewareFunc {
 			)
 			defer span.End()
 
-			// set span attributes
+			// 设置 span 属性
 			span.SetAttributes(
 				attribute.String(mtrace.AttributeHTTPMethod, req.Request.Method),
 				attribute.String(mtrace.AttributeHTTPUrl, req.Request.URL.String()),
@@ -100,19 +100,19 @@ func internalMiddlewareTrace() MiddlewareFunc {
 				attribute.String(mtrace.AttributeHTTPUserAgent, req.Request.UserAgent()),
 			)
 
-			// Inject context into outgoing headers
+			// 将上下文注入出向请求头
 			otel.GetTextMapPropagator().Inject(
 				ctx,
 				propagation.HeaderCarrier(req.Request.Header),
 			)
 
-			// Update request with tracing context
+			// 用追踪上下文更新 request
 			req.Request = req.Request.WithContext(ctx)
 
-			// Execute next middleware
+			// 执行下一个中间件
 			resp, err := next(req)
 
-			// handle response and error
+			// 处理响应与错误
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
@@ -127,8 +127,8 @@ func internalMiddlewareTrace() MiddlewareFunc {
 	}
 }
 
-// httpStatusCodeToSpanStatus converts an HTTP status code to a span status code.
-// It returns the span status code and a description.
+// httpStatusCodeToSpanStatus 将 HTTP 状态码转换为 span 状态码。
+// 返回 span 状态码及其描述。
 func httpStatusCodeToSpanStatus(code int) (codes.Code, string) {
 	if code < 100 || code >= 600 {
 		return codes.Error, fmt.Sprintf("Invalid HTTP status code %d", code)
@@ -139,7 +139,7 @@ func httpStatusCodeToSpanStatus(code int) (codes.Code, string) {
 	return codes.Ok, ""
 }
 
-// getHost extracts the host from URL
+// getHost 从 URL 中提取 host
 func getHost(u *url.URL) string {
 	if u.Host != "" {
 		return u.Host
@@ -147,7 +147,7 @@ func getHost(u *url.URL) string {
 	return "unknown"
 }
 
-// getSchema extracts the schema from URL
+// getSchema 从 URL 中提取协议类型
 func getSchema(u *url.URL) string {
 	if u.Scheme != "" {
 		return u.Scheme
@@ -155,7 +155,7 @@ func getSchema(u *url.URL) string {
 	return "http"
 }
 
-// getPath extracts the path from URL
+// getPath 从 URL 中提取 path
 func getPath(u *url.URL) string {
 	if u.Path != "" {
 		return u.Path
@@ -163,7 +163,7 @@ func getPath(u *url.URL) string {
 	return "/"
 }
 
-// getProtocolVersion extracts protocol version
+// getProtocolVersion 提取协议版本
 func getProtocolVersion(proto string) string {
 	if proto != "" {
 		return strings.ToLower(proto)

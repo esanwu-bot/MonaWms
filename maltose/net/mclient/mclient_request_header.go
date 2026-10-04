@@ -2,8 +2,8 @@ package mclient
 
 import "net/http"
 
-// SetHeader sets a header key-value pair for the request.
-// This is an alias of Header method for better chain API compatibility.
+// SetHeader 为请求设置请求头键值对。
+// 它是 Header 方法的别名，用于更好地适配链式调用。
 func (r *Request) SetHeader(key, value string) *Request {
 	if r.Request == nil {
 		r.Request = &http.Request{
@@ -14,7 +14,7 @@ func (r *Request) SetHeader(key, value string) *Request {
 	return r
 }
 
-// SetHeaders sets multiple headers at once.
+// SetHeaders 一次性设置多个请求头。
 func (r *Request) SetHeaders(headers map[string]string) *Request {
 	for k, v := range headers {
 		r.SetHeader(k, v)
@@ -22,7 +22,7 @@ func (r *Request) SetHeaders(headers map[string]string) *Request {
 	return r
 }
 
-// ContentType sets the Content-Type header for the request.
+// ContentType 设置请求的 Content-Type 请求头。
 func (r *Request) ContentType(contentType string) *Request {
 	return r.SetHeader("Content-Type", contentType)
 }

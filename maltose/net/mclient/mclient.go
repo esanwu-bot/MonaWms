@@ -9,15 +9,15 @@ import (
 	"github.com/graingo/maltose"
 )
 
-// Client is an HTTP client with enhanced features.
+// Client 是功能增强的 HTTP 客户端。
 type Client struct {
-	client      *http.Client     // HTTP client for the request.
-	config      ClientConfig     // Default configuration for the client.
-	middlewares []MiddlewareFunc // Middleware functions.
+	client      *http.Client     // 发起请求所用的 HTTP 客户端。
+	config      ClientConfig     // 客户端的默认配置。
+	middlewares []MiddlewareFunc // 中间件函数。
 }
 
-// New creates and returns a new HTTP client object.
-// It comes with a set of default internal middlewares for recovery, tracing, and metrics.
+// New 创建并返回新的 HTTP 客户端对象。
+// 它默认内置一组内部中间件，用于错误恢复、链路追踪与指标采集。
 func New() *Client {
 	transport := http.DefaultTransport
 	if defaultTransport, ok := http.DefaultTransport.(*http.Transport); ok {
@@ -34,10 +34,10 @@ func New() *Client {
 		middlewares: make([]MiddlewareFunc, 0),
 	}
 
-	// Set default User-Agent.
+	// 设置默认 User-Agent。
 	c.config.Header.Set("User-Agent", fmt.Sprintf("maltose-mclient/%s", maltose.VERSION))
 
-	// Add default internal middlewares. These are fundamental for observability and stability.
+	// 添加默认内部中间件，它们是可观测性与稳定性的基础保障。
 	c.Use(
 		internalMiddlewareRecovery(),
 		internalMiddlewareTrace(),
@@ -47,12 +47,12 @@ func New() *Client {
 	return c
 }
 
-// NewWithConfig creates and returns a client with given config.
-// Note that the internal middlewares (recovery, trace, metric) are still applied.
+// NewWithConfig 根据给定配置创建并返回客户端。
+// 注意：内部中间件（错误恢复、链路追踪、指标采集）仍会生效。
 func NewWithConfig(config ClientConfig) *Client {
 	c := New()
 
-	// Preserve default User-Agent if not provided in the custom config.
+	// 自定义配置中未提供 User-Agent 时，保留默认值。
 	if config.Header == nil {
 		config.Header = make(http.Header)
 	} else {
@@ -63,7 +63,7 @@ func NewWithConfig(config ClientConfig) *Client {
 	}
 	c.config = config
 
-	// Apply configuration to http.Client
+	// 将配置应用到 http.Client
 	if config.Timeout > 0 {
 		c.client.Timeout = config.Timeout
 	}
@@ -74,13 +74,13 @@ func NewWithConfig(config ClientConfig) *Client {
 	return c
 }
 
-// Use adds middleware handlers to the client.
+// Use 为客户端添加中间件处理器。
 func (c *Client) Use(middlewares ...MiddlewareFunc) *Client {
 	c.middlewares = append(c.middlewares, middlewares...)
 	return c
 }
 
-// Clone creates and returns a copy of the current client.
+// Clone 创建并返回当前客户端的副本。
 func (c *Client) Clone() *Client {
 	httpClient := *c.client
 	newClient := &Client{client: &httpClient}
@@ -92,13 +92,13 @@ func (c *Client) Clone() *Client {
 	return newClient
 }
 
-// do performs the HTTP request using the underlying HTTP client.
-// This is an internal method used by the middleware chain.
+// do 使用底层 HTTP 客户端执行请求。
+// 这是供中间件链调用的内部方法。
 func (c *Client) do(req *http.Request) (*http.Response, error) {
-	// Clone request to avoid modifying the original request
+	// 克隆请求，避免修改原始请求
 	reqCopy := req.Clone(req.Context())
 
-	// Apply client configuration
+	// 应用客户端配置
 	if c.config.Header != nil && reqCopy.Header == nil {
 		reqCopy.Header = make(http.Header)
 	}
@@ -109,30 +109,30 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	// Execute request
+	// 执行请求
 	return c.client.Do(reqCopy)
 }
 
-// GetClient returns the underlying http.Client.
+// GetClient 返回底层的 http.Client。
 func (c *Client) GetClient() *http.Client {
 	return c.client
 }
 
-// SetTransport sets the client transport.
+// SetTransport 设置客户端的 transport。
 func (c *Client) SetTransport(transport http.RoundTripper) *Client {
 	c.client.Transport = transport
 	c.config.Transport = transport
 	return c
 }
 
-// SetConfig sets the client configuration.
+// SetConfig 设置客户端配置。
 func (c *Client) SetConfig(config ClientConfig) *Client {
 	if config.Header != nil {
 		config.Header = config.Header.Clone()
 	}
 	c.config = config
 
-	// Apply configuration to HTTP client
+	// 将配置应用到 HTTP 客户端
 	if config.Timeout > 0 {
 		c.client.Timeout = config.Timeout
 	}
@@ -143,7 +143,7 @@ func (c *Client) SetConfig(config ClientConfig) *Client {
 	return c
 }
 
-// NewRequest creates and returns a new request object.
+// NewRequest 创建并返回新的请求对象。
 func (c *Client) NewRequest() *Request {
 	return &Request{
 		client:      c,
@@ -154,7 +154,7 @@ func (c *Client) NewRequest() *Request {
 	}
 }
 
-// R returns a new request object bound to this client for chain calls.
+// R 返回绑定到该客户端的新请求对象，便于链式调用。
 func (c *Client) R() *Request {
 	return c.NewRequest()
 }

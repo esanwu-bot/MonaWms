@@ -10,13 +10,13 @@ import (
 	"github.com/graingo/maltose/internal/intlog"
 )
 
-// SetQuery sets a query parameter for the request.
+// SetQuery 为请求设置查询参数。
 func (r *Request) SetQuery(key, value string) *Request {
 	r.queryParams.Set(key, value)
 	return r
 }
 
-// SetQueryMap sets multiple query parameters from a map.
+// SetQueryMap 通过 map 批量设置查询参数。
 func (r *Request) SetQueryMap(params map[string]string) *Request {
 	for k, v := range params {
 		r.queryParams.Set(k, v)
@@ -24,13 +24,13 @@ func (r *Request) SetQueryMap(params map[string]string) *Request {
 	return r
 }
 
-// SetForm sets a form parameter for the request.
+// SetForm 为请求设置表单参数。
 func (r *Request) SetForm(key, value string) *Request {
 	r.formParams.Set(key, value)
 	return r
 }
 
-// SetFormMap sets multiple form parameters from a map.
+// SetFormMap 通过 map 批量设置表单参数。
 func (r *Request) SetFormMap(params map[string]string) *Request {
 	for k, v := range params {
 		r.formParams.Set(k, v)
@@ -38,14 +38,14 @@ func (r *Request) SetFormMap(params map[string]string) *Request {
 	return r
 }
 
-// SetBody sets the request body.
+// SetBody 设置请求体。
 func (r *Request) SetBody(body any) *Request {
 	return r.data(body)
 }
 
-// Data sets the request data.
-// It intelligently handles different data types and buffers the body
-// into memory to ensure it's re-readable for retries.
+// data 设置请求数据。
+// 它会智能处理不同类型的数据，并将请求体缓冲到内存中，
+// 以保证重试时可以重复读取。
 func (r *Request) data(data any) *Request {
 	if r.Request == nil {
 		r.Request = &http.Request{
@@ -62,8 +62,8 @@ func (r *Request) data(data any) *Request {
 	case []byte:
 		bodyBytes = d
 	case io.Reader:
-		// For a generic, non-seekable reader, we must buffer it all into memory
-		// to support retries. This is a design trade-off for simplicity and reliability.
+		// 对于不可 seek 的通用 reader，必须将其完整缓冲到内存中
+		// 才能支持重试。这是在简单性与可靠性之间做出的设计取舍。
 		b, err := io.ReadAll(d)
 		if err != nil {
 			ctx := context.Background()
@@ -71,14 +71,14 @@ func (r *Request) data(data any) *Request {
 				ctx = r.Request.Context()
 			}
 			intlog.Errorf(ctx, "mclient: failed to read io.Reader body for retry buffering: %v", err)
-			// As a fallback, use the original reader but retries with body will fail.
+			// 兜底方案：仍使用原始 reader，但带请求体的重试会失败。
 			r.Request.Body = io.NopCloser(d)
 			r.Request.GetBody = nil
 			return r
 		}
 		bodyBytes = b
 	default:
-		// Try JSON encoding for other types
+		// 其他类型尝试按 JSON 编码
 		jsonBytes, err := json.Marshal(data)
 		if err != nil {
 			ctx := context.Background()
@@ -92,12 +92,12 @@ func (r *Request) data(data any) *Request {
 		isJSON = true
 	}
 
-	// Set the body for the first request
+	// 设置首次请求的请求体
 	r.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-	// Set the content length
+	// 设置内容长度
 	r.Request.ContentLength = int64(len(bodyBytes))
-	// Provide GetBody for retries, which is the standard way http.Client
-	// handles re-sending the body on redirects or retries.
+	// 提供 GetBody 以支持重试，这也是 http.Client 在重定向或重试时
+	// 重新发送请求体的标准做法。
 	r.Request.GetBody = func() (io.ReadCloser, error) {
 		return io.NopCloser(bytes.NewReader(bodyBytes)), nil
 	}

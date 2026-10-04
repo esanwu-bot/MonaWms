@@ -11,13 +11,13 @@ import (
 	"github.com/graingo/maltose/os/mlog"
 )
 
-// LogMaxBodySize controls request/response body logging. Zero disables body logging.
+// LogMaxBodySize 控制请求/响应体的日志记录，为 0 时关闭请求体日志。
 var LogMaxBodySize = 0
 
-// MiddlewareLog creates a middleware that logs request and response details in two steps:
-// 1. Before the request is sent ("started").
-// 2. After the request is completed ("finished" or "error").
-// This allows for better observability, especially for hanging requests.
+// MiddlewareLog 创建分两步记录请求与响应详情的中间件：
+// 1. 请求发出前（"started"）。
+// 2. 请求完成后（"finished" 或 "error"）。
+// 这样可以获得更好的可观测性，尤其便于排查挂起的请求。
 func MiddlewareLog(logger *mlog.Logger) MiddlewareFunc {
 	if logger == nil {
 		return func(next HandlerFunc) HandlerFunc {
@@ -31,7 +31,7 @@ func MiddlewareLog(logger *mlog.Logger) MiddlewareFunc {
 			ctx := req.Context()
 			l := logger.With(mlog.String(maltose.COMPONENT, "mclient"))
 
-			// --- Step 1: Log request start ---
+			// --- 第 1 步：记录请求开始 ---
 
 			var reqBodyBytes []byte
 			if bodyLimit != 0 && req.Body != nil {
@@ -51,24 +51,24 @@ func MiddlewareLog(logger *mlog.Logger) MiddlewareFunc {
 
 			l.Infow(ctx, "http client request started", requestFields...)
 
-			// --- Step 2: Execute request and log completion ---
+			// --- 第 2 步：执行请求并记录完成 ---
 
 			start := time.Now()
 			resp, err := next(req)
 			duration := time.Since(start)
 
-			// The final log should contain all information for context.
-			// Start with the initial request fields.
+			// 最终日志需要包含完整的上下文信息。
+			// 以请求相关字段为基础。
 			finalFields := append(requestFields, mlog.Float64("duration_ms", float64(duration.Nanoseconds())/1e6))
 
 			if err != nil {
-				// Handle network or other errors before getting a response
+				// 处理尚未获得响应时的网络或其他错误
 				finalFields = append(finalFields, mlog.Err(err))
 				l.Errorw(ctx, err, "http client request error", finalFields...)
 				return resp, err
 			}
 
-			// If we got a response, add its details to the log
+			// 若已获得响应，则将其详情加入日志
 			finalFields = append(finalFields, mlog.Int("status", resp.StatusCode))
 			if bodyLimit != 0 && resp.Body != nil {
 				bodyBytes, restoredBody := readBodyForLog(resp.Body, bodyLimit)
@@ -136,12 +136,12 @@ func readBodyForLog(body io.ReadCloser, limit int) ([]byte, io.ReadCloser) {
 	}
 }
 
-// getBodyString safely converts a byte slice to a string for logging, with a size limit.
+// getBodyString 安全地将字节切片转换为用于日志的字符串，并按上限截断。
 func getBodyString(body []byte, limit int) string {
 	if len(body) == 0 {
 		return ""
 	}
-	if limit < 0 { // no limit
+	if limit < 0 { // 不限制长度
 		return string(body)
 	}
 	if len(body) > limit {

@@ -7,34 +7,34 @@ import (
 	"time"
 )
 
-// Request is the struct for client request.
+// Request 是客户端请求的结构体。
 type Request struct {
-	*http.Request                                   // Request is the underlying http.Request object.
-	client         *Client                          // The client that creates this request.
-	response       *Response                        // The response object of this request.
-	retryCount     int                              // Retry count for the request.
-	retryInterval  time.Duration                    // Retry interval for the request.
-	middlewares    []MiddlewareFunc                 // Middleware functions.
-	queryParams    url.Values                       // Query parameters.
-	formParams     url.Values                       // Form parameters.
-	retryCondition func(*http.Response, error) bool // Retry condition.
-	retryConfig    RetryConfig                      // Retry configuration.
-	result         any                              // Result object for successful response.
-	errorResult    any                              // Error result object for error response.
+	*http.Request                                   // 内嵌的 http.Request，即底层请求对象。
+	client         *Client                          // 创建该请求的客户端。
+	response       *Response                        // 该请求的响应对象。
+	retryCount     int                              // 请求的重试次数。
+	retryInterval  time.Duration                    // 请求的重试间隔。
+	middlewares    []MiddlewareFunc                 // 中间件函数。
+	queryParams    url.Values                       // 查询参数。
+	formParams     url.Values                       // 表单参数。
+	retryCondition func(*http.Response, error) bool // 重试条件。
+	retryConfig    RetryConfig                      // 重试配置。
+	result         any                              // 成功响应时的结果对象。
+	errorResult    any                              // 错误响应时的结果对象。
 }
 
-// GetResponse returns the response object of this request.
+// GetResponse 返回该请求的响应对象。
 func (r *Request) GetResponse() *Response {
 	return r.response
 }
 
-// SetResponse sets the response object for this request.
+// SetResponse 设置该请求的响应对象。
 func (r *Request) SetResponse(resp *Response) {
 	r.response = resp
 }
 
-// SetContext sets the context for the request.
-// It creates a new underlying http.Request with the given context.
+// SetContext 设置请求的上下文。
+// 它会基于给定上下文创建新的底层 http.Request。
 func (r *Request) SetContext(ctx context.Context) *Request {
 	if ctx == nil {
 		return r
@@ -48,7 +48,7 @@ func (r *Request) SetContext(ctx context.Context) *Request {
 	return r
 }
 
-// Method sets the HTTP method for the request.
+// Method 设置请求的 HTTP 方法。
 func (r *Request) Method(method string) *Request {
 	if r.Request == nil {
 		r.Request = &http.Request{
@@ -59,7 +59,7 @@ func (r *Request) Method(method string) *Request {
 	return r
 }
 
-// URL sets the request URL.
+// URL 设置请求的 URL。
 func (r *Request) URL(rawURL string) *Request {
 	if r.Request == nil {
 		r.Request = &http.Request{
@@ -73,19 +73,19 @@ func (r *Request) URL(rawURL string) *Request {
 	return r
 }
 
-// SetResult sets the result object for successful response.
+// SetResult 设置成功响应时的结果对象。
 func (r *Request) SetResult(result any) *Request {
 	r.result = result
 	return r
 }
 
-// SetError sets the error result object for error response.
+// SetError 设置错误响应时的结果对象。
 func (r *Request) SetError(err any) *Request {
 	r.errorResult = err
 	return r
 }
 
-// GetRequest returns the *http.Request object.
+// GetRequest 返回 *http.Request 对象。
 func (r *Request) GetRequest() *http.Request {
 	return r.Request
 }

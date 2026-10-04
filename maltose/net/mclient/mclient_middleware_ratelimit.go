@@ -10,30 +10,29 @@ import (
 	"github.com/graingo/maltose/internal/intlog"
 )
 
-// RateLimiter defines the interface for rate limiters.
+// RateLimiter 定义限流器的接口。
 type RateLimiter interface {
-	// Wait blocks until a request can be allowed or context is cancelled.
+	// Wait 阻塞等待，直到请求被放行或上下文被取消。
 	Wait(ctx context.Context) error
-	// TryAcquire tries to acquire a token without blocking.
+	// TryAcquire 非阻塞地尝试获取一个令牌。
 	TryAcquire() bool
 }
 
 // -----------------------------------------------------------------------------
-// Token Bucket Rate Limiter Implementation
+// 令牌桶限流器实现
 // -----------------------------------------------------------------------------
 
-// TokenBucketLimiter implements a token bucket rate limiter.
+// TokenBucketLimiter 实现基于令牌桶的限流器。
 type TokenBucketLimiter struct {
-	rate       float64    // tokens per second
-	bucketSize int        // maximum burst size
-	tokens     float64    // current number of tokens
-	lastTime   time.Time  // last time tokens were added
-	mu         sync.Mutex // mutex for thread safety
+	rate       float64    // 每秒生成的令牌数
+	bucketSize int        // 最大突发量
+	tokens     float64    // 当前令牌数
+	lastTime   time.Time  // 上次补充令牌的时间
+	mu         sync.Mutex // 保证并发安全的互斥锁
 }
 
-// NewTokenBucketLimiter creates a new token bucket rate limiter.
-// The rate is specified in requests per second, and bucketSize
-// determines the maximum burst size.
+// NewTokenBucketLimiter 创建新的令牌桶限流器。
+// rate 以每秒请求数表示，bucketSize 决定最大突发量。
 func NewTokenBucketLimiter(rate float64, bucketSize int) *TokenBucketLimiter {
 	return &TokenBucketLimiter{
 		rate:       rate,
@@ -43,13 +42,13 @@ func NewTokenBucketLimiter(rate float64, bucketSize int) *TokenBucketLimiter {
 	}
 }
 
-// refill adds tokens to the bucket based on elapsed time.
+// refill 根据经过的时间向桶中补充令牌。
 func (l *TokenBucketLimiter) refill() {
 	now := time.Now()
 	elapsed := now.Sub(l.lastTime).Seconds()
 	l.lastTime = now
 
-	// Calculate new tokens to add based on rate and elapsed time
+	// 根据速率与经过时间计算需要补充的令牌数
 	newTokens := elapsed * l.rate
 	l.tokens += newTokens
 	if l.tokens > float64(l.bucketSize) {
@@ -57,8 +56,8 @@ func (l *TokenBucketLimiter) refill() {
 	}
 }
 
-// TryAcquire attempts to take a token from the bucket without blocking.
-// Returns true if a token was successfully taken, false otherwise.
+// TryAcquire 非阻塞地尝试从桶中取一个令牌。
+// 成功取到令牌返回 true，否则返回 false。
 func (l *TokenBucketLimiter) TryAcquire() bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -72,7 +71,7 @@ func (l *TokenBucketLimiter) TryAcquire() bool {
 	return false
 }
 
-// Wait blocks until a token is available or the context is cancelled.
+// Wait 阻塞等待，直到获取到令牌或上下文被取消。
 func (l *TokenBucketLimiter) Wait(ctx context.Context) error {
 	for {
 		waitTime, allow := l.reserveToken()
@@ -82,15 +81,15 @@ func (l *TokenBucketLimiter) Wait(ctx context.Context) error {
 
 		select {
 		case <-time.After(waitTime):
-			// Continue and try again
+			// 继续并再次尝试
 		case <-ctx.Done():
 			return ctx.Err()
 		}
 	}
 }
 
-// reserveToken calculates the wait time for the next token.
-// Returns the wait time and whether a token was immediately available.
+// reserveToken 计算获取下一个令牌所需等待的时间。
+// 返回等待时间，以及是否立即取到了令牌。
 func (l *TokenBucketLimiter) reserveToken() (time.Duration, bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -102,53 +101,53 @@ func (l *TokenBucketLimiter) reserveToken() (time.Duration, bool) {
 		return 0, true
 	}
 
-	// Calculate time to wait for next token
+	// 计算等待下一个令牌的时间
 	waitTime := time.Duration((1 - l.tokens) / l.rate * float64(time.Second))
 	return waitTime, false
 }
 
 // -----------------------------------------------------------------------------
-// Rate Limiting Middleware
+// 限流中间件
 // -----------------------------------------------------------------------------
 
-// RateLimitConfig represents options for rate limiting middleware.
+// RateLimitConfig 表示限流中间件的配置项。
 type RateLimitConfig struct {
-	// RequestsPerSecond is the number of requests allowed per second
+	// RequestsPerSecond 表示每秒允许的请求数
 	RequestsPerSecond float64
-	// Burst is the maximum number of requests allowed to happen at once
+	// Burst 表示允许同时发生的最大请求数
 	Burst int
-	// Skip determines if rate limiting should be skipped for a request
+	// Skip 决定某个请求是否跳过限流
 	Skip func(*Request) bool
-	// ErrorHandler handles rate limit errors
+	// ErrorHandler 处理限流错误
 	ErrorHandler func(context.Context, error) (*Response, error)
 }
 
-// MiddlewareRateLimit returns a middleware that limits the rate of requests.
+// MiddlewareRateLimit 返回用于限制请求速率的中间件。
 func MiddlewareRateLimit(config RateLimitConfig) MiddlewareFunc {
-	// Default values
+	// 默认值
 	rps := config.RequestsPerSecond
 	if rps <= 0 {
-		rps = 100 // Default: 100 requests/second
+		rps = 100 // 默认：每秒 100 个请求
 	}
 
 	burst := config.Burst
 	if burst <= 0 {
-		burst = 10 // Default: 10 burst
+		burst = 10 // 默认：突发 10 个请求
 	}
 
-	// Create a token bucket limiter
+	// 创建令牌桶限流器
 	limiter := NewTokenBucketLimiter(rps, burst)
 
 	return func(next HandlerFunc) HandlerFunc {
 		return func(req *Request) (*Response, error) {
 			ctx := req.Context()
 
-			// Skip rate limiting if condition is met
+			// 满足条件时跳过限流
 			if config.Skip != nil && config.Skip(req) {
 				return next(req)
 			}
 
-			// Attempt to acquire a token
+			// 尝试获取令牌
 			err := limiter.Wait(ctx)
 			if err != nil {
 				if config.ErrorHandler != nil {
@@ -157,7 +156,7 @@ func MiddlewareRateLimit(config RateLimitConfig) MiddlewareFunc {
 				return nil, merror.WrapCode(err, mcode.CodeRateLimitExceeded)
 			}
 
-			// Log rate limiting info in debug mode
+			// 调试模式下记录限流信息
 			var urlStr string
 			if req.Request != nil && req.Request.URL != nil {
 				urlStr = req.Request.URL.String()
@@ -166,13 +165,13 @@ func MiddlewareRateLimit(config RateLimitConfig) MiddlewareFunc {
 			}
 			intlog.Printf(ctx, "Rate limiter allowed request to %s", urlStr)
 
-			// Proceed with the request
+			// 继续执行请求
 			return next(req)
 		}
 	}
 }
 
-// WithGlobalRateLimit applies rate limiting to all requests from this client.
+// WithGlobalRateLimit 对该客户端的所有请求启用限流。
 func (c *Client) WithGlobalRateLimit(rps float64, burst int) *Client {
 	c.Use(MiddlewareRateLimit(RateLimitConfig{
 		RequestsPerSecond: rps,
