@@ -13,11 +13,11 @@ import (
 	"github.com/graingo/maltose/errors/merror"
 )
 
-// APIDefinition holds the extracted information for a single API endpoint.
+// APIDefinition 保存单个 API 接口提取出的信息。
 type APIDefinition struct {
 	Method      string
 	Path        string
-	Group       string // The group prefix for the path
+	Group       string // 路径的分组前缀
 	Summary     string
 	Tag         string
 	Description string
@@ -25,13 +25,13 @@ type APIDefinition struct {
 	Response    StructInfo
 }
 
-// StructInfo holds information about a request or response struct.
+// StructInfo 保存请求或响应结构体的信息。
 type StructInfo struct {
 	Name   string
 	Fields []FieldInfo
 }
 
-// FieldInfo holds information about a single struct field.
+// FieldInfo 保存结构体单个字段的信息。
 type FieldInfo struct {
 	Name        string
 	JSONName    string
@@ -41,16 +41,16 @@ type FieldInfo struct {
 	Required    bool
 }
 
-// ParseDir parses all .go files in a directory and its subdirectories,
-// and extracts API definitions from files containing "m.Meta".
+// ParseDir 解析目录及其子目录中的所有 .go 文件，
+// 并从包含 "m.Meta" 的文件中提取 API 定义。
 func ParseDir(dir string) ([]APIDefinition, map[string]*ast.StructType, error) {
 	fset := token.NewFileSet()
 	var apiDefs []APIDefinition
 	allStructs := make(map[string]*ast.StructType)
 	structSources := make(map[string]string)
-	fileToPkgPath := make(map[string]string) // file path -> package path
+	fileToPkgPath := make(map[string]string) // 文件路径 -> 包路径
 
-	// First pass: Walk files to get their package paths relative to the root `dir`
+	// 第一遍：遍历文件，获取相对根目录 `dir` 的包路径
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -71,7 +71,7 @@ func ParseDir(dir string) ([]APIDefinition, map[string]*ast.StructType, error) {
 	}
 	sort.Strings(paths)
 
-	// Second pass: Parse files and collect all structs in deterministic order.
+	// 第二遍：解析文件，按确定顺序收集所有结构体。
 	for _, path := range paths {
 		file, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 		if err != nil {
@@ -91,10 +91,10 @@ func ParseDir(dir string) ([]APIDefinition, map[string]*ast.StructType, error) {
 								)
 								return false
 							}
-							// Store the struct along with its source file path for later lookup
+							// 保存结构体及其源文件路径，便于后续查找
 							allStructs[typeSpec.Name.Name] = structType
 							structSources[typeSpec.Name.Name] = path
-							// A bit of a hack: store file path in a field's doc comment
+							// 有点取巧的做法：把文件路径存放在字段的文档注释中
 							if structType.Fields != nil && len(structType.Fields.List) > 0 {
 								if structType.Fields.List[0].Doc == nil {
 									structType.Fields.List[0].Doc = &ast.CommentGroup{}
@@ -112,7 +112,7 @@ func ParseDir(dir string) ([]APIDefinition, map[string]*ast.StructType, error) {
 		}
 	}
 
-	// Third pass: find "Req" structs, build API definitions and calculate paths
+	// 第三遍：查找 "Req" 结构体，构建 API 定义并计算路径
 	structNames := make([]string, 0, len(allStructs))
 	for name := range allStructs {
 		structNames = append(structNames, name)
@@ -124,7 +124,7 @@ func ParseDir(dir string) ([]APIDefinition, map[string]*ast.StructType, error) {
 			continue
 		}
 
-		// Retrieve the source file path from our hack
+		// 从上面的取巧做法中取回源文件路径
 		var sourcePath string
 		if structType.Fields != nil && len(structType.Fields.List) > 0 && structType.Fields.List[0].Doc != nil {
 			for _, comment := range structType.Fields.List[0].Doc.List {
@@ -135,16 +135,16 @@ func ParseDir(dir string) ([]APIDefinition, map[string]*ast.StructType, error) {
 			}
 		}
 		if sourcePath == "" {
-			continue // Should not happen if our hack works
+			continue // 若上面的取巧做法生效，这里不应发生
 		}
 		pkgPath := fileToPkgPath[sourcePath]
 
 		apiDef := APIDefinition{}
 		isAPIEntry := false
 
-		// Find m.Meta and extract endpoint info
+		// 查找 m.Meta 并提取接口信息
 		for _, field := range structType.Fields.List {
-			// Check for embedded m.Meta
+			// 检查是否嵌入了 m.Meta
 			if field.Names == nil {
 				if selExpr, ok := field.Type.(*ast.SelectorExpr); ok {
 					if x, ok := selExpr.X.(*ast.Ident); ok && x.Name == "m" && selExpr.Sel.Name == "Meta" {
@@ -168,48 +168,48 @@ func ParseDir(dir string) ([]APIDefinition, map[string]*ast.StructType, error) {
 			continue
 		}
 
-		// Calculate final path
+		// 计算最终路径
 		if apiDef.Group != "" {
-			// If group is explicitly set, use it.
+			// 若显式设置了 group，则直接使用。
 			if apiDef.Group == "/" {
-				// Use path directly, but ensure it starts with a slash
+				// 直接使用 path，但确保其以斜杠开头
 				apiDef.Path = "/" + strings.TrimPrefix(apiDef.Path, "/")
 			} else {
 				apiDef.Path = "/" + strings.TrimPrefix(filepath.ToSlash(filepath.Join(apiDef.Group, apiDef.Path)), "/")
 			}
 		} else {
-			// Otherwise, derive a prefix from the file's directory path.
-			var prefix string // Defaults to empty
+			// 否则，根据文件所在目录推导前缀。
+					var prefix string // 默认为空
 			if pkgPath != "" && pkgPath != "." {
 				pathForPrefix := filepath.ToSlash(pkgPath)
 				parts := strings.Split(pathForPrefix, "/")
 
-				// Try to find a version string like "v1", "v2", etc.
+				// 尝试查找形如 "v1"、"v2" 的版本字符串。
 				for _, part := range parts {
 					if len(part) > 1 && part[0] == 'v' && part[1] >= '0' && part[1] <= '9' {
-						// If found, construct the prefix as "api/<version>" per user request.
+						// 若找到，按需求将前缀构造为 "api/<version>"。
 						prefix = "api/" + part
 						break
 					}
 				}
-				// If no version string is found, prefix remains empty, as requested.
+				// 若未找到版本字符串，则按要求保持前缀为空。
 			}
 
-			// Join the calculated prefix with the path from the tag.
+			// 将推导出的前缀与标签中的 path 拼接。
 			if prefix != "" {
 				apiDef.Path = filepath.Join(prefix, apiDef.Path)
 			}
-			// Ensure the final path starts with a single slash.
+			// 确保最终路径以单个斜杠开头。
 			apiDef.Path = "/" + strings.TrimPrefix(filepath.ToSlash(apiDef.Path), "/")
 		}
 
-		// Populate request struct info
+		// 填充请求结构体信息
 		apiDef.Request = parseStructInfo(name, structType, apiDef.Method)
 
-		// Find and populate response struct info
+		// 查找并填充响应结构体信息
 		resName := strings.TrimSuffix(name, "Req") + "Res"
 		if resStructType, ok := allStructs[resName]; ok {
-			apiDef.Response = parseStructInfo(resName, resStructType, "POST") // Method doesn't matter for response schema
+			apiDef.Response = parseStructInfo(resName, resStructType, "POST") // 响应结构体的解析与请求方法无关
 		}
 
 		apiDefs = append(apiDefs, apiDef)
@@ -230,10 +230,10 @@ func containsMeta(file *ast.File) bool {
 		if selExpr, ok := n.(*ast.SelectorExpr); ok {
 			if x, ok := selExpr.X.(*ast.Ident); ok && x.Name == "m" && selExpr.Sel.Name == "Meta" {
 				hasMeta = true
-				return false // stop inspecting
+				return false // 停止遍历
 			}
 		}
-		return !hasMeta // continue inspecting if meta not found
+		return !hasMeta // 未找到 meta 时继续遍历
 	})
 	return hasMeta
 }
@@ -241,14 +241,14 @@ func containsMeta(file *ast.File) bool {
 func parseStructInfo(name string, structType *ast.StructType, method string) StructInfo {
 	info := StructInfo{Name: name}
 	for _, field := range structType.Fields.List {
-		if len(field.Names) == 0 { // Skip embedded fields
+		if len(field.Names) == 0 { // 跳过嵌入字段
 			continue
 		}
 		fieldName := field.Names[0].Name
 
 		fieldTypeName := extractTypeName(field.Type)
 		if fieldTypeName == "" {
-			continue // Skip unhandled types for now
+			continue // 暂不处理无法识别的类型
 		}
 
 		var tag reflect.StructTag
@@ -280,36 +280,36 @@ func parseStructInfo(name string, structType *ast.StructType, method string) Str
 	return info
 }
 
-// extractTypeName extracts type name from ast.Expr, supporting various type forms
+// extractTypeName 从 ast.Expr 中提取类型名，支持多种类型形式
 func extractTypeName(expr ast.Expr) string {
 	switch t := expr.(type) {
 	case *ast.Ident:
-		// Simple type: string, int, User
+		// 简单类型：string、int、User
 		return t.Name
 	case *ast.StarExpr:
-		// Pointer type: *User
+		// 指针类型：*User
 		if innerType := extractTypeName(t.X); innerType != "" {
 			return "*" + innerType
 		}
 	case *ast.ArrayType:
-		// Array/slice type: []User, [5]int
+		// 数组/切片类型：[]User、[5]int
 		if innerType := extractTypeName(t.Elt); innerType != "" {
 			return "[]" + innerType
 		}
 	case *ast.MapType:
-		// Map type: map[string]User
+		// map 类型：map[string]User
 		keyType := extractTypeName(t.Key)
 		valueType := extractTypeName(t.Value)
 		if keyType != "" && valueType != "" {
 			return "map[" + keyType + "]" + valueType
 		}
 	case *ast.SelectorExpr:
-		// Qualified type: time.Time, pkg.User
+		// 带包名限定的类型：time.Time、pkg.User
 		if x, ok := t.X.(*ast.Ident); ok {
 			return x.Name + "." + t.Sel.Name
 		}
 	case *ast.InterfaceType:
-		// Interface type: interface{}
+		// 接口类型：interface{}
 		return "interface{}"
 	}
 	return ""

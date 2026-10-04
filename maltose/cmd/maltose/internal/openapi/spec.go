@@ -8,14 +8,14 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
-// schemaBuilder holds the state for building the OpenAPI specification,
-// including component schemas and a map of all parsed struct ASTs.
+// schemaBuilder 保存构建 OpenAPI 规范时的状态，
+// 包括组件 schema 以及所有已解析结构体 AST 的映射。
 type schemaBuilder struct {
 	spec       *openapi3.T
 	allStructs map[string]*ast.StructType
 }
 
-// BuildSpec constructs the full OpenAPI v3 specification from the parsed API definitions.
+// BuildSpec 基于解析出的 API 定义构建完整的 OpenAPI v3 规范。
 func BuildSpec(apiDefs []APIDefinition, projectName string, allStructs map[string]*ast.StructType) (*openapi3.T, error) {
 	spec := &openapi3.T{
 		OpenAPI: "3.0.0",
@@ -56,10 +56,10 @@ func BuildSpec(apiDefs []APIDefinition, projectName string, allStructs map[strin
 			Responses:   openapi3.NewResponses(),
 		}
 
-		// Handle Request
+		// 处理请求
 		if method == "GET" {
 			for _, field := range apiDef.Request.Fields {
-				paramSchema := builder.typeToSchemaRef(field.Type).Value // Unpack SchemaRef for parameters
+				paramSchema := builder.typeToSchemaRef(field.Type).Value // 解包 SchemaRef 以用于参数
 				param := openapi3.NewQueryParameter(field.JSONName).
 					WithDescription(field.Description).
 					WithRequired(field.Required).
@@ -68,7 +68,7 @@ func BuildSpec(apiDefs []APIDefinition, projectName string, allStructs map[strin
 					Value: param,
 				})
 			}
-		} else { // POST, PUT, DELETE etc.
+		} else { // POST、PUT、DELETE 等
 			reqSchema := openapi3.NewObjectSchema()
 			for _, field := range apiDef.Request.Fields {
 				fieldSchemaRef := builder.typeToSchemaRef(field.Type)
@@ -87,7 +87,7 @@ func BuildSpec(apiDefs []APIDefinition, projectName string, allStructs map[strin
 			}
 		}
 
-		// Handle Response
+		// 处理响应
 		resSchema := openapi3.NewObjectSchema()
 		for _, field := range apiDef.Response.Fields {
 			fieldSchemaRef := builder.typeToSchemaRef(field.Type)
@@ -102,7 +102,7 @@ func BuildSpec(apiDefs []APIDefinition, projectName string, allStructs map[strin
 				WithContent(openapi3.NewContentWithJSONSchemaRef(&openapi3.SchemaRef{Value: resSchema})),
 		})
 
-		// Add operation to path item
+		// 将操作绑定到路径项
 		switch method {
 		case "GET":
 			if pathItem.Get != nil {
@@ -130,21 +130,21 @@ func BuildSpec(apiDefs []APIDefinition, projectName string, allStructs map[strin
 	return spec, nil
 }
 
-// typeToSchemaRef converts a Go type string into an OpenAPI SchemaRef.
-// It handles primitives, pointers, slices, and generates component schemas for custom structs.
+// typeToSchemaRef 将 Go 类型字符串转换为 OpenAPI SchemaRef。
+// 支持基础类型、指针、切片，并为自定义结构体生成组件 schema。
 func (b *schemaBuilder) typeToSchemaRef(goType string) *openapi3.SchemaRef {
-	// Handle pointers
+	// 处理指针
 	if strings.HasPrefix(goType, "*") {
 		ref := b.typeToSchemaRef(strings.TrimPrefix(goType, "*"))
-		// If it's a ref to a component, the component itself is not nullable. The ref is.
-		// If it's an inline schema, we can set nullable.
+		// 若指向的是组件引用，则组件本身不可为 null，可为 null 的是该引用。
+			// 若是内联 schema，则可以设置 nullable。
 		if ref.Value != nil {
 			ref.Value.Nullable = true
 		}
 		return ref
 	}
 
-	// Handle slices/arrays
+	// 处理切片/数组
 	if strings.HasPrefix(goType, "[]") {
 		innerType := strings.TrimPrefix(goType, "[]")
 		itemsRef := b.typeToSchemaRef(innerType)
@@ -153,7 +153,7 @@ func (b *schemaBuilder) typeToSchemaRef(goType string) *openapi3.SchemaRef {
 		return &openapi3.SchemaRef{Value: schema}
 	}
 
-	// Handle primitive types
+	// 处理基础类型
 	switch goType {
 	case "string":
 		return &openapi3.SchemaRef{Value: openapi3.NewStringSchema()}
@@ -167,28 +167,28 @@ func (b *schemaBuilder) typeToSchemaRef(goType string) *openapi3.SchemaRef {
 		return &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{openapi3.TypeObject}, AdditionalProperties: openapi3.AdditionalProperties{Has: openapi3.BoolPtr(true)}}}
 	}
 
-	// Handle custom struct types by creating a component schema
+	// 处理自定义结构体类型：为其创建组件 schema
 	cleanTypeName := goType
 	if i := strings.LastIndex(goType, "."); i != -1 {
 		cleanTypeName = goType[i+1:]
 	}
 
-	// If the schema is not already in components, create it.
+	// 若组件中尚不存在该 schema，则创建它。
 	if _, ok := b.spec.Components.Schemas[cleanTypeName]; !ok {
 		structAST, found := b.allStructs[cleanTypeName]
 		if !found {
-			// Struct definition not found, return a generic object schema as a fallback.
+			// 未找到结构体定义时，兜底返回一个通用 object schema。
 			schema := openapi3.NewObjectSchema()
 			schema.Description = "Unresolved custom type: " + goType
 			return &openapi3.SchemaRef{Value: schema}
 		}
 
-		// Add a placeholder to components to prevent infinite recursion for self-referencing structs.
+		// 先在组件中放入占位 schema，避免自引用结构体导致无限递归。
 		b.spec.Components.Schemas[cleanTypeName] = &openapi3.SchemaRef{Value: openapi3.NewObjectSchema()}
 
-		// Build the full schema for the struct.
+		// 构建结构体的完整 schema。
 		schema := openapi3.NewObjectSchema()
-		structInfo := parseStructInfo(cleanTypeName, structAST, "POST") // Use "POST" to favor `json` tags.
+		structInfo := parseStructInfo(cleanTypeName, structAST, "POST") // 使用 "POST" 以优先采用 `json` 标签。
 		for _, field := range structInfo.Fields {
 			fieldSchemaRef := b.typeToSchemaRef(field.Type)
 			if field.Description != "" && fieldSchemaRef.Value != nil {
@@ -200,10 +200,10 @@ func (b *schemaBuilder) typeToSchemaRef(goType string) *openapi3.SchemaRef {
 			}
 		}
 
-		// Replace the placeholder with the fully constructed schema.
+		// 用构建完成的 schema 替换占位。
 		b.spec.Components.Schemas[cleanTypeName] = &openapi3.SchemaRef{Value: schema}
 	}
 
-	// Return a reference to the component schema.
+	// 返回指向该组件 schema 的引用。
 	return openapi3.NewSchemaRef(fmt.Sprintf("#/components/schemas/%s", cleanTypeName), nil)
 }
