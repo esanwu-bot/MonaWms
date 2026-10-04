@@ -38,6 +38,8 @@ func Auth() mhttp.MiddlewareFunc {
 		}
 
 		r.Request = r.Request.WithContext(token.WithIdentity(r.Request.Context(), identity))
+		// 注入身份后必须继续链路，否则后续 handler 不会执行。
+		r.Next()
 	}
 }
 

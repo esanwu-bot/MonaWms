@@ -3,7 +3,11 @@
 // =================================================================================
 package entity
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 // Warehouse 是数据表 warehouses 对应的 Go 结构体。
 type Warehouse struct {
@@ -15,7 +19,8 @@ type Warehouse struct {
 	Status        string    `gorm:"column:status" json:"status"`
 	TotalCapacity int       `gorm:"column:total_capacity" json:"totalCapacity"`
 	CreatedAt     time.Time `gorm:"column:created_at" json:"createdAt"`
-	DeletedAt     time.Time `gorm:"column:deleted_at" json:"deletedAt"` // 软删除时间
+	// 软删除列使用 gorm.DeletedAt：写入时落 NULL，查询时自动过滤已删除行。
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"deletedAt"`
 }
 
 // TableName 返回数据表名。

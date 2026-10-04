@@ -3,7 +3,11 @@
 // =================================================================================
 package entity
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 // UserWarehouseGrant 是数据表 user_warehouse_grant 对应的 Go 结构体。
 type UserWarehouseGrant struct {
@@ -19,7 +23,8 @@ type UserWarehouseGrant struct {
 	Remark      string    `gorm:"column:remark" json:"remark"`            // 备注（代维方名称、授权事由）
 	CreatedAt   time.Time `gorm:"column:created_at" json:"createdAt"`
 	UpdatedAt   time.Time `gorm:"column:updated_at" json:"updatedAt"`
-	DeletedAt   time.Time `gorm:"column:deleted_at" json:"deletedAt"` // 软删除（正常不用，授权变更走 status）
+	// 软删除列（正常不用，授权变更走 status）
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"deletedAt"`
 }
 
 // TableName 返回数据表名。

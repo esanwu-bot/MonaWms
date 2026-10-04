@@ -109,6 +109,8 @@ func (s *sAuth) Register(ctx context.Context, input *v1.RegisterReq) (output *v1
 		return nil, merror.WrapCode(err, mcode.CodeInternalError, "密码加密失败")
 	}
 
+	// last_login_time / last_login_at 为可空列，注册时留空由 GORM 写入 NULL。
+	now := time.Now()
 	user := &entity.User{
 		Username:     input.Username,
 		RealName:     input.RealName,
@@ -117,8 +119,8 @@ func (s *sAuth) Register(ctx context.Context, input *v1.RegisterReq) (output *v1
 		PasswordHash: string(hash),
 		Role:         role,
 		Status:       statusActive,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 	if err := userDao.Create(ctx, user); err != nil {
 		return nil, merror.WrapCode(err, mcode.CodeDbOperationError, "创建用户失败")
@@ -274,7 +276,7 @@ func toUserInfo(user *entity.User) v1.UserInfo {
 	if !user.CreatedAt.IsZero() {
 		info.CreatedAt = user.CreatedAt.Format(time.DateTime)
 	}
-	if !user.LastLoginAt.IsZero() {
+	if user.LastLoginAt != nil && !user.LastLoginAt.IsZero() {
 		info.LastLoginAt = user.LastLoginAt.Format(time.DateTime)
 	}
 	return info

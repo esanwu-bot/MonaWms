@@ -19,3 +19,6 @@ go.work.sum
 .DS_Store
 *.swp
 *.swo
+
+# 本地运行日志（如 go run 重定向的 *.out.log / *.err.log）
+*.log

@@ -32,3 +32,8 @@ jwt:
   secret: "monawms_jwt_secret_key_2024"
   access_expire: "2h"
   refresh_expire: "168h"
+
+# 二维授权：全局角色(users.role) ∩ 仓库授权(user_warehouse_grant.grant_role)
+# false = 严格模式，系统管理员也必须先被授权才能访问某仓库（与原 PHP 后端默认一致）
+permission:
+  admin_bypass_warehouse: false

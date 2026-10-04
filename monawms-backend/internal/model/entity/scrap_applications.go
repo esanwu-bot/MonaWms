@@ -3,9 +3,13 @@
 // =================================================================================
 package entity
 
-import "time"
+import (
+	"time"
 
-import "github.com/shopspring/decimal"
+	"gorm.io/gorm"
+
+	"github.com/shopspring/decimal"
+)
 
 // ScrapApplication 是数据表 scrap_applications 对应的 Go 结构体。
 type ScrapApplication struct {
@@ -27,7 +31,7 @@ type ScrapApplication struct {
 	ProcessingNotes string          `gorm:"column:processing_notes" json:"processingNotes"`
 	CreatedAt       time.Time       `gorm:"column:created_at" json:"createdAt"`
 	UpdatedAt       time.Time       `gorm:"column:updated_at" json:"updatedAt"`
-	DeletedAt       time.Time       `gorm:"column:deleted_at" json:"deletedAt"`
+	DeletedAt       gorm.DeletedAt  `gorm:"column:deleted_at" json:"deletedAt"`
 }
 
 // TableName 返回数据表名。

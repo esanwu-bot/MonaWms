@@ -9,14 +9,15 @@ import "github.com/shopspring/decimal"
 
 // Product 是数据表 products 对应的 Go 结构体。
 type Product struct {
-	Id                int             `gorm:"column:id" json:"id"`
-	Sku               string          `gorm:"column:sku" json:"sku"`
-	Name              string          `gorm:"column:name" json:"name"`
-	Description       string          `gorm:"column:description" json:"description"`
-	DeviceType        string          `gorm:"column:device_type" json:"deviceType"`
-	ModelNumber       string          `gorm:"column:model_number" json:"modelNumber"`
-	Brand             string          `gorm:"column:brand" json:"brand"`                    // 品牌
-	ProductionDate    time.Time       `gorm:"column:production_date" json:"productionDate"` // 生产日期
+	Id          int    `gorm:"column:id" json:"id"`
+	Sku         string `gorm:"column:sku" json:"sku"`
+	Name        string `gorm:"column:name" json:"name"`
+	Description string `gorm:"column:description" json:"description"`
+	DeviceType  string `gorm:"column:device_type" json:"deviceType"`
+	ModelNumber string `gorm:"column:model_number" json:"modelNumber"`
+	Brand       string `gorm:"column:brand" json:"brand"` // 品牌
+	// 生产日期为可空列，nil 时写入 NULL，避免 MySQL 严格模式拒绝零值日期。
+	ProductionDate    *time.Time      `gorm:"column:production_date" json:"productionDate"` // 生产日期
 	WarrantyMonths    int             `gorm:"column:warranty_months" json:"warrantyMonths"` // 保修期（月）
 	FrequencyProtocol string          `gorm:"column:frequency_protocol" json:"frequencyProtocol"`
 	FirmwareVersion   string          `gorm:"column:firmware_version" json:"firmwareVersion"`
