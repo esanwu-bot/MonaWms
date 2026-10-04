@@ -50,6 +50,8 @@
 | **授权矩阵** | 账号 × 仓库 二维授权，撤销留痕 | `GrantMatrixPage` |
 | 用户管理 | 用户 CRUD、角色分配（admin / operator） | `UsersPage` |
 | **操作日志** | 全量写操作审计（operator / action / target / before-after diff / IP），只读不可删 | `OperationLogPage` |
+| **低代码表单 DIY** | 元数据驱动的自定义表单：设计草稿 → 发布（版本链 draft→published→archived，prop 冻结）→ 填写（服务端按元数据二次校验）→ 动态筛选（白名单防注入）→ CSV 导出；支持自然语言生成 schema 草稿 | —（后端 REST，前端页待接入） |
+| **Agent 工具外露** | `/api/agent/tools` 工具清单（schema 读取/记录代填/查询/草稿/发布，含风险分级），供 Agent 客户端以同一套 REST 接口调用 | — |
 
 ---
 
@@ -69,15 +71,15 @@
 MonaWMS_TX/
 ├── backend_tp6/                 # ThinkPHP 6 后端
 │   ├── app/
-│   │   ├── controller/          # 25 个控制器：只收参数、只返响应
-│   │   ├── service/             # 业务规则与事务（Auth/Inbound/Outbound/Inventory/Stocktake/Grant/…）
-│   │   ├── model/               # 30 个模型：只做数据访问与关联
+│   │   ├── controller/          # 28 个控制器：只收参数、只返响应
+│   │   ├── service/             # 业务规则与事务（Auth/Inbound/Outbound/Inventory/Stocktake/Grant/FormMeta/FormRecord/…）
+│   │   ├── model/               # 32 个模型：只做数据访问与关联
 │   │   ├── middleware/          # Auth / Permission / WarehouseScope / OperationLog / Cors / ApiLog
 │   │   ├── validate/            # 参数校验（不在 Controller 写 if）
 │   │   └── common/library/Jwt.php
 │   ├── database/
 │   │   ├── migrations/          # 18 份幂等迁移（勿改历史文件，新增迁移）
-│   │   └── seed/                # 14 份种子数据（主数据/仓库/用户授权/出入库/库存/SN/字典…）
+│   │   └── seed/                # 15 份种子数据（主数据/仓库/用户授权/出入库/库存/SN/字典/表单DIY…）
 │   ├── route/app.php            # 全部 /api 路由
 │   └── config/                  # database / jwt / cache …
 ├── frontend/                    # React 18 管理端
@@ -95,7 +97,7 @@ MonaWMS_TX/
 
 ## 四、数据库
 
-**完整快照**：`sql/monawms_full_0930.sql`（含 `CREATE DATABASE monawms`、32 张表结构与演示数据）
+**完整快照**：`sql/monawms_full_0930.sql`（含 `CREATE DATABASE monawms`、34 张表结构与演示数据）
 
 ```bash
 # 全新环境导入（会覆盖同名库，请先备份）
@@ -109,7 +111,7 @@ docker exec -i monawms_mysql mysql -uroot -p<密码> < sql/monawms_full_0930.sql
 
 ```bash
 # 依次执行 backend_tp6/database/migrations/*.sql
-# 演示数据：backend_tp6/database/seed/*.sql（按 01→14 顺序）
+# 演示数据：backend_tp6/database/seed/*.sql（按 01→15 顺序）
 ```
 
 主要表：
@@ -122,6 +124,7 @@ docker exec -i monawms_mysql mysql -uroot -p<密码> < sql/monawms_full_0930.sql
 | 单据 | `inbound_orders/items` `outbound_orders/items` `stocktake_orders/items` |
 | 追溯 | `serial_numbers` `serial_number_history` `operation_log` |
 | 业务扩展 | `projects` `project_inventory_reservations` `scrap_applications` `wireless_spare_parts` `devices` |
+| 表单 DIY | `form_metadata`（版本化元数据） `form_records`（记录，数据全进 `ext_attrs` JSON） |
 | 组织与授权 | `users` `user_warehouse_grant` `dictionary_types` `dictionary_items` |
 
 ---
@@ -229,8 +232,10 @@ http://<ECS公网IP>:9110/
 | 业务扩展 | `/projects` `/scrap` `/wireless-spare-parts` | 项目、报废、无线备件 |
 | 报表 | `/reports` | 统计与导出（xlsx / CSV） |
 | 组织 | `/users` `/grants` | 用户、仓库授权 |
+| 表单 DIY | `/form-meta`（设计态：草稿/发布/diff/自然语言草稿） `/forms/:formKey/records`（运行态 CRUD/筛选/CSV 导出） | 元数据驱动自定义表单 |
+| Agent | `/agent/tools` | 工具 manifest（6 个工具，含 endpoint/参数 schema/风险级） |
 
-常见业务码：`STOCK_INSUFFICIENT`（库存不足，data 含缺料明细）、`DOC_STATUS_INVALID`、`MATERIAL_HAS_STOCK`、`PERMISSION_DENIED`(403)、`WAREHOUSE_NOT_GRANTED`(403)、`DUPLICATE_CODE`、`IDEMPOTENT_HIT`、`SYSTEM_ERROR`(500)。
+常见业务码：`STOCK_INSUFFICIENT`（库存不足，data 含缺料明细）、`DOC_STATUS_INVALID`、`MATERIAL_HAS_STOCK`、`PERMISSION_DENIED`(403)、`WAREHOUSE_NOT_GRANTED`(403)、`DUPLICATE_CODE`、`IDEMPOTENT_HIT`、`FORM_SCHEMA_INVALID`（元数据契约校验失败，data.errors 含明细）、`FORM_VALIDATION_FAILED`（记录校验失败，data.errors 含 [{prop,msg}]）、`FORM_FILTER_INVALID`（筛选/排序键在白名单外，防注入）、`RECORD_NOT_FOUND`(404)、`SYSTEM_ERROR`(500)。
 
 ---
 

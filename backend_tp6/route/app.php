@@ -291,6 +291,37 @@ Route::group('api', function () {
             Route::post('revoke-vendor', 'GrantController/revokeVendor'); // 按代维方批量撤销
         });
         
+        // 低代码表单 DIY —— 元数据设计态（admin 设计/发布；published/latest 全登录态可读）
+        // completeMatch(true)：全局 route_complete_match=false 前缀匹配下，短规则 :id 会抢走
+        // :id/diff、:formKey/records 会抢走 :formKey/records/:id 的 URL，必须整组完全匹配
+        Route::group('form-meta', function () {
+            // 以下三条含固定字面段，必须排在 :id 动态路由之前
+            Route::get('published', 'FormMetaController/published');          // 全部已发布表单（菜单/Agent list）
+            Route::get('latest/:formKey', 'FormMetaController/latest');       // 最新发布元数据（渲染/Agent schema）
+            Route::post('draft-from-nl', 'FormMetaController/draftFromNl');   // 自然语言 → schema 草稿
+            Route::get('', 'FormMetaController/index');                       // 版本列表
+            Route::post('', 'FormMetaController/save');                        // 保存草稿
+            Route::get(':id', 'FormMetaController/read')->pattern(['id' => '\d+']);                  // 版本详情
+            Route::post(':id/publish', 'FormMetaController/publish')->pattern(['id' => '\d+']);       // 发布（高风险）
+            Route::get(':id/diff', 'FormMetaController/diff')->pattern(['id' => '\d+']);             // 草稿 vs 发布版 diff
+        })->completeMatch(true);
+
+        // 低代码表单 DIY —— 运行态记录（全登录态；operator 数据口径在 Service 内收敛）
+        Route::group('forms', function () {
+            Route::get(':formKey/meta', 'FormRecordController/meta')->pattern(['formKey' => '[a-z][a-z0-9_]*']);            // 渲染元数据
+            Route::get(':formKey/export', 'FormRecordController/export')->pattern(['formKey' => '[a-z][a-z0-9_]*']);        // CSV 导出
+            Route::get(':formKey/records', 'FormRecordController/index')->pattern(['formKey' => '[a-z][a-z0-9_]*']);        // 列表（动态筛选）
+            Route::post(':formKey/records', 'FormRecordController/save')->pattern(['formKey' => '[a-z][a-z0-9_]*']);        // 创建（Agent 代填同一入口）
+            Route::get(':formKey/records/:id', 'FormRecordController/read')->pattern(['formKey' => '[a-z][a-z0-9_]*', 'id' => '\d+']);   // 详情
+            Route::put(':formKey/records/:id', 'FormRecordController/update')->pattern(['formKey' => '[a-z][a-z0-9_]*', 'id' => '\d+']); // 更新
+            Route::delete(':formKey/records/:id', 'FormRecordController/delete')->pattern(['formKey' => '[a-z][a-z0-9_]*', 'id' => '\d+']); // 软删除
+        })->completeMatch(true);
+
+        // Agent 工具外露（P3）：工具清单供 Agent 客户端发现；执行走上方同域 REST 接口
+        Route::group('agent', function () {
+            Route::get('tools', 'AgentController/tools');   // 工具 manifest（含 endpoint/schema/风险级）
+        })->completeMatch(true);
+
         // 操作日志（只读审计）
         Route::group('logs', function () {
             Route::get('', 'OperationLogController/index');             // 日志列表
