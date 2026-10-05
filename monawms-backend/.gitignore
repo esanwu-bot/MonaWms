@@ -1,0 +1,24 @@
+# Go 构建与测试产物
+/bin/
+/vendor/
+coverage.out
+*.test
+go.work
+go.work.sum
+
+# 本地配置与运行时数据
+.env
+.env.*
+!.env.example
+/logs/
+/temp/
+
+# 编辑器与操作系统文件
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo
+
+# 本地运行日志（如 go run 重定向的 *.out.log / *.err.log）
+*.log

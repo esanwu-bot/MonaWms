@@ -904,6 +904,52 @@ CREATE TABLE `zones` (
 
 insert  into `zones`(`id`,`warehouse_id`,`code`,`name`,`type`,`description`,`created_at`) values (1,1,'Z001','A区存储区','storage','常温存储','2026-09-28 08:11:48'),(2,2,'Z002','B区拣货区','picking','拣货作业区','2026-09-28 08:11:48'),(4,1,'Z-D','D区·备件耗材','storage','电源、电池、线缆',NULL),(5,1,'Z-T','暂存区','staging','待检与待发设备',NULL),(6,1,'Z-A','A区·核心网络','storage','核心路由器、交换机、防火墙',NULL),(7,1,'Z-C','C区·无线终端','storage','AP、天线、RRU',NULL),(8,1,'Z-R','维修区','storage','待修与返修设备',NULL),(9,1,'Z-B','B区·传输接入','storage','OLT/ONU/光模块',NULL),(10,2,'Z-E','E区·分仓存储','storage','分仓通用存储',NULL),(11,3,'Z-F','F区·备件仓存储','storage','备件与周转机器',NULL);
 
+/*Table structure for table `form_metadata` */
+
+DROP TABLE IF EXISTS `form_metadata`;
+
+CREATE TABLE `form_metadata` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `form_key` varchar(64) NOT NULL COMMENT '表单标识（全链路唯一，发布后不可改）',
+  `version` int(11) NOT NULL DEFAULT '1' COMMENT '版本号，同 form_key 内只增',
+  `title` varchar(128) NOT NULL COMMENT '表单标题',
+  `schema_json` json NOT NULL COMMENT '归一化元数据：{layout, fields[{prop,label,type,required,options,...}]}',
+  `status` varchar(20) NOT NULL DEFAULT 'draft' COMMENT 'draft草稿/published已发布/archived已归档',
+  `change_note` varchar(500) NOT NULL DEFAULT '' COMMENT '版本变更说明',
+  `created_by` int(11) DEFAULT NULL,
+  `published_at` datetime DEFAULT NULL COMMENT '发布时间',
+  `created_at` datetime DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_form_key_version` (`form_key`,`version`),
+  KEY `idx_form_key_status` (`form_key`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='DIY表单元数据（每版本一行）';
+
+/*Data for the table `form_metadata` */
+
+insert  into `form_metadata`(`id`,`form_key`,`version`,`title`,`schema_json`,`status`,`change_note`,`created_by`,`published_at`,`created_at`,`updated_at`) values
+(1,'site_patrol',1,'基站巡检单','{\"layout\": {\"columns\": 2}, \"fields\": [{\"prop\": \"site_code\", \"label\": \"基站编码\", \"type\": \"text\", \"required\": true, \"maxLen\": 64}, {\"prop\": \"patrol_date\", \"label\": \"巡检日期\", \"type\": \"date\", \"required\": true}, {\"prop\": \"patrol_result\", \"label\": \"巡检结果\", \"type\": \"select\", \"required\": true, \"options\": [{\"label\": \"正常\", \"value\": \"OK\"}, {\"label\": \"异常\", \"value\": \"ABNORMAL\"}]}, {\"prop\": \"sn_check\", \"label\": \"在网设备SN\", \"type\": \"sn-scan\", \"multiple\": true}, {\"prop\": \"photos\", \"label\": \"现场照片\", \"type\": \"file\", \"accept\": \"image/*\", \"max\": 6}, {\"prop\": \"remark\", \"label\": \"备注\", \"type\": \"textarea\", \"maxLen\": 5000}]}','published','初始版本',1,'2026-10-04 08:00:00','2026-10-04 08:00:00','2026-10-04 08:00:00');
+
+/*Table structure for table `form_records` */
+
+DROP TABLE IF EXISTS `form_records`;
+
+CREATE TABLE `form_records` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `form_key` varchar(64) NOT NULL COMMENT '所属表单',
+  `form_version` int(11) NOT NULL DEFAULT '1' COMMENT '写入时的表单版本（宽容渲染依据）',
+  `biz_ref` varchar(64) NOT NULL DEFAULT '' COMMENT '可选挂接核心单号（如盘点单号/入库单号）',
+  `ext_attrs` json NOT NULL COMMENT 'DIY 字段值 JSON，键 = 元数据 fields[].prop',
+  `created_by` int(11) DEFAULT NULL,
+  `updated_by` int(11) DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL COMMENT '软删除时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_form_key_deleted_created` (`form_key`,`deleted_at`,`created_at`),
+  KEY `idx_form_key_creator` (`form_key`,`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='DIY表单记录（数据全进 ext_attrs）';
+
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;

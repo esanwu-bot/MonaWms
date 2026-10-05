@@ -28,6 +28,8 @@ import {
   TeamOutlined,
   FileSearchOutlined,
   ContainerOutlined,
+  FormOutlined,
+  TableOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { useWarehouseStore } from '../store/warehouseStore';
@@ -50,6 +52,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       // G1 收敛：设备已并入产品主数据（products），设备页仅保留台账查询，入口隐藏（路由 /devices 仍可直接访问）
       // { key: '/devices', label: '设备登记', icon: <ToolOutlined /> },
       { key: '/products', label: '产品管理', icon: <ShoppingOutlined /> },
+      { key: '/form-records', label: '表单记录', icon: <TableOutlined /> },
     ],
   },
   {
@@ -71,6 +74,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { key: '/users', label: '会员管理', icon: <TeamOutlined /> },
       { key: '/operation-logs', label: '操作日志', icon: <FileTextOutlined /> },
       { key: '/grant-matrix', label: '仓库授权', icon: <SafetyOutlined /> },
+      { key: '/form-designer', label: '表单设计', icon: <FormOutlined /> },
       { key: '/categories', label: '分类管理', icon: <AppstoreOutlined /> },
       { key: '/bom', label: 'BOM 管理', icon: <UnorderedListOutlined /> },
       { key: '/projects', label: '项目管理', icon: <ProjectOutlined /> },
@@ -102,6 +106,8 @@ const PAGE_NAME: Record<string, string> = {
   '/users': '会员管理',
   '/operation-logs': '操作日志',
   '/grant-matrix': '仓库授权',
+  '/form-designer': '表单设计',
+  '/form-records': '表单记录',
   '/settings': '系统设置',
   '/profile': '个人资料',
 };
@@ -154,6 +160,7 @@ const MainLayout: React.FC = () => {
         items: g.items.filter((it) => {
           if (it.key === '/users') return can('user:manage');
           if (it.key === '/grant-matrix') return can('grant:manage');
+          if (it.key === '/form-designer') return can('form:manage');
           if (it.key === '/operation-logs') return can('operation_log:view');
           return true;
         }),
