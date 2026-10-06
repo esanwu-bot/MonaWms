@@ -48,7 +48,7 @@
         </FlexboxLayout>
       </StackLayout>
 
-      <Label text="通信设备WMS · MOBILE v1.0" class="version-text font-mono" />
+      <Label :text="'通信设备WMS · MOBILE v1.0 · build ' + BUILD" class="version-text font-mono" />
       <Label v-if="store.demoMode" text="离线演示模式 · 数据仅存于本机" class="version-note font-mono" />
     </StackLayout>
   </ScrollView>
@@ -58,7 +58,7 @@
 /** 我的（对应原型 #view-mine） */
 import { computed, onMounted, ref } from 'nativescript-vue';
 import { confirm } from '@nativescript/core';
-import { store, openSub, showToast, logout } from '../services/store';
+import { store, openSub, showToast, logout, BUILD } from '../services/store';
 import { api } from '../services/api';
 import { C } from '../services/theme';
 import { demoMe } from '../services/mock';

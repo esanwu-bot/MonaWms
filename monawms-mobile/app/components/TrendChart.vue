@@ -1,14 +1,28 @@
 <template>
-  <Canvas class="trend-canvas" @ready="onReady" width="100%" height="150" />
+  <!-- 纯布局柱状趋势图：Canvas 已全局禁用（libcanvasnativev8.so 与设备 V8 不兼容，加载即致命崩溃） -->
+  <FlexboxLayout class="trend-fb" flexDirection="row" alignItems="flex-end">
+    <StackLayout
+      v-for="(p, i) in pairs"
+      :key="i"
+      class="trend-fb-group"
+      flexDirection="row"
+      alignItems="flex-end"
+    >
+      <StackLayout class="trend-fb-bar" :height="p.inH" backgroundColor="#22d3ee" />
+      <StackLayout class="trend-fb-bar" :height="p.outH" backgroundColor="#fbbf24" />
+    </StackLayout>
+  </FlexboxLayout>
 </template>
 
 <script setup>
 /**
  * 出入库趋势图（对应原型 #trend SVG 折线图）
- * 双线（入库=青 / 出库=琥珀）+ 入库线下渐变面积 + 网格与 Y 轴刻度
+ * 双线（入库=青 / 出库=琥珀）+ 入库线下渐变面积 + 网格与 Y 轴刻度。
+ * Canvas 原生不可用时降级为青/琥珀双色柱状，保证首页这一屏永远有内容。
  */
-import { watch } from 'nativescript-vue';
+import { ref, computed, watch } from 'nativescript-vue';
 import { Screen } from '@nativescript/core';
+import { isCanvasUsable, markCanvasUnavailable } from '../services/canvasProbe';
 
 const props = defineProps({
   inbound: { type: Array, default: () => [] },
@@ -16,7 +30,15 @@ const props = defineProps({
   labels: { type: Array, default: () => [] },
 });
 
+const broken = ref(false);
+const useCanvas = computed(() => isCanvasUsable() && !broken.value);
+
 let cv = null;
+
+function fallBack(reason) {
+  broken.value = true;
+  markCanvasUnavailable(reason);
+}
 
 function smoothPath(ctx, co) {
   // 与原型一致的三次贝塞尔平滑
@@ -110,14 +132,38 @@ function draw() {
       ctx.fillText(String(labs[labs.length - 1]), w - pr, h - 5);
     }
   } catch (e) {
-    console.error('[TrendChart] draw failed:', e);
+    fallBack('绘制异常: ' + (e && e.message));
   }
 }
 
 function onReady(args) {
-  cv = args.object;
-  draw();
+  try {
+    cv = args.object;
+    if (!cv || typeof cv.getContext !== 'function') {
+      fallBack('Canvas 原生实例不可用');
+      return;
+    }
+    draw();
+  } catch (e) {
+    fallBack('ready 阶段异常: ' + (e && e.message));
+  }
 }
+
+/* ---- 纯布局降级：青/琥珀成对柱 ---- */
+const pairs = computed(() => {
+  const inb = (props.inbound || []).map(Number).filter(isFinite);
+  const out = (props.outbound || []).map(Number).filter(isFinite);
+  const mx = Math.max(1, ...inb, ...out);
+  const n = Math.min(inb.length, out.length);
+  const arr = [];
+  for (let i = 0; i < n; i++) {
+    arr.push({
+      inH: Math.max(3, Math.round((inb[i] / mx) * 118)),
+      outH: Math.max(3, Math.round((out[i] / mx) * 118)),
+    });
+  }
+  return arr;
+});
 
 watch(() => [props.inbound, props.outbound], () => draw(), { deep: true });
 

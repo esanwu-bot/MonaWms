@@ -21,13 +21,26 @@
         </FlexboxLayout>
       </FlexboxLayout>
 
-      <ActivityIndicator v-if="!dash" busy="true" color="#22d3ee" margin="60" />
+      <!-- ===== 渲染/加载异常可见化：宁可显示错误卡，也不要整屏空白 ===== -->
+      <StackLayout v-if="renderError" class="render-error-card hpad-12">
+        <Label :text="renderErrorTitle" class="re-title" />
+        <Label :text="renderError" class="re-msg font-mono" textWrap="true" />
+        <Label text="重试" class="re-btn" @tap="load" />
+      </StackLayout>
 
-      <StackLayout v-if="dash">
+      <ActivityIndicator v-if="!dash && !renderError" busy="true" color="#22d3ee" margin="60" />
+
+      <StackLayout v-if="dash && !stats.length" class="render-error-card hpad-12">
+        <Label text="接口返回结构异常" class="re-title" />
+        <Label text="/reports/dashboard 返回内容里没有 stats 字段，首页无法渲染卡片。可切到演示模式核对界面。" class="re-msg font-mono" textWrap="true" />
+        <Label text="重试" class="re-btn" @tap="load" />
+      </StackLayout>
+
+      <StackLayout v-if="dash && stats.length">
         <!-- ===== 统计卡 ===== -->
         <GridLayout class="hpad-12" rows="auto,auto" columns="*,*">
           <StatCard
-            v-for="(s, i) in dash.stats"
+            v-for="(s, i) in stats"
             :key="s.key"
             :row="Math.floor(i / 2)"
             :col="i % 2"
@@ -75,7 +88,7 @@
                 <Label text="出库" class="legend-text" />
               </FlexboxLayout>
             </FlexboxLayout>
-            <TrendChart ref="trendRef" :inbound="dash.trend.inbound" :outbound="dash.trend.outbound" :labels="dash.trend.labels" />
+            <TrendChart ref="trendRef" :inbound="trend.inbound" :outbound="trend.outbound" :labels="trend.labels" />
           </StackLayout>
         </StackLayout>
 
@@ -86,7 +99,7 @@
         <ScrollView orientation="horizontal" class="todos-scroll" scrollBarEnabled="false">
           <FlexboxLayout flexDirection="row">
             <StackLayout
-              v-for="(t, i) in dash.todos"
+              v-for="(t, i) in todos"
               :key="i"
               :class="['todo-card', 'pressable', t.warn ? 'todo-warn' : '']"
               @tap="onTodo(t)"
@@ -106,7 +119,7 @@
           <SectionTitle title="最近活动" link="全部 ›" @linkTap="openSub('logs')" />
           <StackLayout>
             <FlexboxLayout
-              v-for="(a, i) in dash.activities"
+              v-for="(a, i) in activities"
               :key="i"
               class="act-item divider-b"
               flexDirection="row"
@@ -132,8 +145,8 @@
  * 首页（对应原型 #view-home）
  * 统计卡（滚动数字 + 迷你趋势线）/ 六宫格快捷操作 / 出入库趋势图 / 待办横滚 / 最近活动
  */
-import { ref, reactive, computed, onMounted, watch, nextTick } from 'nativescript-vue';
-import { store, switchTab, openSub, showToast } from '../services/store';
+import { ref, reactive, computed, onMounted, onBeforeUnmount, onErrorCaptured, watch, nextTick } from 'nativescript-vue';
+import { store, switchTab, openSub, showToast, BUILD } from '../services/store';
 import { api } from '../services/api';
 import { C, STATUS_TONE } from '../services/theme';
 import { cnDate, greeting } from '../utils/format';
@@ -145,12 +158,29 @@ import TrendChart from '../components/TrendChart.vue';
 const dash = ref(null);
 const displayVals = reactive([0, 0, 0, 0]);
 const trendRef = ref(null);
-const dateText = ref(cnDate());
+const dateText = ref(cnDate() + ' · build ' + BUILD);
 const greetText = ref(greeting() + '，管理员');
 const avatarUrl = 'https://picsum.photos/seed/wms-admin-avatar/80/80';
 
+/* ---- 渲染异常兜底：子组件抛错时留痕并显示错误卡，不再整屏空白 ---- */
+const renderError = ref('');
+const renderErrorTitle = ref('首页渲染异常');
+onErrorCaptured((err) => {
+  renderError.value = String((err && err.message) || err);
+  console.error('[HomeView] 子组件渲染异常:', err);
+  return false;
+});
+
+/* ---- 数据形状兜底：任一字段缺失只影响该区块 ---- */
+const stats = computed(() => (dash.value && dash.value.stats) || []);
+const trend = computed(() => (dash.value && dash.value.trend) || { labels: [], inbound: [], outbound: [] });
+const todos = computed(() => (dash.value && dash.value.todos) || []);
+const activities = computed(() => (dash.value && dash.value.activities) || []);
+
 let counterTimer = null;
 let scrambleTimer = null;
+let loadWatchdog = null;
+let dateTimer = null;
 
 const quicks = [
   { label: '新增入库', icon: 'file_download', bg: 'qi-cyan', color: C.cyan, qn: 'qn-c1', go: () => switchTab('inbound') },
@@ -163,7 +193,7 @@ const quicks = [
 
 const trendNote = computed(() => {
   if (!dash.value) return '近 14 天';
-  const n = (dash.value.trend.inbound || []).length;
+  const n = (trend.value.inbound || []).length;
   return n > 6 ? `近 ${n} 天` : `近 ${n} 期`;
 });
 
@@ -176,6 +206,17 @@ function toneColor(tone) {
 
 /* ---- 数据加载 ---- */
 async function load() {
+  renderError.value = '';
+  renderErrorTitle.value = '首页渲染异常';
+  if (loadWatchdog) clearTimeout(loadWatchdog);
+  // 接口长时间无响应时也要给出可见反馈，不能停在无限转圈
+  loadWatchdog = setTimeout(() => {
+    if (!dash.value) {
+      renderErrorTitle.value = '首页数据加载超时';
+      renderError.value = '接口无响应：' + store.baseUrl + '/reports/dashboard';
+      console.error('[HomeView] dashboard 加载超时, baseUrl=' + store.baseUrl);
+    }
+  }, 12000);
   try {
     const d = await api.dashboard();
     dash.value = d;
@@ -184,14 +225,20 @@ async function load() {
     runScramble();
     nextTick(() => trendRef.value && trendRef.value.redraw && trendRef.value.redraw());
   } catch (e) {
+    renderErrorTitle.value = '首页数据加载失败';
+    renderError.value = String((e && e.message) || e);
+    console.error('[HomeView] dashboard 加载失败:', e);
     showToast((e && e.message) || '首页数据加载失败', 'close');
+  } finally {
+    clearTimeout(loadWatchdog);
+    loadWatchdog = null;
   }
 }
 
 /* ---- 数字滚动 ---- */
 function animateCounters() {
   if (!dash.value) return;
-  const targets = dash.value.stats.map((s) => Number(s.value) || 0);
+  const targets = stats.value.map((s) => Number(s.value) || 0);
   const dur = 1300;
   const start = Date.now();
   if (counterTimer) clearInterval(counterTimer);
@@ -234,7 +281,14 @@ function onTodo(t) {
 onMounted(() => {
   load();
   // 每分钟刷新日期
-  setInterval(() => (dateText.value = cnDate()), 60000);
+  dateTimer = setInterval(() => (dateText.value = cnDate() + ' · build ' + BUILD), 60000);
+});
+
+onBeforeUnmount(() => {
+  clearInterval(dateTimer);
+  clearInterval(counterTimer);
+  clearInterval(scrambleTimer);
+  if (loadWatchdog) clearTimeout(loadWatchdog);
 });
 
 watch(() => store.refreshTick, () => load());

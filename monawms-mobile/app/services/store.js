@@ -27,7 +27,24 @@ export const store = reactive({
 
   /* ---- 数据刷新信号：任何增改操作后 +1，列表页监听重载 ---- */
   refreshTick: 0,
+
+  /* ---- 全局错误通道：没有 logcat 时让异常显示在屏幕上 ---- */
+  globalError: null, // { source, msg, time }
 });
+
+/** 当前包构建标记，用于确认手机上装的是哪一版 APK */
+export const BUILD = '1006-B';
+
+export function reportGlobalError(source, err) {
+  const msg = String((err && err.message) || err || '未知错误');
+  store.globalError = { source: String(source || 'app'), msg, time: new Date().toLocaleTimeString() };
+  console.error('[globalError][' + store.globalError.source + '] ' + msg);
+  return msg;
+}
+
+export function clearGlobalError() {
+  store.globalError = null;
+}
 
 export function bumpRefresh() {
   store.refreshTick++;

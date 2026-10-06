@@ -1,21 +1,29 @@
 <template>
-  <Canvas class="spark" @ready="onReady" width="100%" height="30" />
+  <FlexboxLayout class="spark" flexDirection="row" alignItems="flex-end">
+    <StackLayout
+      v-for="(b, i) in bars"
+      :key="i"
+      class="spark-bar"
+      :height="b.h"
+      :backgroundColor="b.c"
+    />
+  </FlexboxLayout>
 </template>
 
 <script setup>
 /**
  * 迷你趋势线（对应原型 .stat .spark 内联 SVG）
- * 使用 @nativescript/canvas 2D 上下文绘制：面积 + 折线 + 端点
+ *
+ * 刻意用纯布局柱状而非 <Canvas>：统计卡是首页顶栏之后第一块渲染内容，
+ * 老机型上 Canvas 原生库一旦不可用，<Canvas> 会把整棵首页子树带崩。
  */
-import { watch } from 'nativescript-vue';
-import { Screen } from '@nativescript/core';
+import { computed } from 'nativescript-vue';
+import { toBars } from '../services/canvasProbe';
 
 const props = defineProps({
   points: { type: Array, default: () => [] },
   color: { type: String, default: '#22d3ee' },
 });
-
-let cv = null;
 
 function hexToRgba(hex, a) {
   const h = String(hex).replace('#', '');
@@ -23,63 +31,9 @@ function hexToRgba(hex, a) {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-function draw() {
-  if (!cv) return;
-  try {
-    const scale = Screen.mainScreen.scale || 2;
-    const w = cv.clientWidth;
-    const h = cv.clientHeight;
-    if (!w || !h) return;
-    cv.width = w * scale;
-    cv.height = h * scale;
-    const ctx = cv.getContext('2d');
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-
-    const pts = (props.points || []).map(Number).filter((n) => isFinite(n));
-    if (pts.length < 2) return;
-    const mx = Math.max(...pts);
-    const mn = Math.min(...pts);
-    const step = w / (pts.length - 1);
-    const co = pts.map((v, i) => [i * step, h - 3 - ((v - mn) / (mx - mn || 1)) * (h - 8)]);
-
-    // 面积
-    ctx.beginPath();
-    ctx.moveTo(co[0][0], co[0][1]);
-    for (let i = 1; i < co.length; i++) ctx.lineTo(co[i][0], co[i][1]);
-    ctx.lineTo(w, h);
-    ctx.lineTo(0, h);
-    ctx.closePath();
-    ctx.fillStyle = hexToRgba(props.color, 0.13);
-    ctx.fill();
-
-    // 折线
-    ctx.beginPath();
-    ctx.moveTo(co[0][0], co[0][1]);
-    for (let i = 1; i < co.length; i++) ctx.lineTo(co[i][0], co[i][1]);
-    ctx.strokeStyle = props.color;
-    ctx.lineWidth = 1.6;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-
-    // 端点
-    const last = co[co.length - 1];
-    ctx.beginPath();
-    ctx.arc(last[0] - 1.5, last[1], 2.2, 0, Math.PI * 2);
-    ctx.fillStyle = props.color;
-    ctx.fill();
-  } catch (e) {
-    console.error('[Sparkline] draw failed:', e);
-  }
-}
-
-function onReady(args) {
-  cv = args.object;
-  draw();
-}
-
-watch(() => props.points, () => draw(), { deep: true });
-
-defineExpose({ redraw: draw });
+const bars = computed(() => {
+  const hs = toBars(props.points, 26, 4);
+  const last = hs.length - 1;
+  return hs.map((h, i) => ({ h, c: hexToRgba(props.color, i === last ? 1 : 0.32) }));
+});
 </script>
