@@ -1,0 +1,15 @@
+node_modules/
+platforms/
+hooks/
+dist/
+tmp/
+.nativescript/
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# 构建产物（调试 APK 体积过大且为构建产物，不入库）
+*.apk
+# 本地模拟器调试日志
+.debug/

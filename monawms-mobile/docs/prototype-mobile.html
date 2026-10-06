@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e16">
+<title>通信设备WMS · 移动原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0e16;--surface:#111725;--surface-2:#161e2e;--surface-3:#1c2536;
+  --border:rgba(148,163,184,.09);--border-hi:rgba(148,163,184,.2);
+  --text:#e8edf6;--text-2:#9aa5bb;--text-3:#5c677d;
+  --cyan:#22d3ee;--cyan-dim:rgba(34,211,238,.12);
+  --amber:#fbbf24;--amber-dim:rgba(251,191,36,.12);
+  --green:#34d399;--green-dim:rgba(52,211,153,.12);
+  --red:#f87171;--red-dim:rgba(248,113,113,.12);
+  --violet:#a78bfa;--violet-dim:rgba(167,139,250,.12);
+  --disp:'Chakra Petch','Noto Sans SC',sans-serif;
+  --body:'Noto Sans SC',-apple-system,sans-serif;
+  --mono:'JetBrains Mono','Noto Sans SC',monospace;
+  --tabbar:64px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:var(--body);background:#05070d;color:var(--text);font-size:14px;line-height:1.55;overflow:hidden}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.03;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+button{font-family:inherit;cursor:pointer}
+::-webkit-scrollbar{width:0;height:0}
+
+/* ===== 桌面机身框 ===== */
+.stage{height:100vh;height:100dvh;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(1200px 700px at 70% -10%,rgba(34,211,238,.06),transparent),
+             radial-gradient(900px 600px at 10% 110%,rgba(167,139,250,.05),transparent),#05070d;}
+.phone{width:392px;height:828px;max-height:94vh;border-radius:54px;background:linear-gradient(160deg,#1a2130,#0a0e16);
+  padding:11px;position:relative;box-shadow:0 40px 100px rgba(0,0,0,.7),inset 0 0 0 1px rgba(148,163,184,.12);}
+.notch{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:118px;height:28px;border-radius:20px;background:#000;z-index:60}
+.app{width:100%;height:100%;border-radius:44px;overflow:hidden;position:relative;background:var(--bg)}
+@media (max-width:520px){
+  .stage{background:var(--bg)}
+  .phone{width:100%;height:100vh;height:100dvh;max-height:none;border-radius:0;padding:0;box-shadow:none;background:transparent}
+  .notch{display:none}
+  .app{border-radius:0}
+}
+
+/* ===== 顶部状态条 ===== */
+.statusbar{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-family:var(--mono);font-size:12px;color:var(--text-2);position:relative;z-index:50}
+.statusbar .sig{display:flex;align-items:center;gap:6px}
+.statusbar .sig i{width:4px;border-radius:1px;background:var(--cyan);display:inline-block}
+
+/* ===== 视图 ===== */
+.views{position:absolute;inset:0;bottom:0}
+.view{position:absolute;inset:0;bottom:var(--tabbar);overflow-y:auto;overflow-x:hidden;
+  padding:0 0 90px;opacity:0;pointer-events:none;transform:translateY(10px);
+  transition:opacity .3s ease,transform .3s cubic-bezier(.22,1,.36,1);
+  padding-top:44px;}
+.view.active{opacity:1;pointer-events:auto;transform:none}
+.pad{padding:0 18px}
+
+/* ===== 顶栏 ===== */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 18px 14px}
+.topbar .date{font-family:var(--mono);font-size:11px;color:var(--text-3);letter-spacing:.05em}
+.topbar h1{font-family:var(--disp);font-size:23px;font-weight:700;letter-spacing:.01em;margin-top:2px}
+.topbar h1 .hi{color:var(--cyan)}
+.topbar .right{display:flex;align-items:center;gap:12px}
+.icbtn{width:38px;height:38px;border-radius:12px;border:1px solid var(--border);background:var(--surface);
+  display:flex;align-items:center;justify-content:center;position:relative}
+.icbtn svg{width:18px;height:18px;stroke:var(--text-2)}
+.icbtn .nd{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--red);border:2px solid var(--surface)}
+.avatar{width:40px;height:40px;border-radius:14px;overflow:hidden;border:2px solid var(--surface-3)}
+.avatar img{width:100%;height:100%;object-fit:cover}
+
+/* ===== 统计卡 ===== */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px;position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--sc),transparent)}
+.stat .k{font-size:11.5px;color:var(--text-2);display:flex;align-items:center;gap:6px}
+.stat .k svg{width:13px;height:13px}
+.stat .n{font-family:var(--disp);font-size:27px;font-weight:700;line-height:1.1;margin:7px 0 3px}
+.stat .n small{font-size:12px;color:var(--text-3);font-weight:500}
+.stat .d{font-family:var(--mono);font-size:10.5px;display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px}
+.stat .d.up{color:var(--green);background:var(--green-dim)}
+.stat .d.down{color:var(--red);background:var(--red-dim)}
+.stat .spark{height:26px;margin-top:9px}
+.stat .spark svg{width:100%;height:100%}
+
+/* ===== 快捷操作 ===== */
+.sec-title{display:flex;align-items:center;justify-content:space-between;margin:22px 0 12px}
+.sec-title h3{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sec-title h3 .bar{width:3px;height:15px;background:var(--cyan);border-radius:2px}
+.sec-title a{font-size:12px;color:var(--text-3)}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+/* ===== 快捷操作（修复：button 不继承正文色，需显式指定）===== */
+.qk{
+  background:var(--surface);border:1px solid var(--border);border-radius:15px;
+  padding:14px 6px;text-align:center;transition:transform .15s;
+  color:var(--text);               /* ← 关键修复 */
+}
+.qk:active{transform:scale(.95)}
+.qk .qi{width:42px;height:42px;border-radius:12px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center}
+.qk .qi svg{width:20px;height:20px}
+.qk .qn{
+  font-size:12px;font-weight:600;
+  color:var(--text);               /* ← 关键修复 */
+  letter-spacing:.02em;
+}
+/* 按压时文字微微提亮，反馈更明确 */
+.qk:active .qn{color:#fff}
+
+/* 若希望标签与图标同色系呼应，可逐个子选择器着色 */
+.qk:nth-child(1) .qn{color:#a5f3fc}  /* 新增入库 · 青 */
+.qk:nth-child(2) .qn{color:#fde68a}  /* 设备出库 · 琥珀 */
+.qk:nth-child(3) .qn{color:#ddd6fe}  /* 查找设备 · 紫 */
+.qk:nth-child(4) .qn{color:#a7f3d0}  /* 仓库管理 · 绿 */
+.qk:nth-child(5) .qn{color:#fecaca}  /* 数据报表 · 红 */
+.qk:nth-child(6) .qn{color:#cbd5e1}  /* 报废申请 · 灰 */
+
+/* ===== 趋势卡 ===== */
+.trend-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px}
+.trend-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.trend-head .t{font-size:13px;font-weight:700}
+.trend-head .lg{display:flex;gap:12px;font-size:10.5px;color:var(--text-2)}
+.trend-head .lg i{width:8px;height:8px;border-radius:3px;display:inline-block;margin-right:4px;vertical-align:-1px}
+#trend{height:150px}
+#trend svg{width:100%;height:100%}
+
+/* ===== 待办横滚 ===== */
+.todos{display:flex;gap:11px;overflow-x:auto;padding:2px 18px 6px;scroll-snap-type:x mandatory}
+.todo{scroll-snap-align:start;flex:0 0 auto;min-width:150px;background:var(--surface);border:1px solid var(--border);
+  border-radius:15px;padding:13px 15px;display:flex;flex-direction:column;gap:6px}
+.todo .tl{font-size:11.5px;color:var(--text-2)}
+.todo .tv{font-family:var(--disp);font-size:22px;font-weight:700}
+.todo .tt{font-size:10.5px;color:var(--text-3)}
+.todo.warn{border-color:rgba(251,191,36,.25)}
+.todo.warn .tv{color:var(--amber)}
+
+/* ===== 活动列表 ===== */
+.act-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.act-item:last-child{border-bottom:none}
+.act-ic{width:34px;height:34px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.act-ic svg{width:16px;height:16px}
+.act-item .at{font-size:13px;font-weight:500}
+.act-item .am{font-size:10.5px;color:var(--text-3);font-family:var(--mono);margin-top:2px}
+
+/* ===== 页头（列表页）===== */
+.pagehead{padding:6px 18px 4px;display:flex;align-items:center;justify-content:space-between}
+.pagehead h2{font-family:var(--disp);font-size:22px;font-weight:700}
+.pagehead .sub{font-size:11.5px;color:var(--text-3);margin-top:2px}
+
+/* ===== 筛选 chips ===== */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 18px;scrollbar-width:none}
+.chip{flex:0 0 auto;padding:7px 16px;border-radius:20px;font-size:12.5px;font-weight:600;background:var(--surface);
+  border:1px solid var(--border);color:var(--text-2);transition:all .2s}
+.chip .c{font-family:var(--mono);font-size:10px;opacity:.7;margin-left:4px}
+.chip.active{background:var(--cyan-dim);border-color:rgba(34,211,238,.35);color:var(--cyan)}
+
+/* ===== 单据卡 ===== */
+.orders{display:flex;flex-direction:column;gap:12px;padding:2px 18px}
+.order{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px;transition:transform .15s}
+.order:active{transform:scale(.985)}
+.o-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px}
+.o-id{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--cyan)}
+.o-date{font-size:10.5px;color:var(--text-3);font-family:var(--mono);margin-top:1px}
+.status{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:4px}
+.status::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.status.pending{color:var(--amber);background:var(--amber-dim)}
+.status.processing{color:var(--cyan);background:var(--cyan-dim)}
+.status.done{color:var(--green);background:var(--green-dim)}
+.status.urgent{color:var(--red);background:var(--red-dim)}
+.o-meta{display:grid;grid-template-columns:1fr 1fr;gap:7px 12px;margin-bottom:12px}
+.o-meta .m .k{font-size:10.5px;color:var(--text-3)}
+.o-meta .m .v{font-size:12.5px;font-weight:500;margin-top:1px}
+.o-prog .pl{display:flex;justify-content:space-between;font-size:11px;color:var(--text-2);margin-bottom:5px}
+.o-prog .pl b{font-family:var(--mono);color:var(--text)}
+.pbar{height:5px;background:var(--surface-3);border-radius:3px;overflow:hidden}
+.pfill{height:100%;border-radius:3px;width:0;background:linear-gradient(90deg,#06b6d4,#22d3ee);transition:width 1s cubic-bezier(.22,1,.36,1)}
+.pfill.done{background:linear-gradient(90deg,#059669,#34d399)}
+.o-actions{display:flex;gap:8px;margin-top:13px}
+
+/* ===== 按钮 ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:11px;
+  font-size:12.5px;font-weight:600;border:1px solid transparent;flex:1}
+.btn svg{width:14px;height:14px}
+.btn.primary{background:linear-gradient(135deg,#06b6d4,#0891b2);color:#04222b}
+.btn.ghost{background:var(--surface-2);border-color:var(--border);color:var(--text-2)}
+.btn:active{transform:scale(.97)}
+
+/* ===== 设备卡 ===== */
+.devices{display:flex;flex-direction:column;gap:11px;padding:2px 18px}
+.dev{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;display:flex;gap:13px;align-items:center;transition:transform .15s}
+.dev:active{transform:scale(.985)}
+.dev .thumb{width:56px;height:56px;border-radius:14px;overflow:hidden;flex-shrink:0;position:relative}
+.dev .thumb img{width:100%;height:100%;object-fit:cover}
+.dev .info{flex:1;min-width:0}
+.dev .nm{font-size:14px;font-weight:700}
+.dev .md{font-family:var(--mono);font-size:10px;color:var(--text-3);margin:1px 0 5px}
+.dev .meta{display:flex;gap:10px;font-size:10.5px;color:var(--text-2);font-family:var(--mono)}
+.dev .go{width:32px;height:32px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dev .go svg{width:15px;height:15px;stroke:var(--text-3)}
+
+/* ===== 我的 ===== */
+.me-card{display:flex;gap:14px;align-items:center;padding:6px 18px 18px}
+.me-card .avatar{width:60px;height:60px;border-radius:20px}
+.me-card .nm{font-size:17px;font-weight:700}
+.me-card .rl{font-size:11.5px;color:var(--cyan);display:flex;align-items:center;gap:6px;margin-top:2px}
+.me-card .rl .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.me-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin:0 18px 18px}
+.me-stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px;text-align:center}
+.me-stat .v{font-family:var(--disp);font-size:20px;font-weight:700;color:var(--cyan)}
+.me-stat .k{font-size:10.5px;color:var(--text-3);margin-top:2px}
+.menu{margin:0 18px;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.mitem{display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid var(--border);transition:background .15s}
+.mitem:last-child{border-bottom:none}
+.mitem:active{background:var(--surface-2)}
+.mitem .mi{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mitem .mi svg{width:16px;height:16px}
+.mitem .mt{flex:1;font-size:13.5px;font-weight:500}
+.mitem .arr{width:16px;height:16px;stroke:var(--text-3)}
+
+/* ===== 二级页 ===== */
+.subview{position:absolute;inset:0;background:var(--bg);z-index:70;transform:translateX(100%);
+  transition:transform .38s cubic-bezier(.22,1,.36,1);overflow-y:auto;padding:0 0 40px;padding-top:44px}
+.subview.open{transform:none}
+.sub-head{display:flex;align-items:center;gap:12px;padding:6px 18px 16px;position:sticky;top:44px;background:rgba(10,14,22,.85);backdrop-filter:blur(12px);z-index:5}
+.back{width:36px;height:36px;border-radius:11px;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center}
+.back svg{width:17px;height:17px;stroke:var(--text)}
+.sub-head h2{font-family:var(--disp);font-size:19px;font-weight:700}
+
+/* 日志行 */
+.logs{display:flex;flex-direction:column;gap:10px;padding:2px 18px}
+.log{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 15px}
+.log .lt{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.log .time{font-family:var(--mono);font-size:10.5px;color:var(--text-3)}
+.log-type{font-size:10px;padding:2px 8px;border-radius:6px;font-weight:600}
+.log .lc{font-size:13px}
+.log .lb{display:flex;justify-content:space-between;margin-top:7px;font-size:10.5px;color:var(--text-3)}
+
+/* 分区卡 */
+.zones{display:flex;flex-direction:column;gap:12px;padding:2px 18px}
+.zone{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px}
+.zone .zh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.zone .zc{font-family:var(--disp);font-size:18px;font-weight:700}
+.zone .zp{font-size:11.5px;color:var(--text-2);margin-bottom:9px}
+.zone .zp b{font-family:var(--mono);color:var(--text)}
+
+/* 报表柱 */
+.bars{display:flex;align-items:flex-end;gap:14px;height:170px;padding:10px 18px 0}
+.bcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:7px;height:100%}
+.bpair{display:flex;gap:4px;width:100%;justify-content:center;align-items:flex-end;height:100%}
+.bar{width:16px;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,#22d3ee,#0e7490);height:0;transition:height .9s cubic-bezier(.22,1,.36,1)}
+.bar.b2{background:linear-gradient(180deg,#fbbf24,#b45309)}
+.bcol .bl{font-size:10px;color:var(--text-3);font-family:var(--mono)}
+
+/* ===== Tab Bar ===== */
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:calc(var(--tabbar) + env(safe-area-inset-bottom));
+  padding-bottom:env(safe-area-inset-bottom);background:rgba(13,18,32,.92);backdrop-filter:blur(16px);
+  border-top:1px solid var(--border);display:flex;z-index:55}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--text-3);
+  font-size:10px;position:relative;transition:color .2s}
+.tab svg{width:21px;height:21px;stroke:currentColor;transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.tab.active{color:var(--cyan)}
+.tab.active svg{transform:translateY(-2px)}
+.tab.active::before{content:'';position:absolute;top:0;width:26px;height:3px;background:var(--cyan);border-radius:0 0 4px 4px;box-shadow:0 0 12px var(--cyan)}
+.tab .tb-badge{position:absolute;top:7px;right:calc(50% - 20px);min-width:15px;height:15px;padding:0 4px;border-radius:8px;
+  background:var(--red);color:#fff;font-size:9px;font-family:var(--mono);display:flex;align-items:center;justify-content:center}
+
+/* ===== FAB ===== */
+.fab{position:absolute;right:18px;bottom:calc(var(--tabbar) + 18px + env(safe-area-inset-bottom));width:54px;height:54px;
+  border-radius:18px;background:linear-gradient(135deg,#06b6d4,#0891b2);color:#04222b;border:none;z-index:54;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 10px 28px rgba(34,211,238,.4);
+  opacity:0;pointer-events:none;transform:scale(.6);transition:all .3s cubic-bezier(.34,1.56,.64,1)}
+.fab.show{opacity:1;pointer-events:auto;transform:scale(1)}
+.fab svg{width:24px;height:24px;stroke:#04222b;stroke-width:2.4}
+.fab:active{transform:scale(.92)}
+
+/* ===== 底部抽屉 ===== */
+.sheet-ov{position:absolute;inset:0;background:rgba(5,8,14,.6);backdrop-filter:blur(4px);z-index:80;
+  opacity:0;pointer-events:none;transition:opacity .25s}
+.sheet-ov.open{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:24px 24px 0 0;
+  border-top:1px solid var(--border-hi);padding:8px 20px calc(20px + env(safe-area-inset-bottom));
+  transform:translateY(100%);transition:transform .38s cubic-bezier(.22,1,.36,1);max-height:82%;overflow-y:auto}
+.sheet-ov.open .sheet{transform:none}
+.sheet-handle{width:42px;height:4px;background:var(--surface-3);border-radius:2px;margin:6px auto 14px}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.sheet-head h3{font-size:17px;font-weight:700;display:flex;align-items:center;gap:9px}
+.sheet-close{width:30px;height:30px;border-radius:9px;border:none;background:var(--surface-2);color:var(--text-2);font-size:15px}
+.sheet-sub{font-size:12px;color:var(--text-2);margin-bottom:16px}
+.fg{margin-bottom:13px}
+.fg label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px}
+.fg .req{color:var(--red)}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;
+  padding:12px 14px;color:var(--text);font-size:13.5px;font-family:var(--body);outline:none;transition:border .2s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:rgba(34,211,238,.45)}
+.fg textarea{min-height:64px;resize:none}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sheet-foot{display:flex;gap:10px;margin-top:18px}
+
+/* 设备详情抽屉 */
+.d-detail .hero{height:150px;border-radius:16px;overflow:hidden;margin-bottom:14px;position:relative}
+.d-detail .hero img{width:100%;height:100%;object-fit:cover}
+.d-detail .hero .status{position:absolute;top:10px;left:10px}
+.dd-rows{display:flex;flex-direction:column;gap:10px}
+.dd-row{display:flex;justify-content:space-between;font-size:13px;padding:9px 0;border-bottom:1px solid var(--border)}
+.dd-row .k{color:var(--text-3)}
+.dd-row .v{font-family:var(--mono);font-size:12px}
+
+/* ===== Toast ===== */
+.toast{position:absolute;left:50%;bottom:calc(var(--tabbar) + 26px);transform:translateX(-50%) translateY(20px);
+  background:var(--surface-3);border:1px solid var(--border-hi);color:var(--text);padding:11px 18px;border-radius:14px;
+  font-size:13px;z-index:100;opacity:0;pointer-events:none;transition:all .3s cubic-bezier(.22,1,.36,1);
+  display:flex;align-items:center;gap:8px;white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast .tick{color:var(--green)}
+
+/* ===== 揭示动画 ===== */
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .5s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1)}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  .reveal{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="app" id="app">
+
+      <!-- 状态条 -->
+      <div class="statusbar">
+        <span id="sbTime">09:41</span>
+        <span class="sig">
+          <i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i>
+          <span style="font-size:10px">5G</span>
+          <span style="width:20px;height:10px;border:1px solid var(--text-3);border-radius:3px;position:relative;display:inline-block"><i style="position:absolute;inset:1px;right:40%;background:var(--green);border-radius:1px"></i></span>
+        </span>
+      </div>
+
+      <div class="views">
+
+        <!-- ============ 首页 ============ -->
+        <section class="view active" id="view-home">
+          <div class="topbar">
+            <div>
+              <div class="date" id="homeDate">—</div>
+              <h1><span id="greet" data-text="早上好，管理员">早上好，管理员</span> <span class="hi">👋</span></h1>
+            </div>
+            <div class="right">
+              <button class="icbtn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="nd"></span></button>
+              <div class="avatar"><img src="https://picsum.photos/seed/wms-admin-avatar/80/80" alt=""></div>
+            </div>
+          </div>
+
+          <div class="pad">
+            <div class="stats">
+              <div class="stat reveal" style="--sc:var(--cyan)">
+                <div class="k"><svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2"><rect x="2" y="4" width="20" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>总设备数</div>
+                <div class="n"><span class="counter" data-target="1258">0</span><small> 台</small></div>
+                <span class="d up">▲ +5%</span>
+                <div class="spark" data-spark="30,42,38,50,45,60,55,68,62,75" data-color="#22d3ee"></div>
+              </div>
+              <div class="stat reveal" style="--sc:var(--green);transition-delay:.05s">
+                <div class="k"><svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M3 21V8l9-5 9 5v13M3 21h18"/></svg>在库设备</div>
+                <div class="n"><span class="counter" data-target="856">0</span><small> 台</small></div>
+                <span class="d up">92% 占用</span>
+                <div class="spark" data-spark="60,55,62,58,64,60,66,63,68,65" data-color="#34d399"></div>
+              </div>
+              <div class="stat reveal" style="--sc:var(--violet);transition-delay:.1s">
+                <div class="k"><svg viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>本月入库</div>
+                <div class="n"><span class="counter" data-target="142">0</span><small> 台</small></div>
+                <span class="d up">▲ +12%</span>
+                <div class="spark" data-spark="20,35,28,42,38,50,46,58,52,64" data-color="#a78bfa"></div>
+              </div>
+              <div class="stat reveal" style="--sc:var(--amber);transition-delay:.15s">
+                <div class="k"><svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"/></svg>本月出库</div>
+                <div class="n"><span class="counter" data-target="98">0</span><small> 台</small></div>
+                <span class="d down">▼ -3%</span>
+                <div class="spark" data-spark="50,45,52,48,40,44,38,42,36,40" data-color="#fbbf24"></div>
+              </div>
+            </div>
+
+            <div class="sec-title"><h3><span class="bar"></span>快捷操作</h3></div>
+            <div class="quick">
+              <button class="qk reveal" data-go-tab="inbound"><div class="qi" style="background:var(--cyan-dim)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg></div><div class="qn">新增入库</div></button>
+              <button class="qk reveal" data-go-tab="outbound"><div class="qi" style="background:var(--amber-dim)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"/></svg></div><div class="qn">设备出库</div></button>
+              <button class="qk reveal" data-go-tab="devices"><div class="qi" style="background:var(--violet-dim)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></div><div class="qn">查找设备</div></button>
+              <button class="qk reveal" data-open-sub="sub-warehouse"><div class="qi" style="background:var(--green-dim)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><path d="M3 21V8l9-5 9 5v13M3 21h18"/></svg></div><div class="qn">仓库管理</div></button>
+              <button class="qk reveal" data-open-sub="sub-reports"><div class="qi" style="background:var(--red-dim)"><svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18M7 14l4-4 4 3 5-6"/></svg></div><div class="qn">数据报表</div></button>
+              <button class="qk reveal" data-open-sub="sub-scrap"><div class="qi" style="background:rgba(148,163,184,.1)"><svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></div><div class="qn">报废申请</div></button>
+            </div>
+
+            <div class="sec-title"><h3><span class="bar"></span>出入库趋势</h3><span style="font-size:11px;color:var(--text-3)">近 14 天</span></div>
+            <div class="trend-card reveal">
+              <div class="trend-head">
+                <span class="t">实时流水</span>
+                <span class="lg"><span><i style="background:var(--cyan)"></i>入库</span><span><i style="background:var(--amber)"></i>出库</span></span>
+              </div>
+              <div id="trend"></div>
+            </div>
+
+            <div class="sec-title"><h3><span class="bar"></span>待办提醒</h3></div>
+          </div>
+          <div class="todos">
+            <div class="todo warn reveal" data-go-tab="inbound"><span class="tl">待处理入库</span><span class="tv">2</span><span class="tt">IN001 · IN004</span></div>
+            <div class="todo warn reveal" data-go-tab="outbound"><span class="tl">待处理出库</span><span class="tv">2</span><span class="tt">OUT001 · OUT004</span></div>
+            <div class="todo reveal" data-go-tab="devices"><span class="tl">维护中设备</span><span class="tv">1</span><span class="tt">思科 ASA5506</span></div>
+            <div class="todo reveal" data-open-sub="sub-warehouse"><span class="tl">A区容量</span><span class="tv" style="color:var(--cyan)">92%</span><span class="tt">接近阈值</span></div>
+          </div>
+          <div class="pad">
+            <div class="sec-title"><h3><span class="bar"></span>最近活动</h3><a data-open-sub="sub-logs">全部 ›</a></div>
+            <div class="reveal">
+              <div class="act-item"><div class="act-ic" style="background:var(--green-dim)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div><div><div class="at">新增华为 5G 基站设备</div><div class="am">2 分钟前 · 张三</div></div></div>
+              <div class="act-item"><div class="act-ic" style="background:var(--cyan-dim)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></div><div><div class="at">更新中兴光纤设备库存</div><div class="am">15 分钟前 · 李四</div></div></div>
+              <div class="act-item"><div class="act-ic" style="background:var(--red-dim)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></div><div><div class="at">删除报废设备记录</div><div class="am">1 小时前 · 王五</div></div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 入库 ============ -->
+        <section class="view" id="view-inbound">
+          <div class="pagehead"><div><h2>入库管理</h2><div class="sub">供应商到货 · 验收 · 上架</div></div>
+            <button class="icbtn" data-open-sheet="sh-in"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="chips" data-scope="inbound">
+            <button class="chip active" data-f="all">全部<span class="c">4</span></button>
+            <button class="chip" data-f="pending">待处理<span class="c">2</span></button>
+            <button class="chip" data-f="processing">处理中<span class="c">1</span></button>
+            <button class="chip" data-f="done">已完成<span class="c">1</span></button>
+          </div>
+          <div class="orders" id="inboundList">
+            <div class="order reveal" data-status="pending">
+              <div class="o-top"><div><div class="o-id">IN202401001</div><div class="o-date">2024-01-30 09:30</div></div><span class="status pending">待处理</span></div>
+              <div class="o-meta"><div class="m"><div class="k">供应商</div><div class="v">华为技术有限公司</div></div><div class="m"><div class="k">设备数量</div><div class="v">25 台</div></div><div class="m"><div class="k">预计到货</div><div class="v">2024-01-30</div></div><div class="m"><div class="k">负责人</div><div class="v">张三</div></div></div>
+              <div class="o-prog"><div class="pl"><span>入库进度</span><b>0/25</b></div><div class="pbar"><div class="pfill" data-w="0%"></div></div></div>
+              <div class="o-actions"><button class="btn primary">开始入库</button><button class="btn ghost">详情</button></div>
+            </div>
+            <div class="order reveal" data-status="processing">
+              <div class="o-top"><div><div class="o-id">IN202401002</div><div class="o-date">2024-01-29 14:20</div></div><span class="status processing">处理中</span></div>
+              <div class="o-meta"><div class="m"><div class="k">供应商</div><div class="v">中兴通讯股份</div></div><div class="m"><div class="k">设备数量</div><div class="v">18 台</div></div><div class="m"><div class="k">已入库</div><div class="v">12 台</div></div><div class="m"><div class="k">负责人</div><div class="v">李四</div></div></div>
+              <div class="o-prog"><div class="pl"><span>入库进度</span><b>12/18</b></div><div class="pbar"><div class="pfill" data-w="67%"></div></div></div>
+              <div class="o-actions"><button class="btn primary">继续入库</button><button class="btn ghost">详情</button></div>
+            </div>
+            <div class="order reveal" data-status="done">
+              <div class="o-top"><div><div class="o-id">IN202401003</div><div class="o-date">2024-01-28 11:15</div></div><span class="status done">已完成</span></div>
+              <div class="o-meta"><div class="m"><div class="k">供应商</div><div class="v">思科系统公司</div></div><div class="m"><div class="k">设备数量</div><div class="v">32 台</div></div><div class="m"><div class="k">完成时间</div><div class="v">01-28 16:45</div></div><div class="m"><div class="k">负责人</div><div class="v">王五</div></div></div>
+              <div class="o-prog"><div class="pl"><span>入库进度</span><b>32/32</b></div><div class="pbar"><div class="pfill done" data-w="100%"></div></div></div>
+              <div class="o-actions"><button class="btn primary">打印标签</button><button class="btn ghost">详情</button></div>
+            </div>
+            <div class="order reveal" data-status="pending">
+              <div class="o-top"><div><div class="o-id">IN202401004</div><div class="o-date">2024-01-30 16:00</div></div><span class="status pending">待处理</span></div>
+              <div class="o-meta"><div class="m"><div class="k">供应商</div><div class="v">TP-Link 技术</div></div><div class="m"><div class="k">设备数量</div><div class="v">15 台</div></div><div class="m"><div class="k">预计到货</div><div class="v">2024-01-31</div></div><div class="m"><div class="k">负责人</div><div class="v">赵六</div></div></div>
+              <div class="o-prog"><div class="pl"><span>入库进度</span><b>0/15</b></div><div class="pbar"><div class="pfill" data-w="0%"></div></div></div>
+              <div class="o-actions"><button class="btn primary">开始入库</button><button class="btn ghost">详情</button></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 出库 ============ -->
+        <section class="view" id="view-outbound">
+          <div class="pagehead"><div><h2>出库管理</h2><div class="sub">部门领用 · 拣货 · 发放</div></div>
+            <button class="icbtn" data-open-sheet="sh-out"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="chips" data-scope="outbound">
+            <button class="chip active" data-f="all">全部<span class="c">4</span></button>
+            <button class="chip" data-f="pending">待处理<span class="c">2</span></button>
+            <button class="chip" data-f="processing">处理中<span class="c">1</span></button>
+            <button class="chip" data-f="done">已完成<span class="c">1</span></button>
+          </div>
+          <div class="orders" id="outboundList">
+            <div class="order reveal" data-status="pending">
+              <div class="o-top"><div><div class="o-id">OUT202401001</div><div class="o-date">2024-01-30 10:15</div></div><span class="status pending">待处理</span></div>
+              <div class="o-meta"><div class="m"><div class="k">申请部门</div><div class="v">网络运维部</div></div><div class="m"><div class="k">设备数量</div><div class="v">8 台</div></div><div class="m"><div class="k">申请人</div><div class="v">张三</div></div><div class="m"><div class="k">紧急程度</div><div class="v">普通</div></div></div>
+              <div class="o-prog"><div class="pl"><span>出库进度</span><b>0/8</b></div><div class="pbar"><div class="pfill" data-w="0%"></div></div></div>
+              <div class="o-actions"><button class="btn primary">开始出库</button><button class="btn ghost">详情</button></div>
+            </div>
+            <div class="order reveal" data-status="processing">
+              <div class="o-top"><div><div class="o-id">OUT202401002</div><div class="o-date">2024-01-29 15:30</div></div><span class="status processing">处理中</span></div>
+              <div class="o-meta"><div class="m"><div class="k">申请部门</div><div class="v">技术支持部</div></div><div class="m"><div class="k">设备数量</div><div class="v">12 台</div></div><div class="m"><div class="k">已出库</div><div class="v">7 台</div></div><div class="m"><div class="k">负责人</div><div class="v">李四</div></div></div>
+              <div class="o-prog"><div class="pl"><span>出库进度</span><b>7/12</b></div><div class="pbar"><div class="pfill" data-w="58%"></div></div></div>
+              <div class="o-actions"><button class="btn primary">继续出库</button><button class="btn ghost">详情</button></div>
+            </div>
+            <div class="order reveal" data-status="done">
+              <div class="o-top"><div><div class="o-id">OUT202401003</div><div class="o-date">2024-01-28 09:45</div></div><span class="status done">已完成</span></div>
+              <div class="o-meta"><div class="m"><div class="k">申请部门</div><div class="v">项目实施部</div></div><div class="m"><div class="k">设备数量</div><div class="v">15 台</div></div><div class="m"><div class="k">完成时间</div><div class="v">01-28 14:20</div></div><div class="m"><div class="k">负责人</div><div class="v">王五</div></div></div>
+              <div class="o-prog"><div class="pl"><span>出库进度</span><b>15/15</b></div><div class="pbar"><div class="pfill done" data-w="100%"></div></div></div>
+              <div class="o-actions"><button class="btn primary">打印单据</button><button class="btn ghost">详情</button></div>
+            </div>
+            <div class="order reveal" data-status="pending">
+              <div class="o-top"><div><div class="o-id">OUT202401004</div><div class="o-date">2024-01-30 16:20</div></div><span class="status urgent">紧急</span></div>
+              <div class="o-meta"><div class="m"><div class="k">申请部门</div><div class="v">客户服务部</div></div><div class="m"><div class="k">设备数量</div><div class="v">6 台</div></div><div class="m"><div class="k">申请人</div><div class="v">赵六</div></div><div class="m"><div class="k">紧急程度</div><div class="v" style="color:var(--red)">紧急</div></div></div>
+              <div class="o-prog"><div class="pl"><span>出库进度</span><b>0/6</b></div><div class="pbar"><div class="pfill" data-w="0%"></div></div></div>
+              <div class="o-actions"><button class="btn primary">开始出库</button><button class="btn ghost">详情</button></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 设备 ============ -->
+        <section class="view" id="view-devices">
+          <div class="pagehead"><div><h2>设备登记</h2><div class="sub">序列号级台账追踪</div></div>
+            <button class="icbtn" data-open-sheet="sh-dev"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="chips" data-scope="devices">
+            <button class="chip active" data-f="all">全部<span class="c">6</span></button>
+            <button class="chip" data-f="avail">可用<span class="c">3</span></button>
+            <button class="chip" data-f="inuse">使用中<span class="c">2</span></button>
+            <button class="chip" data-f="maint">维护中<span class="c">1</span></button>
+          </div>
+          <div class="devices" id="deviceList">
+            <div class="dev reveal" data-status="avail" data-name="华为路由器 AR2220" data-model="AR2220-S" data-sn="HW2220001" data-loc="A区-01-05" data-st="可用" data-extra="入库日期 · 2024-01-15" data-img="huawei-router-network">
+              <div class="thumb"><img src="https://picsum.photos/seed/huawei-router-network/120/120" alt=""></div>
+              <div class="info"><div class="nm">华为路由器 AR2220</div><div class="md">AR2220-S</div><div class="meta"><span style="color:var(--green)">● 可用</span><span>HW2220001</span><span>A区-01-05</span></div></div>
+              <div class="go"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+            </div>
+            <div class="dev reveal" data-status="inuse" data-name="中兴交换机 ZXR10" data-model="ZXR10-5960" data-sn="ZTE5960002" data-loc="B区-02-10" data-st="使用中" data-extra="使用部门 · 网络部" data-img="zte-switch-server">
+              <div class="thumb"><img src="https://picsum.photos/seed/zte-switch-server/120/120" alt=""></div>
+              <div class="info"><div class="nm">中兴交换机 ZXR10</div><div class="md">ZXR10-5960</div><div class="meta"><span style="color:var(--cyan)">● 使用中</span><span>ZTE5960002</span><span>B区-02-10</span></div></div>
+              <div class="go"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+            </div>
+            <div class="dev reveal" data-status="maint" data-name="思科防火墙 ASA5506" data-model="ASA5506-X" data-sn="CISCO5506003" data-loc="维修区-01" data-st="维护中" data-extra="维护原因 · 端口故障" data-img="cisco-firewall-security">
+              <div class="thumb"><img src="https://picsum.photos/seed/cisco-firewall-security/120/120" alt=""></div>
+              <div class="info"><div class="nm">思科防火墙 ASA5506</div><div class="md">ASA5506-X</div><div class="meta"><span style="color:var(--red)">● 维护中</span><span>CISCO5506003</span><span>维修区-01</span></div></div>
+              <div class="go"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+            </div>
+            <div class="dev reveal" data-status="avail" data-name="TP-Link 无线AP" data-model="EAP245" data-sn="TPLINK245004" data-loc="C区-03-15" data-st="可用" data-extra="入库日期 · 2024-01-25" data-img="tplink-wireless-ap">
+              <div class="thumb"><img src="https://picsum.photos/seed/tplink-wireless-ap/120/120" alt=""></div>
+              <div class="info"><div class="nm">TP-Link 无线AP</div><div class="md">EAP245</div><div class="meta"><span style="color:var(--green)">● 可用</span><span>TPLINK245004</span><span>C区-03-15</span></div></div>
+              <div class="go"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+            </div>
+            <div class="dev reveal" data-status="avail" data-name="华为 5G 基站 AAU" data-model="AAU5613" data-sn="HW5613005" data-loc="A区-02-08" data-st="可用" data-extra="入库日期 · 2024-01-29" data-img="huawei-5g-basestation">
+              <div class="thumb"><img src="https://picsum.photos/seed/huawei-5g-basestation/120/120" alt=""></div>
+              <div class="info"><div class="nm">华为 5G 基站 AAU</div><div class="md">AAU5613</div><div class="meta"><span style="color:var(--green)">● 可用</span><span>HW5613005</span><span>A区-02-08</span></div></div>
+              <div class="go"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+            </div>
+            <div class="dev reveal" data-status="inuse" data-name="中兴光纤传输 OLT" data-model="C600-8" data-sn="ZTEC600006" data-loc="传输部" data-st="使用中" data-extra="出库日期 · 2024-01-22" data-img="fiber-optic-olt">
+              <div class="thumb"><img src="https://picsum.photos/seed/fiber-optic-olt/120/120" alt=""></div>
+              <div class="info"><div class="nm">中兴光纤传输 OLT</div><div class="md">C600-8</div><div class="meta"><span style="color:var(--cyan)">● 使用中</span><span>ZTEC600006</span><span>传输部</span></div></div>
+              <div class="go"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 我的 ============ -->
+        <section class="view" id="view-mine">
+          <div class="pagehead"><div><h2>我的</h2><div class="sub">个人中心与系统功能</div></div></div>
+          <div class="me-card reveal">
+            <div class="avatar"><img src="https://picsum.photos/seed/wms-admin-avatar/120/120" alt=""></div>
+            <div><div class="nm">设备WMS管理员</div><div class="rl"><span class="dot"></span>超级管理员 · 在线</div></div>
+          </div>
+          <div class="me-stats reveal">
+            <div class="me-stat"><div class="v">240</div><div class="k">本月经手</div></div>
+            <div class="me-stat"><div class="v">18</div><div class="k">待办单据</div></div>
+            <div class="me-stat"><div class="v">99.2%</div><div class="k">准确率</div></div>
+          </div>
+          <div class="menu reveal">
+            <div class="mitem" data-open-sub="sub-warehouse"><div class="mi" style="background:var(--green-dim)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><path d="M3 21V8l9-5 9 5v13M3 21h18"/></svg></div><span class="mt">仓库管理</span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+            <div class="mitem" data-open-sub="sub-scrap"><div class="mi" style="background:rgba(148,163,184,.1)"><svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></div><span class="mt">报废管理</span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+            <div class="mitem" data-open-sub="sub-reports"><div class="mi" style="background:var(--red-dim)"><svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18M7 14l4-4 4 3 5-6"/></svg></div><span class="mt">报表统计</span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+            <div class="mitem" data-open-sub="sub-logs"><div class="mi" style="background:var(--violet-dim)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg></div><span class="mt">操作日志</span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+            <div class="mitem" data-toast="设置功能开发中"><div class="mi" style="background:var(--cyan-dim)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><span class="mt">系统设置</span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+          </div>
+          <div style="text-align:center;margin-top:22px;font-family:var(--mono);font-size:10px;color:var(--text-3)">通信设备WMS · MOBILE v1.0</div>
+        </section>
+
+        <!-- ============ 二级页：日志 ============ -->
+        <section class="subview" id="sub-logs">
+          <div class="sub-head"><button class="back" data-back><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button><h2>操作日志</h2></div>
+          <div class="chips"><button class="chip active">全部</button><button class="chip">成功</button><button class="chip">警告</button><button class="chip">错误</button><button class="chip">信息</button></div>
+          <div class="logs">
+            <div class="log reveal"><div class="lt"><span class="time">01-30 16:22</span><span class="log-type" style="color:var(--green);background:var(--green-dim)">新增</span></div><div class="lc">新增华为 5G 基站设备入库登记</div><div class="lb"><span>张三 · 设备登记</span><span style="color:var(--green)">成功</span></div></div>
+            <div class="log reveal"><div class="lt"><span class="time">01-30 16:07</span><span class="log-type" style="color:var(--cyan);background:var(--cyan-dim)">更新</span></div><div class="lc">更新中兴光纤设备库存数量 128→134</div><div class="lb"><span>李四 · 库存管理</span><span style="color:var(--green)">成功</span></div></div>
+            <div class="log reveal"><div class="lt"><span class="time">01-30 15:41</span><span class="log-type" style="color:var(--red);background:var(--red-dim)">删除</span></div><div class="lc">删除报废设备记录 SCRAP-0892</div><div class="lb"><span>王五 · 报废管理</span><span style="color:var(--green)">成功</span></div></div>
+            <div class="log reveal"><div class="lt"><span class="time">01-30 14:55</span><span class="log-type" style="color:var(--amber);background:var(--amber-dim)">警告</span></div><div class="lc">A区-01-05 库位容量超过 90% 阈值</div><div class="lb"><span>系统 · 仓库管理</span><span style="color:var(--amber)">提醒</span></div></div>
+            <div class="log reveal"><div class="lt"><span class="time">01-30 13:30</span><span class="log-type" style="color:var(--violet);background:var(--violet-dim)">出库</span></div><div class="lc">出库单 OUT202401002 进度更新 7/12</div><div class="lb"><span>李四 · 出库管理</span><span style="color:var(--green)">成功</span></div></div>
+            <div class="log reveal"><div class="lt"><span class="time">01-29 17:48</span><span class="log-type" style="color:var(--red);background:var(--red-dim)">错误</span></div><div class="lc">序列号 ZTE5960099 扫码校验失败</div><div class="lb"><span>赵六 · 设备登记</span><span style="color:var(--red)">失败</span></div></div>
+          </div>
+        </section>
+
+        <!-- ============ 二级页：仓库 ============ -->
+        <section class="subview" id="sub-warehouse">
+          <div class="sub-head"><button class="back" data-back><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button><h2>仓库管理</h2></div>
+          <div class="zones">
+            <div class="zone reveal"><div class="zh"><span class="zc">A区 · 核心网络</span><span class="status processing">92%</span></div><div class="zp">库位 <b>184/200</b> · 设备 <b>412</b> 台</div><div class="pbar"><div class="pfill" data-w="92%"></div></div></div>
+            <div class="zone reveal"><div class="zh"><span class="zc">B区 · 传输接入</span><span class="status done">78%</span></div><div class="zp">库位 <b>156/200</b> · 设备 <b>356</b> 台</div><div class="pbar"><div class="pfill" data-w="78%" style="background:linear-gradient(90deg,#059669,#34d399)"></div></div></div>
+            <div class="zone reveal"><div class="zh"><span class="zc">C区 · 无线终端</span><span class="status done">64%</span></div><div class="zp">库位 <b>128/200</b> · 设备 <b>218</b> 台</div><div class="pbar"><div class="pfill" data-w="64%" style="background:linear-gradient(90deg,#7c3aed,#a78bfa)"></div></div></div>
+            <div class="zone reveal"><div class="zh"><span class="zc">维修区</span><span class="status urgent">30%</span></div><div class="zp">库位 <b>24/80</b> · 设备 <b>32</b> 台</div><div class="pbar"><div class="pfill" data-w="30%" style="background:linear-gradient(90deg,#b91c1c,#f87171)"></div></div></div>
+          </div>
+        </section>
+
+        <!-- ============ 二级页：报废 ============ -->
+        <section class="subview" id="sub-scrap">
+          <div class="sub-head"><button class="back" data-back><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button><h2>报废管理</h2></div>
+          <div class="orders">
+            <div class="order reveal"><div class="o-top"><div><div class="o-id">SCRAP-0901</div><div class="o-date">2024-01-30 14:00</div></div><span class="status pending">待审批</span></div>
+              <div class="o-meta"><div class="m"><div class="k">设备</div><div class="v">老旧交换机 ×6</div></div><div class="m"><div class="k">原因</div><div class="v">超出年限</div></div><div class="m"><div class="k">申请人</div><div class="v">王五</div></div><div class="m"><div class="k">残值</div><div class="v">¥1,200</div></div></div>
+              <div class="o-actions"><button class="btn primary">审批</button><button class="btn ghost">详情</button></div></div>
+            <div class="order reveal"><div class="o-top"><div><div class="o-id">SCRAP-0898</div><div class="o-date">2024-01-28 10:20</div></div><span class="status done">已处置</span></div>
+              <div class="o-meta"><div class="m"><div class="k">设备</div><div class="v">故障光模块 ×14</div></div><div class="m"><div class="k">原因</div><div class="v">无法修复</div></div><div class="m"><div class="k">处置方式</div><div class="v">环保回收</div></div><div class="m"><div class="k">处置日期</div><div class="v">2024-01-29</div></div></div>
+              <div class="o-actions"><button class="btn primary">打印凭证</button><button class="btn ghost">详情</button></div></div>
+          </div>
+        </section>
+
+        <!-- ============ 二级页：报表 ============ -->
+        <section class="subview" id="sub-reports">
+          <div class="sub-head"><button class="back" data-back><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button><h2>报表统计</h2></div>
+          <div class="pad"><div class="trend-card">
+            <div class="trend-head"><span class="t">月度出入库对比</span><span class="lg"><span><i style="background:var(--cyan)"></i>入库</span><span><i style="background:var(--amber)"></i>出库</span></span></div>
+            <div class="bars" id="repBars">
+              <div class="bcol"><div class="bpair"><div class="bar" data-h="55%"></div><div class="bar b2" data-h="40%"></div></div><span class="bl">9月</span></div>
+              <div class="bcol"><div class="bpair"><div class="bar" data-h="70%"></div><div class="bar b2" data-h="52%"></div></div><span class="bl">10月</span></div>
+              <div class="bcol"><div class="bpair"><div class="bar" data-h="48%"></div><div class="bar b2" data-h="60%"></div></div><span class="bl">11月</span></div>
+              <div class="bcol"><div class="bpair"><div class="bar" data-h="82%"></div><div class="bar b2" data-h="66%"></div></div><span class="bl">12月</span></div>
+              <div class="bcol"><div class="bpair"><div class="bar" data-h="95%"></div><div class="bar b2" data-h="72%"></div></div><span class="bl">1月</span></div>
+            </div>
+          </div>
+          <div class="sec-title"><h3><span class="bar"></span>供应商占比</h3></div>
+          <div class="trend-card">
+            <div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>华为技术</span><span style="font-family:var(--mono);color:var(--text-2)">38%</span></div><div class="pbar"><div class="pfill" data-w="38%"></div></div></div>
+            <div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>中兴通讯</span><span style="font-family:var(--mono);color:var(--text-2)">27%</span></div><div class="pbar"><div class="pfill" data-w="27%" style="background:linear-gradient(90deg,#059669,#34d399)"></div></div></div>
+            <div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>思科系统</span><span style="font-family:var(--mono);color:var(--text-2)">18%</span></div><div class="pbar"><div class="pfill" data-w="18%" style="background:linear-gradient(90deg,#7c3aed,#a78bfa)"></div></div></div>
+            <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>TP-Link</span><span style="font-family:var(--mono);color:var(--text-2)">11%</span></div><div class="pbar"><div class="pfill" data-w="11%" style="background:linear-gradient(90deg,#b45309,#fbbf24)"></div></div></div>
+          </div></div>
+        </section>
+
+      </div><!-- /views -->
+
+      <!-- FAB -->
+      <button class="fab" id="fab"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+
+      <!-- Tab Bar -->
+      <nav class="tabbar">
+        <button class="tab active" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-7h6v7"/></svg>首页</button>
+        <button class="tab" data-tab="inbound"><span class="tb-badge">2</span><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>入库</button>
+        <button class="tab" data-tab="outbound"><span class="tb-badge">2</span><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 21h16"/></svg>出库</button>
+        <button class="tab" data-tab="devices"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>设备</button>
+        <button class="tab" data-tab="mine"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/></svg>我的</button>
+      </nav>
+
+      <!-- ===== 抽屉：新建入库 ===== -->
+      <div class="sheet-ov" id="sh-in">
+        <div class="sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-head"><h3>📥 新建入库单</h3><button class="sheet-close" data-close>✕</button></div>
+          <div class="sheet-sub">填写供应商到货信息，创建后进入待处理队列</div>
+          <div class="fg"><label>供应商 <span class="req">*</span></label><select><option>请选择供应商</option><option>华为技术有限公司</option><option>中兴通讯股份</option><option>思科系统公司</option><option>TP-Link技术</option><option>其他</option></select></div>
+          <div class="frow"><div class="fg"><label>预计到货 <span class="req">*</span></label><input type="date"></div><div class="fg"><label>设备数量 <span class="req">*</span></label><input type="number" placeholder="台"></div></div>
+          <div class="fg"><label>负责人 <span class="req">*</span></label><select><option>请选择负责人</option><option>张三</option><option>李四</option><option>王五</option><option>赵六</option></select></div>
+          <div class="fg"><label>备注</label><textarea placeholder="到货批次、特殊要求…"></textarea></div>
+          <div class="sheet-foot"><button class="btn ghost" data-close>取消</button><button class="btn primary" data-close data-toast="入库单已创建，进入待处理队列">确认创建</button></div>
+        </div>
+      </div>
+
+      <!-- ===== 抽屉：新建出库 ===== -->
+      <div class="sheet-ov" id="sh-out">
+        <div class="sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-head"><h3>📤 新建出库单</h3><button class="sheet-close" data-close>✕</button></div>
+          <div class="sheet-sub">填写部门领用申请信息</div>
+          <div class="fg"><label>申请部门 <span class="req">*</span></label><select><option>请选择申请部门</option><option>网络运维部</option><option>技术支持部</option><option>项目实施部</option><option>客户服务部</option><option>其他</option></select></div>
+          <div class="frow"><div class="fg"><label>申请人 <span class="req">*</span></label><input type="text" placeholder="姓名"></div><div class="fg"><label>设备数量 <span class="req">*</span></label><input type="number" placeholder="台"></div></div>
+          <div class="frow"><div class="fg"><label>紧急程度</label><select><option>普通</option><option>紧急</option><option>非常紧急</option></select></div><div class="fg"><label>预计出库</label><input type="date"></div></div>
+          <div class="fg"><label>用途说明</label><textarea placeholder="领用用途…"></textarea></div>
+          <div class="sheet-foot"><button class="btn ghost" data-close>取消</button><button class="btn primary" data-close data-toast="出库单已创建，等待审批">确认创建</button></div>
+        </div>
+      </div>
+
+      <!-- ===== 抽屉：新增设备 ===== -->
+      <div class="sheet-ov" id="sh-dev">
+        <div class="sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-head"><h3>📱 新增设备</h3><button class="sheet-close" data-close>✕</button></div>
+          <div class="sheet-sub">录入设备台账信息</div>
+          <div class="frow"><div class="fg"><label>设备名称 <span class="req">*</span></label><input type="text" placeholder="如：华为路由器"></div><div class="fg"><label>设备型号 <span class="req">*</span></label><input type="text" placeholder="如：AR2220-S"></div></div>
+          <div class="fg"><label>序列号 <span class="req">*</span></label><input type="text" placeholder="唯一序列号"></div>
+          <div class="fg"><label>设备类型</label><select><option>请选择设备类型</option><option>路由器</option><option>交换机</option><option>防火墙</option><option>无线AP</option><option>服务器</option><option>其他</option></select></div>
+          <div class="frow"><div class="fg"><label>供应商</label><input type="text" placeholder="供应商名称"></div><div class="fg"><label>存放位置</label><input type="text" placeholder="如：A区-01-05"></div></div>
+          <div class="sheet-foot"><button class="btn ghost" data-close>取消</button><button class="btn primary" data-close data-toast="设备已添加至台账">确认添加</button></div>
+        </div>
+      </div>
+
+      <!-- ===== 抽屉：设备详情 ===== -->
+      <div class="sheet-ov" id="sh-detail">
+        <div class="sheet d-detail">
+          <div class="sheet-handle"></div>
+          <div class="sheet-head"><h3 id="ddName">设备详情</h3><button class="sheet-close" data-close>✕</button></div>
+          <div class="hero"><img id="ddImg" src="" alt=""><span class="status done" id="ddStatus">可用</span></div>
+          <div class="dd-rows">
+            <div class="dd-row"><span class="k">设备型号</span><span class="v" id="ddModel">—</span></div>
+            <div class="dd-row"><span class="k">序列号</span><span class="v" id="ddSn">—</span></div>
+            <div class="dd-row"><span class="k">位置 / 部门</span><span class="v" id="ddLoc">—</span></div>
+            <div class="dd-row" style="border-bottom:none"><span class="k">备注</span><span class="v" id="ddExtra">—</span></div>
+          </div>
+          <div class="sheet-foot"><button class="btn ghost" data-close>关闭</button><button class="btn primary" data-close data-toast="已发起操作">执行操作</button></div>
+        </div>
+      </div>
+
+      <!-- Toast -->
+      <div class="toast" id="toast"><span class="tick">✓</span><span id="toastMsg"></span></div>
+
+    </div><!-- /app -->
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+var $=function(s,c){return (c||document).querySelector(s);};
+var $$=function(s,c){return Array.prototype.slice.call((c||document).querySelectorAll(s));};
+
+/* ---- 时钟/日期 ---- */
+function pad(n){return String(n).padStart(2,'0');}
+function tickClock(){
+  var d=new Date();
+  $('#sbTime').textContent=pad(d.getHours())+':'+pad(d.getMinutes());
+  var wk=['周日','周一','周二','周三','周四','周五','周六'];
+  $('#homeDate').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日 · '+wk[d.getDay()]+' · '+d.getFullYear();
+}
+tickClock();setInterval(tickClock,10000);
+
+/* ---- 问候语解码 ---- */
+var glyphs='█▓▒░<>/#01*+';
+function scramble(){
+  var el=$('#greet'),t=el.dataset.text,f=0;
+  if(reduced){el.textContent=t;return;}
+  clearInterval(el._t);
+  el._t=setInterval(function(){
+    var o='';
+    for(var i=0;i<t.length;i++){o+=(f/3>i)?t[i]:glyphs[Math.floor(Math.random()*glyphs.length)];}
+    el.textContent=o;f++;
+    if(f>t.length*3+6){el.textContent=t;clearInterval(el._t);}
+  },40);
+}
+
+/* ---- 数字滚动 ---- */
+function runCounters(scope){
+  $$('.counter',scope).forEach(function(c){
+    if(c.dataset.done)return;c.dataset.done=1;
+    var tg=+c.dataset.target;
+    if(reduced){c.textContent=tg.toLocaleString();return;}
+    var st=null,dur=1300;
+    function step(ts){if(!st)st=ts;var p=Math.min((ts-st)/dur,1);var e=1-Math.pow(1-p,3);
+      c.textContent=Math.round(tg*e).toLocaleString();if(p<1)requestAnimationFrame(step);}
+    requestAnimationFrame(step);
+  });
+}
+
+/* ---- 迷你趋势线 ---- */
+function drawSparks(scope){
+  $$('.spark',scope).forEach(function(s){
+    if(s.dataset.d)return;s.dataset.d=1;
+    var pts=s.dataset.spark.split(',').map(Number);
+    var mx=Math.max.apply(null,pts),mn=Math.min.apply(null,pts),w=100,h=26,st=w/(pts.length-1);
+    var co=pts.map(function(v,i){return [i*st,h-3-((v-mn)/(mx-mn||1))*(h-7)];});
+    var ln='M'+co.map(function(c){return c[0].toFixed(1)+' '+c[1].toFixed(1);}).join(' L');
+    s.innerHTML='<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><path d="'+ln+' L'+w+' '+h+' L0 '+h+' Z" fill="'+s.dataset.color+'" opacity=".13"/><path d="'+ln+'" fill="none" stroke="'+s.dataset.color+'" stroke-width="1.6" stroke-linecap="round"/><circle cx="'+co[co.length-1][0]+'" cy="'+co[co.length-1][1]+'" r="2.2" fill="'+s.dataset.color+'"/></svg>';
+  });
+}
+
+/* ---- 首页趋势图 ---- */
+var trendDone=false;
+function drawTrend(){
+  if(trendDone)return;trendDone=true;
+  var inb=[12,18,14,22,19,26,24,30,27,34,31,38,35,42],out=[8,11,9,14,12,16,15,19,17,22,20,24,22,26];
+  var W=340,H=140,pl=26,pb=18,pt=10,pr=4,mx=48,iw=W-pl-pr,ih=H-pt-pb;
+  function X(i){return pl+i*(iw/(inb.length-1));}
+  function Y(v){return pt+ih-(v/mx)*ih;}
+  var s='<svg viewBox="0 0 '+W+' '+H+'">';
+  for(var g=0;g<=3;g++){var gy=pt+ih*g/3;s+='<line x1="'+pl+'" y1="'+gy+'" x2="'+(W-pr)+'" y2="'+gy+'" stroke="rgba(148,163,184,.08)"/><text x="'+(pl-5)+'" y="'+(gy+3)+'" font-size="8" fill="#5c677d" text-anchor="end" font-family="JetBrains Mono">'+Math.round(mx-mx*g/3)+'</text>';}
+  function path(a){var d='M'+X(0)+' '+Y(a[0]);for(var i=1;i<a.length;i++){var xc=(X(i-1)+X(i))/2;d+=' C'+xc+' '+Y(a[i-1])+','+xc+' '+Y(a[i])+','+X(i)+' '+Y(a[i]);}return d;}
+  s+='<defs><linearGradient id="gi" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22d3ee" stop-opacity=".3"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></linearGradient></defs>';
+  s+='<path d="'+path(inb)+' L'+X(inb.length-1)+' '+(pt+ih)+' L'+pl+' '+(pt+ih)+' Z" fill="url(#gi)"/>';
+  s+='<path d="'+path(out)+'" fill="none" stroke="#fbbf24" stroke-width="1.8" class="dr" pathLength="1"/>';
+  s+='<path d="'+path(inb)+'" fill="none" stroke="#22d3ee" stroke-width="2" class="dr" pathLength="1"/>';
+  s+='</svg>';
+  $('#trend').innerHTML=s;
+  if(!reduced){$$('#trend .dr').forEach(function(p,i){p.style.strokeDasharray='1';p.style.strokeDashoffset='1';p.style.transition='stroke-dashoffset 1.5s ease '+(i*0.25)+'s';requestAnimationFrame(function(){requestAnimationFrame(function(){p.style.strokeDashoffset='0';});});});}
+}
+
+/* ---- 进度条填充 ---- */
+function fillBars(scope){
+  $$('.pfill',scope).forEach(function(f){if(f.dataset.w){requestAnimationFrame(function(){requestAnimationFrame(function(){f.style.width=f.dataset.w;});});}});
+}
+
+/* ---- 揭示 ---- */
+function revealIn(scope){$$('.reveal',scope).forEach(function(el){el.classList.add('in');});}
+
+/* ---- Tab 切换 ---- */
+var fabTargets={inbound:'sh-in',outbound:'sh-out',devices:'sh-dev'};
+function switchTab(name){
+  $$('.view').forEach(function(v){v.classList.remove('active');});
+  var v=$('#view-'+name);v.classList.add('active');v.scrollTop=0;
+  $$('.tab').forEach(function(t){t.classList.toggle('active',t.dataset.tab===name);});
+  var fab=$('#fab');
+  if(fabTargets[name]){fab.classList.add('show');fab.dataset.sheet=fabTargets[name];}
+  else fab.classList.remove('show');
+  requestAnimationFrame(function(){revealIn(v);fillBars(v);
+    if(name==='home'){runCounters(v);drawSparks(v);drawTrend();scramble();}
+    if(name==='devices'){}
+  });
+}
+$$('.tab').forEach(function(t){t.addEventListener('click',function(){switchTab(t.dataset.tab);});});
+$('#fab').addEventListener('click',function(){openSheet(this.dataset.sheet);});
+
+/* ---- 快捷跳转 ---- */
+$$('[data-go-tab]').forEach(function(el){el.addEventListener('click',function(){switchTab(el.dataset.goTab);});});
+
+/* ---- 二级页 ---- */
+$$('[data-open-sub]').forEach(function(el){el.addEventListener('click',function(){var s=$('#'+el.dataset.openSub);s.classList.add('open');s.scrollTop=0;requestAnimationFrame(function(){revealIn(s);fillBars(s);if(el.dataset.openSub==='sub-reports')animateBars();});});});
+$$('[data-back]').forEach(function(b){b.addEventListener('click',function(){b.closest('.subview').classList.remove('open');});});
+function animateBars(){$$('#repBars .bar').forEach(function(b){b.style.height=b.dataset.h;});}
+
+/* ---- 抽屉 ---- */
+function openSheet(id){$('#'+id).classList.add('open');}
+function closeSheets(){$$('.sheet-ov.open').forEach(function(o){o.classList.remove('open');});}
+$$('[data-open-sheet]').forEach(function(b){b.addEventListener('click',function(){openSheet(b.dataset.openSheet);});});
+$$('[data-close]').forEach(function(b){b.addEventListener('click',function(){
+  var msg=b.dataset.toast;closeSheets();if(msg)showToast(msg);});});
+$$('.sheet-ov').forEach(function(o){o.addEventListener('click',function(e){if(e.target===o)closeSheets();});});
+
+/* ---- 设备详情 ---- */
+var stMap={'可用':{c:'done'},'使用中':{c:'processing'},'维护中':{c:'urgent'}};
+$$('.dev').forEach(function(d){
+  d.addEventListener('click',function(){
+    $('#ddName').textContent=d.dataset.name;
+    $('#ddModel').textContent=d.dataset.model;
+    $('#ddSn').textContent=d.dataset.sn;
+    $('#ddLoc').textContent=d.dataset.loc;
+    $('#ddExtra').textContent=d.dataset.extra;
+    var st=$('#ddStatus');st.textContent=d.dataset.st;st.className='status '+(stMap[d.dataset.st]||{c:'done'}).c;
+    $('#ddImg').src='https://picsum.photos/seed/'+d.dataset.img+'/600/300';
+    openSheet('sh-detail');
+  });
+});
+
+/* ---- 筛选 chips ---- */
+var listMap={inbound:'#inboundList',outbound:'#outboundList',devices:'#deviceList'};
+$$('.chips[data-scope]').forEach(function(ch){
+  $$('.chip',ch).forEach(function(c){
+    c.addEventListener('click',function(){
+      $$('.chip',ch).forEach(function(x){x.classList.remove('active');});
+      c.classList.add('active');
+      var f=c.dataset.f,list=$(listMap[ch.dataset.scope]);
+      $$('[data-status]',list).forEach(function(card){
+        card.style.display=(f==='all'||card.dataset.status===f)?'':'none';
+      });
+    });
+  });
+});
+
+/* ---- Toast ---- */
+var toastTimer;
+function showToast(msg){
+  $('#toastMsg').textContent=msg;
+  $('#toast').classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){$('#toast').classList.remove('show');},2200);
+}
+$$('[data-toast]').forEach(function(el){
+  if(el.closest('.sheet'))return;
+  el.addEventListener('click',function(){showToast(el.dataset.toast);});
+});
+
+/* ---- 初始化 ---- */
+window.addEventListener('load',function(){
+  var home=$('#view-home');
+  revealIn(home);runCounters(home);drawSparks(home);drawTrend();fillBars(home);
+  if(!reduced)setTimeout(scramble,350);
+});
+})();
+</script>
+</body>
+</html>

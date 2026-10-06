@@ -4,23 +4,31 @@
 
 ## 技术栈
 
-| 层 | 技术 |
-| --- | --- |
-| 前端框架 | Vue 3.5 + TypeScript |
-| 组件库 | plus-pro-components 0.1（ProUI，100% 兼容 Element Plus） |
-| 路由 | vue-router 4 |
-| 桌面框架 | Tauri 2（Rust 后端，WebView2 渲染） |
-| Rust 工具链 | stable 1.99（已安装至 `D:\Program Files (x86)\rust`） |
+
+
+| 层        | 技术                                                  |
+| -------- | --------------------------------------------------- |
+| 前端框架     | Vue 3.5 + TypeScript                                |
+| 组件库      | plus-pro-components 0.1（ProUI，100% 兼容 Element Plus） |
+| 路由       | vue-router 4                                        |
+| 桌面框架     | Tauri 2（Rust 后端，WebView2 渲染）                        |
+| Rust 工具链 | stable 1.99（已安装至 `D:\Program Files (x86)\rust`）     |
 
 ## 环境要求
 
-- **Rust**：已安装至 `D:\Program Files (x86)\rust`（CARGO_HOME/RUSTUP_HOME 已指向该目录，cargo\bin 已加入用户 PATH）
-- **MSVC Build Tools**：本机已装 VS 2022 Build Tools（Tauri 编译需要 `link.exe`）
-- **Node.js + npm**：前端构建需要
+
+
+* **Rust**：已安装至 `D:\Program Files (x86)\rust`（CARGO\_HOME/RUSTUP\_HOME 已指向该目录，cargo\bin 已加入用户 PATH）
+
+* **MSVC Build Tools**：本机已装 VS 2022 Build Tools（Tauri 编译需要 `link.exe`）
+
+* **Node.js + npm**：前端构建需要
 
 ## 常用命令
 
-```bash
+
+
+```
 # 安装前端依赖
 npm install
 
@@ -45,6 +53,8 @@ src-tauri\target\debug\mona-wms-desktop.exe
 
 ## 目录结构
 
+
+
 ```
 desktop/
 ├── src/                      # Vue 前端
@@ -66,14 +76,24 @@ desktop/
 
 ## 已接入的桌面原生能力
 
-- `invoke("app_info")`：登录页展示应用版本与系统架构
-- `invoke("scan_barcode")`：模拟条码扫描枪（生产环境替换为串口/HID 实现）
-- 登录状态本地持久化（localStorage），带路由守卫
+
+
+* `invoke("app_info")`：登录页展示应用版本与系统架构
+
+* `invoke("scan_barcode")`：模拟条码扫描枪（生产环境替换为串口 / HID 实现）
+
+* 登录状态本地持久化（localStorage），带路由守卫
 
 ## 后续规划
 
-- [ ] 接入真实后端 API（替换 `src/api/mock.ts` 中的函数实现）
-- [ ] 条码扫描枪硬件对接（串口 / 键盘楔入）
-- [ ] 标签打印机（ZPL / 热敏）与导出报表
-- [ ] 离线数据缓冲（`tauri-plugin-store`，网络恢复后同步）
-- [ ] 按需引入 Element Plus / ProUI 组件，减小打包体积（当前全量引入约 1.17MB JS）
+
+
+* [ ] 接入真实后端 API（替换 `src/api/mock.ts` 中的函数实现）
+
+* [ ] 条码扫描枪硬件对接（串口 / 键盘楔入）
+
+* [ ] 标签打印机（ZPL / 热敏）与导出报表
+
+* [ ] 离线数据缓冲（`tauri-plugin-store`，网络恢复后同步）
+
+* [ ] 按需引入 Element Plus / ProUI 组件，减小打包体积（当前全量引入约 1.17MB JS）

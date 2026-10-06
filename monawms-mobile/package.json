@@ -1,0 +1,32 @@
+{
+  "name": "monawms-mobile",
+  "version": "1.0.0",
+  "description": "MonaWMS 通信设备仓库管理 · 移动端（NativeScript-Vue 3），按 prototype/mobile.html 暗色科技风原型实现，对接 backend_tp6 REST API",
+  "author": "MonaWMS",
+  "license": "Apache-2.0",
+  "main": "app/main.js",
+  "private": true,
+  "scripts": {
+    "android": "ns run android",
+    "ios": "ns run ios",
+    "clean": "ns clean",
+    "prepare:android": "ns prepare android",
+    "prepare:ios": "ns prepare ios",
+    "build:android": "ns build android",
+    "build:ios": "ns build ios",
+    "debug:android": "ns debug android",
+    "debug:ios": "ns debug ios"
+  },
+  "dependencies": {
+    "@nativescript/camera": "^7.0.0",
+    "@nativescript/canvas": "^2.1.18",
+    "@nativescript/core": "~9.1.0",
+    "nativescript-vue": "^3.1.2"
+  },
+  "devDependencies": {
+    "@nativescript/android": "~9.1.0",
+    "@nativescript/types": "~9.0.0",
+    "@nativescript/webpack": "~5.0.38",
+    "nativescript": "^9.1.2"
+  }
+}
