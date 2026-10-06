@@ -4,8 +4,8 @@ import "@fontsource/space-grotesk/600.css";
 import "@fontsource/space-grotesk/700.css";
 import "./globals.css";
 
-// 线上规范地址（发布到自定义域名后需同步更新此常量）
-const SITE_URL = "https://caymak2ynl.doubaoapps.com/app/app_17f4zh9hyme";
+// 线上规范地址（Cloudflare Pages）
+const SITE_URL = "https://monawms.pages.dev";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -26,6 +26,9 @@ export const metadata: Metadata = {
   ],
   alternates: {
     canonical: `${SITE_URL}/`,
+  },
+  verification: {
+    google: "ktdfQ1OotZYFQ94QRhYdb23SFWLFJ-V0FfYi-byaPjg",
   },
   openGraph: {
     title: "MonaWMS — 通信代维物资仓储管理系统",

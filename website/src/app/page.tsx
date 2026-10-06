@@ -10,8 +10,8 @@ import Demo from "@/components/Demo";
 import Faq from "@/components/Faq";
 import Footer from "@/components/Footer";
 
-// 线上规范地址（与 layout.tsx 保持一致；发布到自定义域名后同步更新）
-const SITE_URL = "https://caymak2ynl.doubaoapps.com/app/app_17f4zh9hyme";
+// 线上规范地址（与 layout.tsx 保持一致；Cloudflare Pages）
+const SITE_URL = "https://monawms.pages.dev";
 
 const softwareJsonLd = {
   "@context": "https://schema.org",
